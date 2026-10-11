@@ -1,6 +1,6 @@
 # Campsite Reservation System Application
 
-CMPUT 301 Fall 2026 Project
+CMPUT 301 Fall 2026 Project\
 Team Gambit
 
 ## Student Details
