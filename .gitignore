@@ -1,0 +1,19 @@
+# Android / Gradle (keep these out from the first Android commit in Part 3)
+*.iml
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# IDE
+.idea/
+*.swp
+.DS_Store
+
+# Secrets: never commit Firebase config or API keys
+google-services.json
+*.keystore
+*.jks
+
