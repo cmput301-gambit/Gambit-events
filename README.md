@@ -22,6 +22,7 @@ All project deliverables are in the [Wiki](https://github.com/cmput301-gambit/ga
 
 - [Project Part 2 Specification](https://ualberta-cmput301.github.io/projects/project_part2.html)
 - [Project Problem Description](https://ualberta-cmput301.github.io/projects/project_problem_descr.html)
+- [Project Part 2 Demo Repository](https://github.com/HozierDdd/CMPUT301-final/tree/main)
 
 ## AI Use Statement
 
