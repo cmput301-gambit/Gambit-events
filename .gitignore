@@ -1,4 +1,4 @@
-# Android / Gradle (keep these out from the first Android commit in Part 3)
+# Android / Gradle build output
 *.iml
 .gradle/
 build/
@@ -7,28 +7,15 @@ captures/
 .cxx/
 local.properties
 
-# Automatically added by Android / Gradle (Needs review)
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+# Android Studio: ignore IDE settings, but share the team's file templates
+.idea/*
+!.idea/fileTemplates/
 
-# IDE
-.idea/
+# OS / editor junk
+.DS_Store
 *.swp
-.DS_Store
 
-# Secrets: never commit Firebase config or API keys
-google-services.json
+# Signing keys: never commit these
 *.keystore
 *.jks
-
 
