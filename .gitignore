@@ -7,6 +7,20 @@ captures/
 .cxx/
 local.properties
 
+# Automatically added by Android / Gradle (Needs review)
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
 # IDE
 .idea/
 *.swp
@@ -16,4 +30,5 @@ local.properties
 google-services.json
 *.keystore
 *.jks
+
 
