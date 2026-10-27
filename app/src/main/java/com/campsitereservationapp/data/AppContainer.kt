@@ -1,5 +1,8 @@
 package com.campsitereservationapp.data
 
+import android.content.Context
+import com.campsitereservationapp.service.DeviceIdProvider
+
 /**
  * Creates and holds the app's shared repositories.
  *
@@ -11,11 +14,15 @@ package com.campsitereservationapp.data
  *
  * **Outstanding issues:** TODO: add a line per repository as each is created.
  */
-class AppContainer {
+class AppContainer (context: Context) {
     /** Shared repository for campsites. */
     val campsiteRepository by lazy { CampsiteRepository() }
     /** Shared repository for users. */
     val userRepository by lazy { UserRepository() }
 
     // TODO:  lotteryRepository, reservationRepository as they're created.
+
+    /** The current user's ID, which is this device's ID (US 01.09.01). */
+    val currentUserId: String by lazy { DeviceIdProvider(context).getDeviceId() }
+
 }
