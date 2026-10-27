@@ -15,13 +15,5 @@ class AppContainer {
     /** Shared repository for campsites. */
     val campsiteRepository by lazy { CampsiteRepository() }
 
-    /** Shared repository for users. */
-
-    /** Shared repository for lotteries. */
-
-    /** Shared repository for reservations. */
-
-    /** Shared repository for images. */
-
-    /** Shared repository for waiting lists. */
+    // TODO: add userRepository, lotteryRepository, reservationRepository as they're created.
 }

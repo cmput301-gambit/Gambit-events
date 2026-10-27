@@ -7,7 +7,7 @@ package com.campsitereservationapp.model
  * winners receive a [Reservation].
  *
  * **Design rationale:** plain data class with no Firestore code, so it's
- *  * easy to unit test. CampsiteRepository handles saving and loading.
+ * easy to unit test. CampsiteRepository handles saving and loading.
  *
  * **Outstanding issues:**
  * - Field list not yet confirmed against the CRC card and storyboards.

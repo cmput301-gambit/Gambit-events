@@ -19,6 +19,15 @@ import kotlinx.coroutines.flow.map
 class CampsiteRepository : Repository<Campsite>(SampleData.campsites) {
 
     /**
+     * Retrieves a static list of campsites owned by a specific owner.
+     *
+     * @param ownerId ID of the owner whose campsites to return
+     * @return a list of campsites belonging to [ownerId]
+     */
+    suspend fun getByOwner(ownerId: String): List<Campsite> =
+        getAll().filter { it.ownerId == ownerId }
+
+    /**
      * Live list of the campsites owned by one owner.
      *
      * @param ownerId ID of the owner whose campsites to return

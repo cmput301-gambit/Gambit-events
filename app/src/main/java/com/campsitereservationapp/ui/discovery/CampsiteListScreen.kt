@@ -15,6 +15,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 // Test daa
 import com.campsitereservationapp.data.SampleData
 
+/**
+ * A temporary test screen. Feel free to replace. You can use it as an example for wiring the viewModel to the screen
+ */
 @Composable
 fun CampsiteListScreen(
     viewModel: CampsiteListViewModel = viewModel(factory = CampsiteListViewModel.Factory),
