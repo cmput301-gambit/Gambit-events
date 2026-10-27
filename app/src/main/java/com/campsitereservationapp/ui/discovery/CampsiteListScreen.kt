@@ -24,8 +24,14 @@ fun CampsiteListScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Column(Modifier.padding(16.dp)) {
-        TextField(value = state.searchQuery, onValueChange = viewModel::onSearch)
-        TextField(value = state.camp)
+        Text("Name")
+        TextField(value = state.campsiteFilter.searchText, onValueChange = viewModel::onFilterName)
+        Text("Occupancy")
+        TextField(value = if (state.campsiteFilter.occupancy == 0) "" else state.campsiteFilter.occupancy.toString()
+            ,onValueChange = viewModel::onFilterOccupancy)
+        Text("Location")
+        TextField(value = state.campsiteFilter.location, onValueChange = viewModel::onFilterLocation)
+        //TextField(value = state.camp)
         state.campsites.forEach { Text(it.name) }
     }
 }

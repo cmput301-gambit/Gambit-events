@@ -22,9 +22,9 @@ import com.campsitereservationapp.model.Campsite
  * set only the fields they care about.
  */
 data class CampsiteFilter (
-    var searchText: String = "",
-    var location: String = "",
-    var occupancy: Int = 0,
+    public var searchText: String = "",
+    public var location: String = "",
+    public var occupancy: Int = 0,
     //var dateRange: DateRange = null
 ) {
     /**
@@ -76,4 +76,8 @@ data class CampsiteFilter (
         if (occupancy == 0) return true
         return campsite.capacity >= occupancy
     }
+
+//    private fun dateRangeMatch(campsite: Campsite): Boolean {
+//        return something
+//    }
 }
