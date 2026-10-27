@@ -25,6 +25,7 @@ fun CampsiteListScreen(
     val state by viewModel.uiState.collectAsState()
     Column(Modifier.padding(16.dp)) {
         TextField(value = state.searchQuery, onValueChange = viewModel::onSearch)
+        TextField(value = state.camp)
         state.campsites.forEach { Text(it.name) }
     }
 }

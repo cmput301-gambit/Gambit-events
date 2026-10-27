@@ -45,6 +45,7 @@ data class CampsiteListUiState(
  * (US 01.01.02) not yet added.
  *
  * @property campsiteRepository the shared repository campsites come from
+ * @property campsiteFilter the current filter applied by the entrant on the campsite repository
  */
 class CampsiteListViewModel(
     private val campsiteRepository: CampsiteRepository,
@@ -53,7 +54,7 @@ class CampsiteListViewModel(
     // State that belongs to this screen only: what the user typed.
     // Private and mutable, so only this ViewModel can change it.
     private val searchQuery = MutableStateFlow("")
-    private val campsiteFilter : CampsiteFilter = CampsiteFilter()
+    private val campsiteFilter : MutableStateFlow<CampsiteFilter> = MutableStateFlow(CampsiteFilter())
     /**
      * The current screen state. The screen collects this and redraws
      * every time it changes.
@@ -64,11 +65,12 @@ class CampsiteListViewModel(
         // runs again with the latest value from each.
         combine(
             campsiteRepository.observeAll(), // live campsite list from the repository
-            searchQuery,                     // live search text from the user
-        ) { campsites, query ->
+            searchQuery,                    // live search text from the user
+            campsiteFilter,                 // live filter from the user
+        ) { campsites, query, filter ->
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteListUiState(
-                campsites = campsites.filter { it.name.contains(query, ignoreCase = true) },
+                campsites = filter.apply(campsites),//.filter { it.name.contains(query, ignoreCase = true) },
                 searchQuery = query,
                 isLoading = false, // data has arrived, so we're done loading
             )

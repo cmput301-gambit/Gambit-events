@@ -1,7 +1,6 @@
 package com.campsitereservationapp.data
 
 import com.campsitereservationapp.model.Campsite
-import com.campsitereservationapp.model.User
 
 /**
  * Realistic example data shared by repositories, previews and tests.

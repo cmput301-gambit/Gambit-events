@@ -1,4 +1,7 @@
 package com.campsitereservationapp.data
+
+import com.campsitereservationapp.model.Campsite
+
 /**
  * A filter that acts on a [CampsiteRepository] based on its given values.
  *
@@ -24,5 +27,53 @@ data class CampsiteFilter (
     var occupancy: Int = 0,
     //var dateRange: DateRange = null
 ) {
-
+    /**
+    * Returns a static list of all campsites that fulfill the current filter.
+    *
+    * @param inputCampsites List of the campsites to apply the filter to
+    * @return a list of campsites that fulfill the filter
+    */
+    public fun apply(inputCampsites: List<Campsite>): List<Campsite>{
+        val ret = mutableListOf<Campsite>()
+        inputCampsites.forEach {
+            if(nameMatch(it) && locationMatch(it) && occupancyMatch(it)){
+                ret.add(it)
+            }
+        }
+        return ret
+    }
+    /**
+     * Returns a bool for if the location of the given [Campsite] matches the requested location.
+     * Always returns true of the location field is blank.
+     *
+     * @param campsite [Campsite] to apply the filter to
+     * @return bool for if the campsite contains the given location.
+     */
+    private fun locationMatch(campsite: Campsite): Boolean {
+        if(location.isBlank()) return true
+        return campsite.location.contains(location, ignoreCase = true)
+    }
+    /**
+     * Returns a bool for if the name of the given [Campsite] matches the requested name.
+     * Always returns true of the name field is blank.
+     *
+     * @param campsite [Campsite] to apply the filter to
+     * @return bool for if the campsite contains the given location.
+     */
+    private fun nameMatch(campsite: Campsite): Boolean{
+        if(searchText.isBlank()) return true
+        return campsite.name.contains(searchText, ignoreCase = true)
+    }
+    /**
+     * Returns a bool for if the occupancy of the given campsite is greater than or equal to
+     * the requested min occupancy.
+     * Always returns true of the occupancy is 0 (the default value).
+     *
+     * @param campsite List of the campsites to apply the filter to
+     * @return bool for if the campsite contains the given location.
+     */
+    private fun occupancyMatch(campsite: Campsite): Boolean {
+        if (occupancy == 0) return true
+        return campsite.capacity >= occupancy
+    }
 }
