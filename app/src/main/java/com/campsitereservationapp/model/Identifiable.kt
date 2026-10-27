@@ -1,4 +1,4 @@
-package com.example.campsitereservationapp.model
+package com.campsitereservationapp.model
 
 /**
  * Anything with a unique ID that can be stored as a Firestore document.

@@ -1,6 +1,6 @@
 package com.gambit.campsite.model
 
-import com.example.campsitereservationapp.model.Identifiable
+import com.campsitereservationapp.model.Identifiable
 
 /**
  * A campsite that entrants can join lotteries for.
@@ -47,5 +47,6 @@ data class Campsite(
     fun isValid(): Boolean {
         // TODO: extend once the campsite stories are finalised
         return name.isNotBlank() && ownerId.isNotBlank() && capacity > 0
+    }
     }
 }

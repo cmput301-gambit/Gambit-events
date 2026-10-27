@@ -1,4 +1,4 @@
-package com.example.campsitereservationapp.ui.theme
+package com.campsitereservationapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
