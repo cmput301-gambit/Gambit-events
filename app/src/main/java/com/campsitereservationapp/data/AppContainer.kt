@@ -14,9 +14,10 @@ import com.campsitereservationapp.service.DeviceIdProvider
  *
  * **Outstanding issues:** TODO: add a line per repository as each is created.
  */
-class AppContainer (context: Context) {
+class AppContainer(context: Context) {
     /** Shared repository for campsites. */
     val campsiteRepository by lazy { CampsiteRepository() }
+
     /** Shared repository for users. */
     val userRepository by lazy { UserRepository() }
 

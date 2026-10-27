@@ -37,6 +37,13 @@ abstract class Repository<T : Identifiable>(initialItems: List<T> = emptyList())
     open fun observeAll(): Flow<List<T>> = items
 
     /**
+     * Returns every item in the repository right now, without watching for changes.
+     *
+     * @return a snapshot of the current list
+     */
+    open suspend fun getAll(): List<T> = items.value
+
+    /**
      * Looks up a single item by its ID.
      *
      * @param id the ID to look for

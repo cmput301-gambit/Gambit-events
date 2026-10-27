@@ -9,7 +9,7 @@ import kotlinx.coroutines.launch
 /**
  * The app's Application class, created once when the app starts.
  *
- * **Purpose:** holds the [AppContainer] and makes sure a [model.User]
+ * **Purpose:** holds the [AppContainer] and makes sure a [com.campsitereservationapp.model.User]
  * exists for this device as soon as the app opens.
  *
  * **Design rationale:** the Application lives as long as the app does,
