@@ -1,8 +1,7 @@
 /*
- * Entry point of the app. Sets the theme and shows RapidRecallApp.
+ * Entry point of the app. Sets the theme and shows CampsiteListScreen.
  *
- * Design rationale: kept minimal; all state lives in MemoryViewModel and
- * all UI lives in the ui package.
+ * Design rationale:
  *
  * Outstanding issues: none known.
  *
@@ -14,10 +13,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.ui.Modifier
+import com.campsitereservationapp.ui.discovery.CampsiteListScreen
 import com.campsitereservationapp.ui.theme.CampsiteReservationAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -26,12 +22,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CampsiteReservationAppTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                CampsiteListScreen()
             }
         }
     }

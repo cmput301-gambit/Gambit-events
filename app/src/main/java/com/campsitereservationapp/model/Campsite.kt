@@ -1,7 +1,4 @@
-package com.gambit.campsite.model
-
-import com.campsitereservationapp.model.Identifiable
-
+package com.campsitereservationapp.model
 /**
  * A campsite that entrants can join lotteries for.
  *
@@ -10,7 +7,7 @@ import com.campsitereservationapp.model.Identifiable
  * winners receive a [Reservation].
  *
  * **Design rationale:** plain data class with no Firestore code, so it's
- *  * easy to unit test. CampsiteRepository handles saving and loading.
+ * easy to unit test. CampsiteRepository handles saving and loading.
  *
  * **Outstanding issues:**
  * - Field list not yet confirmed against the CRC card and storyboards.
@@ -47,6 +44,5 @@ data class Campsite(
     fun isValid(): Boolean {
         // TODO: extend once the campsite stories are finalised
         return name.isNotBlank() && ownerId.isNotBlank() && capacity > 0
-    }
     }
 }
