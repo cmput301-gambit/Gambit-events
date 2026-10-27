@@ -1,6 +1,9 @@
 package com.campsitereservationapp.data
 
 import com.campsitereservationapp.model.Identifiable
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * A base class for all the repositories in the app.
@@ -13,13 +16,20 @@ import com.campsitereservationapp.model.Identifiable
  * **Outstanding issues:** TODO: A temporary stand in until firebase is set up. Must be replaced later.
  */
 abstract class Repository<T : Identifiable>(initialItems: List<T> = emptyList()) {
-    private val items = initialItems.toMutableList()
+    private val items = MutableStateFlow(initialItems)
 
-    open suspend fun getAll(): List<T> = items.toList()
-    open suspend fun get(id: String): T? = items.find { it.id == id }
+    // peek into all the items in the repository
+    open fun observeAll(): Flow<List<T>> = items
+
+    // get a specific item from the repository
+    open suspend fun get(id: String): T? = items.value.find { it.id == id }
+
+    /* Add an item to the repository.*/
     open suspend fun add(item: T) {
-        items.removeAll { it.id == item.id } // remove any existing item with the same ID (No duplicates)
-        items.add(item)
+        items.update { list -> list.filterNot { it.id == item.id } + item }
     }
-    open suspend fun delete(id: String) { items.removeAll { it.id == id } }
+
+    open suspend fun delete(id: String) {
+        items.update { list -> list.filterNot { it.id == id } }
+    }
 }

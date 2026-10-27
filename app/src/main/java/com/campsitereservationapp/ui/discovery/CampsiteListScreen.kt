@@ -1,0 +1,37 @@
+package com.campsitereservationapp.ui.discovery
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+// Test daa
+import com.campsitereservationapp.data.SampleData
+
+/** Connects the screen to its ViewModel. */
+@Composable
+fun CampsiteListScreen(
+    viewModel: CampsiteListViewModel = viewModel(factory = CampsiteListViewModel.Factory),
+) {
+    val state by viewModel.uiState.collectAsState()
+    CampsiteListContent(state = state, onRefresh = viewModel::loadCampsites)
+}
+
+/** Draws the screen from plain data; knows nothing about ViewModels. */
+@Composable
+fun CampsiteListContent(
+    state: CampsiteListUiState,
+    onRefresh: () -> Unit,
+) {
+    // LazyColumn of campsite cards, etc.
+}
+
+@Preview
+@Composable
+private fun CampsiteListPreview() {
+    CampsiteListContent(
+        state = CampsiteListUiState(campsites = SampleData.campsites, isLoading = false),
+        onRefresh = {},
+    )
+}
