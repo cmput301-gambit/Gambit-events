@@ -14,6 +14,8 @@ package com.campsitereservationapp.data
 class AppContainer {
     /** Shared repository for campsites. */
     val campsiteRepository by lazy { CampsiteRepository() }
+    /** Shared repository for users. */
+    val userRepository by lazy { UserRepository() }
 
-    // TODO: add userRepository, lotteryRepository, reservationRepository as they're created.
+    // TODO:  lotteryRepository, reservationRepository as they're created.
 }
