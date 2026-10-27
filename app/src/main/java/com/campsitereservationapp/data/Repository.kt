@@ -44,12 +44,27 @@ abstract class Repository<T : Identifiable>(initialItems: List<T> = emptyList())
     open suspend fun get(id: String): T? = items.value.find { it.id == id }
 
     /**
-     * Adds an item to the repository, replacing any existing item with the same ID.
+     * Adds an item to the repository. Rejects duplicate IDs and returns the saved item.
      *
-     * @param item the item to insert or update
+     * @param item the item to insert
+     * @return the saved item
      */
-    open suspend fun add(item: T) {
-        items.update { list -> list.filterNot { it.id == item.id } + item }
+    open suspend fun add(item: T): T {
+        require(items.value.none { it.id == item.id }) { "Item with id ${item.id} already exists" }
+        items.update { list -> list + item }
+        return item
+    }
+
+    /**
+     * Updates an existing item in the repository. Fails if the ID does not exist.
+     *
+     * @param item the item to update
+     * @return the updated item
+     */
+    open suspend fun update(item: T): T {
+        require(items.value.any { it.id == item.id }) { "Item with id ${item.id} does not exist" }
+        items.update { list -> list.map { if (it.id == item.id) item else it } }
+        return item
     }
 
     /**
