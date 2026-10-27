@@ -1,16 +1,32 @@
 package com.campsitereservationapp.data
 
 import com.campsitereservationapp.model.Campsite
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
- * A repository for Campsite objects.
+ * Stores and provides [Campsite] objects.
  *
- * **Purpose:**
+ * **Purpose:** the single source of campsite data for every screen,
+ * including campsite-specific queries like finding an owner's campsites.
  *
- * **Design rationale:** <One line: the pattern it follows or why it's built this way.>
+ * **Design rationale:** extends [Repository], which holds the shared
+ * storage code; this class only adds campsite-specific queries.
  *
- * **Outstanding issues:** TODO: A temporary stand in until firebase is set up. Must be replaced later.
+ * **Outstanding issues:** backed by an in-memory list seeded from
+ * [SampleData] until Firestore is connected.
  */
 class CampsiteRepository : Repository<Campsite>(SampleData.campsites) {
-    suspend fun getByOwner(ownerId: String) = getAll().filter { it.ownerId == ownerId }
+
+    /**
+     * Live list of the campsites owned by one owner.
+     *
+     * @param ownerId ID of the owner whose campsites to return
+     * @return a stream that emits the owner's campsites every time
+     * campsite data changes
+     */
+    fun observeByOwner(ownerId: String): Flow<List<Campsite>> =
+        observeAll().map { campsites ->              // for each box on the belt...
+            campsites.filter { it.ownerId == ownerId } // ...keep only this owner's campsites
+        }
 }
