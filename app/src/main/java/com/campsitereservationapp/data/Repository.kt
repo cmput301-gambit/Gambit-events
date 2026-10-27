@@ -50,7 +50,10 @@ abstract class Repository<T : Identifiable>(initialItems: List<T> = emptyList())
      * @return the saved item
      */
     open suspend fun add(item: T): T {
-        require(items.value.none { it.id == item.id }) { "Item with id ${item.id} already exists" }
+        items.update { list ->
+    require(list.none { it.id == item.id }) { "Item with id ${item.id} already exists" }
+    list + item
+}
         return item
     }
 
