@@ -1,6 +1,7 @@
 package com.campsitereservationapp.data
 
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.User
 
 /**
  * Realistic example data shared by repositories, previews and tests.
@@ -42,5 +43,35 @@ object SampleData {
         ),
 
         // Add sample data for other classes here such as lotteries, reservations, users, etc.
+    )
+
+    val users = listOf(User(
+        id = "owner-noah",
+        name = "Noah Walters",
+        email = "noah.ex@example.com",
+        phoneNumber = "780-555-0101",
+        profileImage = "profiles/owner-noah.jpg",
+    ),
+        User(
+            id = "owner-marcus",
+            name = "Marcus Delaney",
+            email = "marcus.delaney@example.com",
+            phoneNumber = "587-555-0102",
+            profileImage = "profiles/owner-marcus.jpg",
+        ),
+        User(
+            id = "entrant-liam",
+            name = "Liam Tremblay",
+            email = "liam.tremblay@example.com",
+            phoneNumber = "780-555-0104",
+            profileImage = "profiles/entrant-liam.jpg",
+        ),
+        User(
+            id = "admin-karl",
+            name = "Karl Markowski",
+            email = "kjmarkow@example.com",
+            phoneNumber = "403-555-0105",
+            profileImage = null,
+        ),
     )
 }

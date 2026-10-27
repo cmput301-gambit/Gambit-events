@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
+import com.campsitereservationapp.data.CampsiteFilter
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.model.Campsite
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,7 +53,7 @@ class CampsiteListViewModel(
     // State that belongs to this screen only: what the user typed.
     // Private and mutable, so only this ViewModel can change it.
     private val searchQuery = MutableStateFlow("")
-
+    private val campsiteFilter : CampsiteFilter = CampsiteFilter()
     /**
      * The current screen state. The screen collects this and redraws
      * every time it changes.

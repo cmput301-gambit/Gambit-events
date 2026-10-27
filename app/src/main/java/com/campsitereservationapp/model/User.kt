@@ -16,17 +16,15 @@ package com.campsitereservationapp.model
  * and [Admin] correct?
  *
  * @property id unique ID tied to the users device ID.
- * @property firstName first name of the user.
- * @property lastName last name of the user.
+ * @property name full name of the user
  * @property email email of the user.
  * @property phoneNumber phone number of the user.
  * @property profileImage profile photo of the user.
  * @constructor Creates a user. Every field has a default.
  */
-class User(
+data class User(
     override val id: String = "",
-    val firstName: String = "",
-    val lastName: String = "",
+    val name: String = "",
     val email: String = "",
     val phoneNumber: String = "",
     val profileImage: String? = null,
@@ -39,13 +37,13 @@ class User(
     /**
      * Checks whether this user has everything it needs to be saved.
      *
-     * A valid user has a non-blank [id]. All other fields can be optionally
+     * A valid user has a non-blank [id] and [name]. All other fields can be optionally
      * empty strings or null.
      *
      * @return true if the user can be saved, false otherwise
      */
     fun isValid(): Boolean {
-        return id.isNotBlank()
+        return id.isNotBlank() && name.isNotBlank()
     }
 
     fun updateProfileInformation(): Unit{
