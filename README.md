@@ -9,14 +9,14 @@ All project deliverables are in the [Wiki](https://github.com/cmput301-gambit/ga
 
 ## Student Details
 
-| Student Name | CCID | GitHub | Part 2 Role |
-|---|---|---|---|
-| `Muhanad Sawalha` | `msawalha` | `Mooplex` | CRC Cards |
-| `Karl Markowski` | `kjmarkow` | `MayorHotdog` | Product Backlog |
-| `Avnil Sharma` | `avnil` | `setab-as` | Wiki Structure and Tool Use |
-| `Arien Alabar` | `alabar` | `taetark` | UI Mockups and Storyboards |
-| `Noah Walters` | `nwalter1` | `Du-ck-01` | UI Mockups and Storyboards |
-| `Yousif Al-Anbaki` | `alanbaki` | `yousif0606` | Product Backlog |
+| Student Name | CCID | GitHub | Part 2 Role | Part 3 Role | 
+|---|---|---|---|---|
+| `Muhanad Sawalha` | `msawalha` | `Mooplex` | CRC Cards | Firestore & Models | 
+| `Karl Markowski` | `kjmarkow` | `MayorHotdog` | Product Backlog | Feature: Lotteries | 
+| `Avnil Sharma` | `avnil` | `setab-as` | Wiki Structure and Tool Use | Feature: Campsites | 
+| `Arien Alabar` | `alabar` | `taetark` | UI Mockups and Storyboards | UI: Navigation & Design | 
+| `Noah Walters` | `nwalter1` | `Du-ck-01` | UI Mockups and Storyboards | UI: Entrant Screens | 
+| `Yousif Al-Anbaki` | `alanbaki` | `yousif0606` | Product Backlog | Feature: Notifications & Booking | 
 
 ## References and Resources
 

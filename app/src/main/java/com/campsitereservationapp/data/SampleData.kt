@@ -1,6 +1,10 @@
 package com.campsitereservationapp.data
 
+import com.campsitereservationapp.model.Admin
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.CampsiteOwner
+import com.campsitereservationapp.model.Entrant
+import com.campsitereservationapp.model.User
 
 /**
  * Realistic example data shared by repositories, previews and tests.
@@ -18,7 +22,7 @@ object SampleData {
     val campsites = listOf(
         Campsite(
             id = "campsite-pine-ridge",
-            ownerId = "owner-dana",
+            ownerId = "owner-bobby",
             name = "Pine Ridge",
             description = "Shaded sites near the river, fire pits and pit toilets.",
             location = "Hinton, AB",
@@ -26,7 +30,7 @@ object SampleData {
         ),
         Campsite(
             id = "campsite-lakeside-loop",
-            ownerId = "owner-dana",
+            ownerId = "owner-bobby",
             name = "Lakeside Loop",
             description = "Lakefront sites with a boat launch and showers.",
             location = "Sylvan Lake, AB",
@@ -34,15 +38,12 @@ object SampleData {
         ),
         Campsite(
             id = "campsite-aspen-hollow",
-            ownerId = "owner-marcus",
+            ownerId = "owner-jill",
             name = "Aspen Hollow",
             description = "Quiet walk-in tent sites in an aspen grove.",
             location = "Elk Island, AB",
             capacity = 2,
         ),
-
         // Add sample data for other classes here such as lotteries, reservations, users, etc.
     )
-
-
 }
