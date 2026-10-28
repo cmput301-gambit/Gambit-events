@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
+import com.campsitereservationapp.data.CampsiteFilter
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.model.Campsite
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,19 +14,21 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 
 /**
  * Everything the campsite list screen needs to draw itself.
  *
  * The screen reads only this class. It never talks to a repository directly.
  *
- * @property campsites the campsites to show, already filtered by [searchQuery]
- * @property searchQuery the text currently typed in the search bar
+ * @property campsites the campsites to show, already filtered by [CampsiteFilter]
+ * @property campsiteFilter the instance of [CampsiteFilter] currently being applied to the
+ * database.
  * @property isLoading true until the first list of campsites arrives
  */
 data class CampsiteListUiState(
     val campsites: List<Campsite> = emptyList(),
-    val searchQuery: String = "",
+    val campsiteFilter: CampsiteFilter = CampsiteFilter(),
     val isLoading: Boolean = true,
 )
 
@@ -43,7 +46,7 @@ data class CampsiteListUiState(
  * **Outstanding issues:** filters by location, date and guests
  * (US 01.01.02) not yet added.
  *
- * @property campsiteRepository the shared repository campsites come from
+ * @property campsiteRepository The shared repository campsites come from
  */
 class CampsiteListViewModel(
     private val campsiteRepository: CampsiteRepository,
@@ -51,8 +54,7 @@ class CampsiteListViewModel(
 
     // State that belongs to this screen only: what the user typed.
     // Private and mutable, so only this ViewModel can change it.
-    private val searchQuery = MutableStateFlow("")
-
+    private val campsiteFilter : MutableStateFlow<CampsiteFilter> = MutableStateFlow(CampsiteFilter())
     /**
      * The current screen state. The screen collects this and redraws
      * every time it changes.
@@ -63,12 +65,14 @@ class CampsiteListViewModel(
         // runs again with the latest value from each.
         combine(
             campsiteRepository.observeAll(), // live campsite list from the repository
-            searchQuery,                     // live search text from the user
-        ) { campsites, query ->
+            //searchQuery,                    // live search text from the user
+            campsiteFilter,                 // live filter from the user
+        ) { campsites, filter ->
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteListUiState(
-                campsites = campsites.filter { it.name.contains(query, ignoreCase = true) },
-                searchQuery = query,
+                campsites = filter.apply(campsites),//.filter { it.name.contains(query, ignoreCase = true) },
+                //searchQuery = query,
+                campsiteFilter = filter,
                 isLoading = false, // data has arrived, so we're done loading
             )
         }
@@ -87,14 +91,44 @@ class CampsiteListViewModel(
     /**
      * Called by the screen whenever the search text changes.
      *
-     * Updating [searchQuery] makes combine() recalculate the state,
+     * Updating [campsiteFilter] makes combine() recalculate the state,
      * so the filtered list updates automatically.
      *
      * @param query the new search text
      */
-    fun onSearch(query: String) {
-        searchQuery.value = query
+    fun onFilterName(query: String) {
+        campsiteFilter.update { it.copy(searchText = query) }
     }
+    /**
+     * Called by the screen whenever the occupancy changes.
+     *
+     * Updating [campsiteFilter] makes combine() recalculate the state,
+     * so the filtered list updates automatically.
+     *
+     * @param occupancy the new minimum occupancy to filter by
+     */
+    fun onFilterOccupancy(occupancy: String){
+        var newOccupancy : Int? = occupancy.toIntOrNull()
+        if(newOccupancy == null) newOccupancy = 0
+        campsiteFilter.update { it.copy(occupancy = newOccupancy) }
+    }
+
+    /**
+     * Called by the screen whenever the location changes.
+     *
+     * Updating [campsiteFilter] makes combine() recalculate the state,
+     * so the filtered list updates automatically.
+     *
+     * @param location the location to filter by
+     */
+    fun onFilterLocation(location: String){
+        campsiteFilter.update { it.copy(location = location) }
+    }
+    //TODO: Add date range
+//    fun onFilterDateRange(DateRange: dateRange){
+//        campsiteFilter.update { it.copy(dateRange = dateRange) }
+//    }
+
 
     companion object {
         /**
