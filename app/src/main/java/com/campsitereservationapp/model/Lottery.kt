@@ -15,6 +15,7 @@ enum class LotteryError {
     WINNER_AMOUNT_LESS_THAN_ONE,
     REGISTRATION_PERIOD_IN_PAST,
     RESERVATION_PERIOD_IN_PAST,
+    INVALID_WAITING_LIST,
 
 }
 
@@ -75,6 +76,9 @@ data class Lottery (
         if (reservationPeriod.start.isBefore(LocalDate.now())) {
             errors.add(LotteryError.RESERVATION_PERIOD_IN_PAST)
         }
+        if (!waitingList.isValid()) {
+            errors.add(LotteryError.INVALID_WAITING_LIST)
+        }
         return errors
     }
 
@@ -122,16 +126,11 @@ data class Lottery (
     * */
     fun drawEntrants() {
         if (stage == LotteryStatus.DRAWN) {
-            for (i in 1..winnerAmount) {
-                try {
-                    val wonEntrant = waitingList.entrantList.random()
-                    waitingList.entrantWinners.add(wonEntrant)
-                    waitingList.entrantList.remove(wonEntrant)
-                } catch (error: NoSuchElementException) {
-                    // If there are not enough entrance to draw a full winner list from then the
-                    // loop will end and the winners will be declared.
-                    continue
-                }
+            val drawAmount = minOf(winnerAmount, waitingList.entrantList.size)
+            for (i in 1..drawAmount) {
+                val wonEntrant = waitingList.entrantList.random()
+                waitingList.entrantWinners.add(wonEntrant)
+                waitingList.entrantList.remove(wonEntrant)
             }
             stage = LotteryStatus.CLOSED
             notifyEntrants()
