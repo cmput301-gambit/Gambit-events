@@ -1,8 +1,13 @@
 package com.campsitereservationapp.ui.discovery
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,23 +41,39 @@ fun CampsiteListScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var displayFilters by remember { mutableStateOf(false) }
+
+    //Checking if the row is
+    val searchBarInteraction = remember { MutableInteractionSource() }
+    val searchFieldInteraction = remember { MutableInteractionSource() }
+    val searchBarHovered by searchBarInteraction.collectIsHoveredAsState()
+    val searchFieldFocused by searchFieldInteraction.collectIsFocusedAsState()
+
+    val showFiltersButton = searchBarHovered || searchFieldFocused || displayFilters
     Column(
         Modifier.padding(16.dp)
     ) {
-        /* Search bar */
-        TextField(
-            value = state.campsiteFilter.searchText,
-            onValueChange = viewModel::onFilterName,
-            placeholder = { Text("Search") }
-        )
-        /* Filters Enable Button */
-        TextButton(
-            onClick = {
-                displayFilters = !displayFilters
-            }
-        ) {
-            Text("Filters")
+        Spacer(modifier = Modifier.padding(vertical = 16.dp))
+        /* Search Bar and Filters */
+
+            /* Search bar */
+            TextField(
+                value = state.campsiteFilter.searchText,
+                onValueChange = viewModel::onFilterName,
+                placeholder = { Text("Search") },
+                interactionSource = searchFieldInteraction
+            )
+            /* Filters Enable Button */
+            if(showFiltersButton){
+                TextButton(
+                    onClick = {
+                        displayFilters = !displayFilters
+                    }
+                ) {
+                    Text("Filters")
+                }
         }
+
+
 
         /*Filters menu*/
         if(displayFilters){
