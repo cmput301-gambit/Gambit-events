@@ -3,6 +3,7 @@ package com.campsitereservationapp.data
 import com.campsitereservationapp.model.Campsite
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.util.UUID
 
 /**
  * Stores and provides [Campsite] objects.
@@ -17,6 +18,21 @@ import kotlinx.coroutines.flow.map
  * [SampleData] until Firestore is connected.
  */
 class CampsiteRepository : Repository<Campsite>(SampleData.campsites) {
+
+    /**
+     * Adds a campsite, generating a UUID if the ID is blank.
+     *
+     * @param item the campsite to add
+     * @return the saved campsite
+     */
+    override suspend fun add(item: Campsite): Campsite {
+        val campsiteToAdd = if (item.id.isBlank()) {
+            item.copy(id = UUID.randomUUID().toString())
+        } else {
+            item
+        }
+        return super.add(campsiteToAdd)
+    }
 
     /**
      * Retrieves a static list of campsites owned by a specific owner.
