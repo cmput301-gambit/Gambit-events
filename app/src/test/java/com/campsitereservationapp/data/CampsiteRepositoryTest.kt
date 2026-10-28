@@ -9,15 +9,22 @@ import org.junit.Test
 
 class CampsiteRepositoryTest {
 
-    @Test
-    fun blankId_getsUuidOnAdd() = runTest {
+    @Test(expected = IllegalArgumentException::class)
+    fun blankId_isRejectedOnAdd() = runTest {
         val repository = CampsiteRepository()
-        val initialCount = repository.getAll().size
-        val added = repository.add(Campsite(id = "", name = "New Site", ownerId = "owner-bobby", capacity = 3))
+        repository.add(Campsite(id = "", name = "New Site", ownerId = "owner-bobby", capacity = 3))
+    }
 
-        assertNotNull(added.id)
-        assertTrue(added.id.isNotBlank())
-        assertEquals(initialCount + 1, repository.getAll().size)
+    @Test
+    fun newId_createsUniqueId() = runTest {
+        val repository = CampsiteRepository()
+        val id1 = repository.newId()
+        val id2 = repository.newId()
+        assertNotNull(id1)
+        assertTrue(id1.isNotBlank())
+        assertNotNull(id2)
+        assertTrue(id2.isNotBlank())
+        assertTrue(id1 != id2)
     }
 
     @Test

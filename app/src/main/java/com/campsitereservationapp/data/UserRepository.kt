@@ -29,6 +29,18 @@ class UserRepository : Repository<User>(SampleData.users) {
         get(deviceId) ?: User.newEntrant(deviceId).also { add(it) }
 
     /**
+     * Promotes a user to a campsite owner, creating an entrant profile if none exists.
+     *
+     * @param id the user's unique ID
+     * @return the updated user with the owner role
+     */
+    suspend fun promoteToOwner(id: String): User {
+        val user = getOrCreate(id)
+        return if (user.isOwner) user
+        else update(user.withOwnerRole())
+    }
+
+    /**
      * Live view of one user, for screens like the profile page.
      *
      * @param id the user's ID

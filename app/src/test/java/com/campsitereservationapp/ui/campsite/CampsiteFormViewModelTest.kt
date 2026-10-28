@@ -1,7 +1,9 @@
 package com.campsitereservationapp.ui.campsite
 
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.CampsiteError
+import com.campsitereservationapp.model.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -20,13 +22,15 @@ class CampsiteFormViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: CampsiteRepository
+    private lateinit var userRepository: UserRepository
     private lateinit var viewModel: CampsiteFormViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         repository = CampsiteRepository()
-        viewModel = CampsiteFormViewModel(repository, "owner-bobby")
+        userRepository = UserRepository()
+        viewModel = CampsiteFormViewModel(repository, userRepository, "entrant-user")
     }
 
     @After
@@ -50,9 +54,30 @@ class CampsiteFormViewModelTest {
         assertEquals(initialCount + 1, repository.getAll().size)
 
         val savedCampsite = repository.getAll().last()
-        assertEquals("owner-bobby", savedCampsite.ownerId)
+        assertEquals("entrant-user", savedCampsite.ownerId)
         assertEquals("Valid Campsite", savedCampsite.name)
         assertEquals(5, savedCampsite.capacity)
+    }
+
+    @Test
+    fun validSave_promotesUserToOwner() = runTest {
+        val userId = "entrant-user"
+        val initialUser = userRepository.get(userId)
+        if (initialUser != null) {
+            userRepository.delete(userId)
+        }
+        userRepository.add(User.newEntrant(userId))
+        assertFalse(userRepository.get(userId)!!.isOwner)
+
+        viewModel.onNameChange("Valid Campsite")
+        viewModel.onLocationChange("Banff, AB")
+        viewModel.onCapacityChange("5")
+
+        viewModel.save()
+        testScheduler.advanceUntilIdle()
+
+        val updatedUser = userRepository.get(userId)
+        assertTrue(updatedUser!!.isOwner)
     }
 
     @Test

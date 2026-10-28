@@ -7,8 +7,10 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteError
+import com.campsitereservationapp.model.User
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +21,8 @@ import kotlin.coroutines.cancellation.CancellationException
 /**
  * UI state for the campsite registration form.
  *
+ * @property isSaving true while the campsite is being saved to the repository
+ * @property isSaved true if the campsite was successfully registered and saved
  * @property name display name of the campsite
  * @property description description / amenities of the campsite
  * @property location textual location of the campsite
@@ -27,7 +31,6 @@ import kotlin.coroutines.cancellation.CancellationException
  * @property latitude optional latitude map coordinate
  * @property longitude optional longitude map coordinate
  * @property errors list of validation errors encountered during save attempts
- * @property isSaved true if the campsite was successfully registered and saved
  */
 data class CampsiteFormUiState(
     val isSaving: Boolean = false,
@@ -48,17 +51,19 @@ data class CampsiteFormUiState(
  * **Purpose:** allows campsite owners to register a new campsite and provide its details
  * (US 02.01.01, 02.01.02).
  *
- * **Design rationale:** MVVM. Receives its repository and current user ID from the
- * [com.campsitereservationapp.data.AppContainer] through [Factory], handling validation
- * and persisting new campsites to the repository.
+ * **Design rationale:** MVVM. Receives its repositories and current user ID from the
+ * [com.campsitereservationapp.data.AppContainer] through [Factory], handling validation,
+ * persisting new campsites, and promoting users to campsite owners upon registration.
  *
  * **Outstanding issues:** image upload and map picking not yet integrated.
  *
  * @property campsiteRepository the shared repository campsites are added to
+ * @property userRepository the shared repository users are managed in
  * @property currentUserId ID of the owner registering the campsite
  */
 class CampsiteFormViewModel(
     private val campsiteRepository: CampsiteRepository,
+    private val userRepository: UserRepository,
     private val currentUserId: String,
 ) : ViewModel() {
 
@@ -125,9 +130,10 @@ class CampsiteFormViewModel(
     }
 
     /**
-     * Validates form inputs, trims text values, parses capacity, and saves the new campsite
-     * to the repository if valid. Sets [CampsiteFormUiState.isSaving] during the operation
-     * and [CampsiteFormUiState.isSaved] upon success. Populates validation errors otherwise.
+     * Validates form inputs, trims text values, parses capacity, saves the new campsite
+     * to the repository if valid, and promotes the user to a campsite owner if not already one.
+     * Sets [CampsiteFormUiState.isSaving] during the operation and [CampsiteFormUiState.isSaved]
+     * upon success. Populates validation errors otherwise.
      */
     fun save() {
         val state = _uiState.value
@@ -161,6 +167,8 @@ class CampsiteFormViewModel(
         viewModelScope.launch {
             try {
                 campsiteRepository.add(campsite)
+                userRepository.promoteToOwner(currentUserId)
+
                 _uiState.update { it.copy(isSaving = false, isSaved = true, errors = emptyList()) }
             } catch (e: CancellationException) {
                 throw e
@@ -173,7 +181,7 @@ class CampsiteFormViewModel(
 
     companion object {
         /**
-         * ViewModel factory for [CampsiteFormViewModel], injecting repository and current user ID
+         * ViewModel factory for [CampsiteFormViewModel], injecting repositories and current user ID
          * from [CampsiteApp] container.
          */
         val Factory = viewModelFactory {
@@ -181,6 +189,7 @@ class CampsiteFormViewModel(
                 val app = this[APPLICATION_KEY] as CampsiteApp
                 CampsiteFormViewModel(
                     campsiteRepository = app.container.campsiteRepository,
+                    userRepository = app.container.userRepository,
                     currentUserId = app.container.currentUserId
                 )
             }
