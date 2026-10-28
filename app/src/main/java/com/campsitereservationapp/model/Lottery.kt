@@ -5,10 +5,6 @@ import androidx.annotation.RequiresApi
 import com.campsitereservationapp.data.DateRange
 
 /*
-* TODO: Notify winners and losers of their status. Can be done once the notification model PR is
-*  accepted.
-*
-* TODO: Implement LotteryRepository
 *
 * TODO: Unit Tests
 * */
@@ -93,17 +89,18 @@ data class Lottery (
      * waiting list.
      *
      * @param entrant Entrant to be added to the waiting list
+     * @return Returns true when entrant has been successfully added, false otherwise.
      * */
-    fun addEntrant(entrant: Entrant) {
+    fun addEntrant(entrant: Entrant): Boolean {
         if (stage == LotteryStatus.OPEN) {
-            waitingList.addEntrant(entrant)
+            return waitingList.addEntrant(entrant)
         }
+        return false
     }
 
     /**
-    * Removes the amount of winners from the entrants waiting list and puts them into a winners
-    * list inside [WaitingList]. This allows us to send the entrants' notifcation through the
-    * waitlist on the respective lists.
+    * If the current lottery stage is DRAWN, removes the amount of winners from the entrants waiting
+     * list and puts them into a winners list inside [WaitingList]. Sets the stage from DRAWN to CLOSED.
     *
     * */
     fun drawEntrants() {
@@ -120,6 +117,19 @@ data class Lottery (
                 }
             }
         }
+        stage = LotteryStatus.CLOSED
+        notifyEntrants()
     }
 
+
+    /**
+     * If the current lottery stage is CLOSED then it will send the lists of lottery
+     * winners and losers to the [NotificationHandler] to send to the entrants.
+     *
+     * */
+    fun notifyEntrants() {
+        if (stage == LotteryStatus.CLOSED) {
+            // TODO: USE NOTIFICATION HANDLER TO SEND NOTIFICATIONS}
+        }
+    }
 }
