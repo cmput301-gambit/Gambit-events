@@ -37,7 +37,6 @@ enum class CampsiteError {
  * @property latitude latitude coordinate of the campsite, or null
  * @property longitude longitude coordinate of the campsite, or null
  * @property availability range of dates available for reservation (US 02.01.02 / #76)
- * @property availableDates alternative property for dates available for reservation (#76)
  * @constructor Creates a campsite. Every field has a default, so tests can
  * set only the fields they care about.
  */
@@ -53,11 +52,7 @@ data class Campsite(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val availability: DateRange? = null,
-    val availableDates: DateRange? = null,
 ) : Identifiable {
-
-    /** The active reservation availability date range, checking both [availability] and [availableDates]. */
-    val activeAvailability: DateRange? get() = availability ?: availableDates
 
     /**
      * Validates the campsite fields and returns a list of errors found.
@@ -84,8 +79,7 @@ data class Campsite(
             errors.add(CampsiteError.BLANK_TAG)
         }
 
-        val range = activeAvailability
-        if (range != null && range.finish.isBefore(range.start)) {
+        if (availability != null && availability.finish.isBefore(availability.start)) {
             errors.add(CampsiteError.INVALID_AVAILABILITY)
         }
 
