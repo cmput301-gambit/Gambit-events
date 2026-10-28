@@ -1,5 +1,9 @@
 package com.campsitereservationapp.model
 
+import android.os.Build
+import androidx.annotation.RequiresApi
+import java.time.LocalDate
+
 /**
  * The kinds of lottery result an entrant can be notified about.
  */
@@ -14,9 +18,10 @@ enum class NotificationType {
  * **Purpose:** the data behind win and lose notifications
  * (US 01.03.01, 01.03.02).
  *
- * **Design rationale:** plain data class with no Android or Firestore code,
- * so it is easy to unit test. It refers to the recipient and lottery by ID,
- * like [Entrant] does, so each piece of data has one source of truth.
+ * **Design rationale:** plain data class with no Android UI or Firestore
+ * code, so it is easy to unit test. It refers to the recipient and lottery
+ * by ID, like [Entrant] does, so each piece of data has one source of truth.
+ * Dates use [LocalDate], like DateRange in the data package.
  *
  * **Outstanding issues:** TODO delivery (in-app list or system
  * notification) is not built yet, and Lottery doesn't exist yet.
@@ -26,16 +31,17 @@ enum class NotificationType {
  * @property lotteryId ID of the lottery this result is about
  * @property type whether the entrant won or lost
  * @property message the text shown to the entrant
- * @property createdAt creation time in milliseconds since the epoch
+ * @property createdAt the date the notification was created
  * @property read true once the entrant has opened it
  */
+@RequiresApi(Build.VERSION_CODES.O)
 data class Notification(
     override val id: String = "",
     val recipientId: String = "",
     val lotteryId: String = "",
     val type: NotificationType = NotificationType.LOTTERY_WON,
     val message: String = "",
-    val createdAt: Long = 0L,
+    val createdAt: LocalDate = LocalDate.of(1970, 1, 1),
     val read: Boolean = false,
 ) : Identifiable {
 
@@ -63,7 +69,7 @@ data class Notification(
          * @param recipientId ID of the winning user
          * @param lotteryId ID of the lottery
          * @param campsiteName name of the campsite, shown in the message
-         * @param createdAt creation time in epoch milliseconds
+         * @param createdAt the date the notification is created
          * @return a new unread win notification
          */
         fun won(
@@ -71,7 +77,7 @@ data class Notification(
             recipientId: String,
             lotteryId: String,
             campsiteName: String,
-            createdAt: Long,
+            createdAt: LocalDate,
         ): Notification = Notification(
             id = id,
             recipientId = recipientId,
@@ -88,7 +94,7 @@ data class Notification(
          * @param recipientId ID of the user who lost
          * @param lotteryId ID of the lottery
          * @param campsiteName name of the campsite, shown in the message
-         * @param createdAt creation time in epoch milliseconds
+         * @param createdAt the date the notification is created
          * @return a new unread lose notification
          */
         fun lost(
@@ -96,7 +102,7 @@ data class Notification(
             recipientId: String,
             lotteryId: String,
             campsiteName: String,
-            createdAt: Long,
+            createdAt: LocalDate,
         ): Notification = Notification(
             id = id,
             recipientId = recipientId,
