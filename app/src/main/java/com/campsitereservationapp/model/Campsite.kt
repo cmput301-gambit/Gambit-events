@@ -1,5 +1,7 @@
 package com.campsitereservationapp.model
 
+import com.campsitereservationapp.data.DateRange
+
 /**
  * Errors that can occur when validating a [Campsite].
  */
@@ -10,7 +12,8 @@ enum class CampsiteError {
     CAPACITY_NOT_A_NUMBER,
     INVALID_LATITUDE,
     INVALID_LONGITUDE,
-    BLANK_TAG
+    BLANK_TAG,
+    INVALID_AVAILABILITY
 }
 
 /**
@@ -33,6 +36,7 @@ enum class CampsiteError {
  * @property tags list of tags associated with the campsite
  * @property latitude latitude coordinate of the campsite, or null
  * @property longitude longitude coordinate of the campsite, or null
+ * @property availability range of dates available for reservation (US 02.01.02 / #76)
  * @constructor Creates a campsite. Every field has a default, so tests can
  * set only the fields they care about.
  */
@@ -47,6 +51,7 @@ data class Campsite(
     val tags: List<String> = emptyList(),
     val latitude: Double? = null,
     val longitude: Double? = null,
+    val availability: DateRange? = null,
 ) : Identifiable {
 
     /**
@@ -73,6 +78,11 @@ data class Campsite(
         if (tags.any { it.isBlank() }) {
             errors.add(CampsiteError.BLANK_TAG)
         }
+
+        if (availability != null && availability.finish.isBefore(availability.start)) {
+            errors.add(CampsiteError.INVALID_AVAILABILITY)
+        }
+
         return errors
     }
 
