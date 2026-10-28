@@ -23,8 +23,8 @@ enum class WaitingListError {
  * winners and losers. Also stores whether there is an entrant cap.
  *
  * **Design rationale:** Waiting list needs to track the list of entrant winners and losers, by
- * removing the winner entrants from the base entrantList we're able to separate them into winners
- * and losers. All that is left TODO notify the entrants of their status.
+ * simply removing the winner entrants from the base entrantList we're able to separate them into
+ * winners and losers.
  *
  * @property entrantList The list of entrant userIds participating in the lottery.
  * @property entrantWinners The list of entrants who have been selected to be the winners of the
@@ -76,25 +76,33 @@ class WaitingList(
      *
      * @param entrant is an [Entrant] where the function will copy it's userId into the
      * [entrantList].
+     * @return Returns true when the entrant has successfully been added, returns false when the
+     * entrant is denied, such as the user already being in the lottery or the lottery being full.
      * */
-    fun addEntrant(entrant: Entrant) {
+    fun addEntrant(entrant: Entrant): Boolean {
         if (entrant.userId !in entrantList && !isFull) {
             entrantList.add(entrant.userId)
             if (entrantList.size == entrantCap) {
                 isFull = true
             }
+            return true
         }
+        return false
     }
 
     /**
      * Removes entrant from the [entrantList] by their userId. Takes an [Entrant]
      *
      * @param entrant Entrant class which the has a userId used to remove it from the [entrantList].
+     * @return Returns true when the passed [Entrant] is successfully removed from the entrantList.
+     * Returns false otherwise.
      * */
-    fun removeEntrant(entrant: Entrant) {
+    fun removeEntrant(entrant: Entrant): Boolean {
         if (entrant.userId in entrantList) {
             entrantList.remove(entrant.userId)
             if (isFull) { isFull = false }
+            return true
         }
+        return false
     }
 }
