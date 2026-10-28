@@ -15,22 +15,22 @@ import org.junit.Test
 class NotificationTest {
 
     private val entrant = User.newEntrant("device-123")
-    private val today = LocalDate.of(2026, 10, 27)
+    private val createdOn = LocalDate.of(2026, 10, 28)
 
     @Test
     fun won_createsUnreadWinNotificationWithCampsiteName() {
-        val n = Notification.won("n1", "device-123", "lottery-1", "Lakeview Camp", today)
+        val n = Notification.won("n1", "device-123", "lottery-1", "Lakeview Camp", createdOn)
 
         assertEquals(NotificationType.LOTTERY_WON, n.type)
         assertEquals("device-123", n.recipientId)
-        assertEquals(today, n.createdAt)
+        assertEquals(createdOn, n.createdAt)
         assertFalse(n.read)
         assertTrue(n.message.contains("Lakeview Camp"))
     }
 
     @Test
     fun lost_createsUnreadLoseNotification() {
-        val n = Notification.lost("n2", "device-123", "lottery-1", "Lakeview Camp", today)
+        val n = Notification.lost("n2", "device-123", "lottery-1", "Lakeview Camp", createdOn)
 
         assertEquals(NotificationType.LOTTERY_LOST, n.type)
         assertFalse(n.read)
@@ -39,7 +39,7 @@ class NotificationTest {
 
     @Test
     fun markRead_returnsReadCopyAndLeavesOriginalUnchanged() {
-        val original = Notification.won("n1", "device-123", "lottery-1", "Lakeview Camp", today)
+        val original = Notification.won("n1", "device-123", "lottery-1", "Lakeview Camp", createdOn)
 
         val updated = original.markRead()
 
@@ -49,21 +49,21 @@ class NotificationTest {
 
     @Test
     fun canBeDeliveredTo_trueForRecipientWithNotificationsOn() {
-        val n = Notification.won("n1", "device-123", "lottery-1", "Lakeview Camp", today)
+        val n = Notification.won("n1", "device-123", "lottery-1", "Lakeview Camp", createdOn)
 
         assertTrue(n.canBeDeliveredTo(entrant))
     }
 
     @Test
     fun canBeDeliveredTo_falseWhenUserOptedOut() {
-        val n = Notification.won("n1", "device-123", "lottery-1", "Lakeview Camp", today)
+        val n = Notification.won("n1", "device-123", "lottery-1", "Lakeview Camp", createdOn)
 
         assertFalse(n.canBeDeliveredTo(entrant.copy(notificationsEnabled = false)))
     }
 
     @Test
     fun canBeDeliveredTo_falseForADifferentUser() {
-        val n = Notification.won("n1", "device-123", "lottery-1", "Lakeview Camp", today)
+        val n = Notification.won("n1", "device-123", "lottery-1", "Lakeview Camp", createdOn)
 
         assertFalse(n.canBeDeliveredTo(User.newEntrant("device-999")))
     }
