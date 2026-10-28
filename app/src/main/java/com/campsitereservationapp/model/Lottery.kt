@@ -3,6 +3,7 @@ package com.campsitereservationapp.model
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.campsitereservationapp.data.DateRange
+import java.time.LocalDate
 
 /*
 *
@@ -17,6 +18,8 @@ enum class LotteryError {
     NO_CAMPSITES,
     REGISTRATION_PERIOD_AFTER_RESERVATION_PERIOD,
     WINNER_AMOUNT_LESS_THAN_ONE,
+    REGISTRATION_PERIOD_IN_PAST,
+    RESERVATION_PERIOD_IN_PAST,
 
 }
 
@@ -68,8 +71,14 @@ data class Lottery (
         if (campsites.isEmpty()) {
             errors.add(LotteryError.NO_CAMPSITES)
         }
-        if (registrationPeriod.finish < reservationPeriod.start) {
+        if (registrationPeriod.finish.isAfter(reservationPeriod.start)) {
             errors.add(LotteryError.REGISTRATION_PERIOD_AFTER_RESERVATION_PERIOD)
+        }
+        if (registrationPeriod.start.isBefore(LocalDate.now())) {
+            errors.add(LotteryError.REGISTRATION_PERIOD_IN_PAST)
+        }
+        if (reservationPeriod.start.isBefore(LocalDate.now())) {
+            errors.add(LotteryError.RESERVATION_PERIOD_IN_PAST)
         }
         return errors
     }
@@ -99,6 +108,19 @@ data class Lottery (
     }
 
     /**
+     * Attempts to remove an [Entrant] from the waiting list if the lottery status is OPEN.
+     *
+     * @param entrant Entrant to be removed from the waiting list
+     * @return Returns true when entrant has been successfully removed, false otherwise.
+     * */
+    fun removeEntrant(entrant: Entrant): Boolean {
+        if (stage == LotteryStatus.OPEN) {
+            return waitingList.removeEntrant(entrant)
+        }
+        return false
+    }
+
+    /**
     * If the current lottery stage is DRAWN, removes the amount of winners from the entrants waiting
      * list and puts them into a winners list inside [WaitingList]. Sets the stage from DRAWN to CLOSED.
     *
@@ -116,10 +138,24 @@ data class Lottery (
                     continue
                 }
             }
+            stage = LotteryStatus.CLOSED
+            notifyEntrants()
         }
-        stage = LotteryStatus.CLOSED
-        notifyEntrants()
     }
+
+    /**
+     * If the lottery's current status is DRAFT sets the status to be OPEN.
+     *
+     * @return Returns true if the status was successfully changed to OPEN, otherwise returns false.
+     * */
+    fun open(): Boolean {
+        if (stage == LotteryStatus.DRAFT) {
+            stage = LotteryStatus.OPEN
+            return true
+        }
+        return false
+    }
+
 
 
     /**
