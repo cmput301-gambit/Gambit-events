@@ -5,11 +5,6 @@ import androidx.annotation.RequiresApi
 import com.campsitereservationapp.data.DateRange
 import java.time.LocalDate
 
-/*
-*
-* TODO: Unit Tests
-* */
-
 /**
  * Errors that can occur when validating a [Lottery].
  *

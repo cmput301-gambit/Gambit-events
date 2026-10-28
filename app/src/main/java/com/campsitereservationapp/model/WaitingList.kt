@@ -1,11 +1,5 @@
 package com.campsitereservationapp.model
 
-
-/*
-* TODO: Unit Tests
-*
-* */
-
 /**
  * Errors that can occur when validating a [WaitingList].
  *
