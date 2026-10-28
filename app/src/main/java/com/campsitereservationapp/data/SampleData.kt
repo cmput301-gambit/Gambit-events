@@ -46,4 +46,22 @@ object SampleData {
         ),
         // Add sample data for other classes here such as lotteries, reservations, users, etc.
     )
+    val users = listOf(
+        User(
+            id = "owner-bobby", name = "Bobby Smith", email = "bobby@example.com",
+            entrant = Entrant("owner-bobby"), owner = CampsiteOwner("owner-bobby"),
+        ),
+        User(
+            id = "owner-jill", name = "Jill Mason", phone = "780-555-0142",
+            owner = CampsiteOwner("owner-jill"),
+        ),
+        User(
+            id = "entrant-priya", name = "Priya Shah", email = "priya@example.com",
+            entrant = Entrant("entrant-priya"),
+        ),
+        User(
+            id = "admin-sam", name = "Sam Okafor",
+            entrant = Entrant("admin-sam"), admin = Admin("admin-sam"),
+        ),
+    )
 }
