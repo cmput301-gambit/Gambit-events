@@ -87,11 +87,6 @@ fun CampsiteListScreen(
                     valueRange = 0f..20f, //TODO: Confirm the upper bound of this field somehow.
                     steps = 19 //TODO: Step count also relies on valueRange - 1, thus same problem as above.
                 )
-
-//                TextField(
-//                    value = if (state.campsiteFilter.occupancy == 0) "" else state.campsiteFilter.occupancy.toString(),
-//                    onValueChange = viewModel::onFilterOccupancy
-//                )
             }
             /*Location Field*/
             Row(){

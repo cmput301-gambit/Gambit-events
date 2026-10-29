@@ -1,44 +1,31 @@
 package com.campsitereservationapp.ui.discovery
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-
-// Test daa
-import com.campsitereservationapp.data.SampleData
 import com.campsitereservationapp.model.Campsite
-import kotlin.math.roundToInt
 
+/**
+ * Used to represent the finite states of the main button at the bottom of the screen.
+ * JOIN will attempt to join the lottery for the currently viewed campsite
+ * LEAVE will attempt to remove the current user from the viewed campsite
+ * UNAVAILABLE is the default case if something goes wrong (ex. the lottery closes while viewing the screen.)
+ */
 enum class CampsiteDetailsMainButtonState{
     JOIN,
     LEAVE,
     UNAVAILABLE
 }
 /**
- * A temporary test screen. Feel free to replace. You can use it as an example for wiring the viewModel to the screen
+ * Screen used to fulfill US 01.01.05, 01.01.06, 01.02.01, 01.02.02, and 01.13.01
  */
 @Composable
 fun CampsiteDetailsScreen(

@@ -17,7 +17,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
 /**
- * Everything the campsite details screen needs to make and manage reservations along with description display.
+ * Everything the campsite details screen needs to make and manage their status in a given
+ * lottery, along with description display.
  *
  * The screen reads only this class. It never talks to a repository directly.
  *
@@ -29,24 +30,23 @@ data class CampsiteDetailsUiState(
 )
 
 /**
- * Holds the state for the entrant's campsite list screen.
+ * Holds the state for the entrant's campsite details screen.
  *
- * **Purpose:** shows campsites to entrants and filters them by search text
- * (US 01.01.01, 01.01.03). Reference example of the team's ViewModel pattern.
+ * **Purpose:** provides details on a given campsite, and also allows the user to join or leave the campsites waitlist.
+ * (US 01.01.05, 01.01.06, 01.02.01, 01.02.02).
  *
  * **Design rationale:** MVVM. Receives its repository from the
  * [com.campsitereservationapp.data.AppContainer] through [Factory], and
  * subscribes to the repository's live stream, so the list updates on its own
- * whenever campsite data changes.
+ * whenever campsite or lottery data changes.
  *
- * **Outstanding issues:** filters by location, date and guests
- * (US 01.01.02) not yet added.
+ * **Outstanding issues:** joining and leaving lotteries still need the required functions
+ * The lotteryRepository still needs to be added
  *
  * @property LotteryRepository The shared repository campsites come from
  */
 class CampsiteDetailsViewModel(
-    //private val lotteryRepository: LotteryRepository,
-    //private val campsiteRepository: CampsiteRepository,
+    //private val lotteryRepository: LotteryRepository, //TODO: Implement when lotteryRepository is added.
 ) : ViewModel() {
 
     // State that belongs to this screen only: what the user typed.
@@ -89,12 +89,11 @@ class CampsiteDetailsViewModel(
             )
 
     /**
-     * Called by the screen whenever the search text changes.
+     * Called by the screen whenever the main button is pressed.
      *
-     * Updating [campsiteFilter] makes combine() recalculate the state,
-     * so the filtered list updates automatically.
-     *
-     * @param query the new search text
+     * Updating [mainButtonState] makes combine() recalculate the state,
+     * so the buttons text and behaviour are updated.
+     * //TODO: Many changes required to properly implement joining and leaving
      */
     fun updateButtonState() {
         //Case where the campsite suddenly doesn't have a lottery (ex. the date passed)
@@ -123,26 +122,31 @@ class CampsiteDetailsViewModel(
         }
 
     }
-
+    /**
+     * Called by the screen on the first load.
+     *
+     * Updating [viewedCampsite] makes combine() recalculate the state,
+     * automatically making this screen display the correct info.
+     *
+     * @param newCampsite the campsite to display for this screen
+     */
     fun updateViewedCampSite(newCampsite: Campsite){
         viewedCampsite.update { newCampsite }
     }
 
     /**
-     * Called by the screen whenever the location changes.
+     * THIS IS WIP, not final as the rating screen has no mockup presently.
+     * Called by the screen whenever the user submits a rating.
      *
-     * Updating [campsiteFilter] makes combine() recalculate the state,
-     * so the filtered list updates automatically.
+     * Updating [newRating] makes combine() recalculate the state,
+     * automatically hiding the rating popup after making a rating, and loading the rating to the
+     * correct repository location.
      *
-     * @param location the location to filter by
+     * @param newRating the rating given by the user
      */
-    fun onCreateRating(location: String){
+    fun onCreateRating(newRating: Float){
         //adds a rating to the campsite
     }
-    //TODO: Add date range
-//    fun onFilterDateRange(DateRange: dateRange){
-//        campsiteFilter.update { it.copy(dateRange = dateRange) }
-//    }
 
 
     companion object {
@@ -158,6 +162,7 @@ class CampsiteDetailsViewModel(
             initializer {
                 val app = this[APPLICATION_KEY] as CampsiteApp
                 CampsiteDetailsViewModel(
+                    //TODO: enable once lotteryRepository is implemented.
                     //app.container.lotteryRepository,
                     //app.container.campsiteRepository
                )
