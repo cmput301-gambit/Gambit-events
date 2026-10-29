@@ -40,7 +40,7 @@ enum class LotteryStatus {
  * easy to unit test. [LotteryRepository] handles saving and loading.
  *
  * @property id unique ID, also used as the Firestore document ID
- * @property campsites Mutable list of campsites to draw the lottery for.
+ * @property campsites Mutable list of campsite ids to draw the lottery for.
  * @property registrationPeriod Time period where entrants can join the waitlist
  * @property reservationPeriod Time period where entrants are allowed to make reservations
  * @property stage The current stage of the lottery
@@ -52,7 +52,7 @@ enum class LotteryStatus {
 @RequiresApi(Build.VERSION_CODES.O)
 data class Lottery (
     override val id: String = "",
-    var campsites: MutableList<Campsite> = mutableListOf(),
+    var campsites: MutableList<String> = mutableListOf(),
     var registrationPeriod: DateRange,
     var reservationPeriod: DateRange,
     var stage: LotteryStatus = LotteryStatus.DRAFT,

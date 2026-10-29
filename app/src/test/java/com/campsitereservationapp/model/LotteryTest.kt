@@ -21,14 +21,14 @@ class LotteryTest {
 
     @Test
     fun validLotteryHasNoErrors() {
-        val lottery = Lottery("lottery1", mutableListOf(testCampsite),
+        val lottery = Lottery("lottery1", mutableListOf(testCampsite.id),
             registrationPeriod, reservationPeriod)
         assertTrue(lottery.isValid())
     }
 
     @Test
     fun addEntrantOpen() {
-        val lottery = Lottery("lottery2", mutableListOf(testCampsite),
+        val lottery = Lottery("lottery2", mutableListOf(testCampsite.id),
             registrationPeriod, reservationPeriod)
         lottery.open()
         lottery.addEntrant(entrant)
@@ -37,7 +37,7 @@ class LotteryTest {
 
     @Test
     fun addEntrantNotOpen() {
-        val lottery = Lottery("lottery3", mutableListOf(testCampsite),
+        val lottery = Lottery("lottery3", mutableListOf(testCampsite.id),
             registrationPeriod, reservationPeriod)
         lottery.addEntrant(entrant)
         assertTrue(!lottery.waitingList.entrantList.contains(entrant.userId))
@@ -46,7 +46,7 @@ class LotteryTest {
 
     @Test
     fun removeEntrantOpen() {
-        val lottery = Lottery("lottery4", mutableListOf(testCampsite),
+        val lottery = Lottery("lottery4", mutableListOf(testCampsite.id),
             registrationPeriod, reservationPeriod, waitingList = WaitingList(mutableListOf<String>(entrantId)))
         lottery.open()
         lottery.removeEntrant(entrant)
@@ -56,7 +56,7 @@ class LotteryTest {
 
     @Test
     fun removeEntrantNotOpen() {
-        val lottery = Lottery("lottery5", mutableListOf(testCampsite),
+        val lottery = Lottery("lottery5", mutableListOf(testCampsite.id),
             registrationPeriod, reservationPeriod, waitingList = WaitingList(mutableListOf<String>(entrantId)))
         lottery.removeEntrant(entrant)
         assertTrue(lottery.waitingList.entrantList.contains(entrant.userId))
