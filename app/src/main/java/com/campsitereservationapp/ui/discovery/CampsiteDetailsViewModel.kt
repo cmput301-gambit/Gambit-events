@@ -1,0 +1,167 @@
+package com.campsitereservationapp.ui.discovery
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.campsitereservationapp.CampsiteApp
+import com.campsitereservationapp.data.CampsiteFilter
+import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.model.Campsite
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+
+/**
+ * Everything the campsite details screen needs to make and manage reservations along with description display.
+ *
+ * The screen reads only this class. It never talks to a repository directly.
+ *
+ * @property mainButtonState determines the text displayed and behaviour of the join/leave waitlist button
+ */
+data class CampsiteDetailsUiState(
+    val mainButtonState: CampsiteDetailsMainButtonState = CampsiteDetailsMainButtonState.JOIN,
+    val viewedCampsite: Campsite = Campsite()
+)
+
+/**
+ * Holds the state for the entrant's campsite list screen.
+ *
+ * **Purpose:** shows campsites to entrants and filters them by search text
+ * (US 01.01.01, 01.01.03). Reference example of the team's ViewModel pattern.
+ *
+ * **Design rationale:** MVVM. Receives its repository from the
+ * [com.campsitereservationapp.data.AppContainer] through [Factory], and
+ * subscribes to the repository's live stream, so the list updates on its own
+ * whenever campsite data changes.
+ *
+ * **Outstanding issues:** filters by location, date and guests
+ * (US 01.01.02) not yet added.
+ *
+ * @property LotteryRepository The shared repository campsites come from
+ */
+class CampsiteDetailsViewModel(
+    //private val lotteryRepository: LotteryRepository,
+    //private val campsiteRepository: CampsiteRepository,
+) : ViewModel() {
+
+    // State that belongs to this screen only: what the user typed.
+    // Private and mutable, so only this ViewModel can change it.
+
+    /**
+     * The current screen state. The screen collects this and redraws
+     * every time it changes.
+     */
+    private val mainButtonState : MutableStateFlow<CampsiteDetailsMainButtonState> = MutableStateFlow(
+        CampsiteDetailsMainButtonState.JOIN
+    )
+
+    private val viewedCampsite: MutableStateFlow<Campsite> = MutableStateFlow(Campsite())
+
+    val uiState: StateFlow<CampsiteDetailsUiState> =
+
+        combine(
+            //lotteryRepository.(This campsites lottery).observeAll(), // live campsite list from the repository
+            mainButtonState,
+            viewedCampsite
+        ) { /*lotteries,*/ newButtonState, campsite ->
+
+            // Turn raw data into exactly what the screen needs to draw.
+            CampsiteDetailsUiState(
+                newButtonState,
+                campsite
+            )
+        }
+            // stateIn() turns the stream into a StateFlow the screen can read.
+            .stateIn(
+                // Tie the subscription to this ViewModel's lifetime.
+                // It's cancelled automatically when the ViewModel is cleared.
+                scope = viewModelScope,
+                // Stop the listener once the screen is gone for 5 seconds
+                started = SharingStarted.WhileSubscribed(5_000),
+                // What the screen shows before any data arrives.
+                // Its isLoading = true lets the screen show a spinner.
+                initialValue = CampsiteDetailsUiState(),
+            )
+
+    /**
+     * Called by the screen whenever the search text changes.
+     *
+     * Updating [campsiteFilter] makes combine() recalculate the state,
+     * so the filtered list updates automatically.
+     *
+     * @param query the new search text
+     */
+    fun updateButtonState() {
+        //Case where the campsite suddenly doesn't have a lottery (ex. the date passed)
+        if(false){ //TODO: This should check if the given campsite has a joinable lottery
+            mainButtonState.update { CampsiteDetailsMainButtonState.UNAVAILABLE }
+            return
+        }
+        when (mainButtonState.value) {
+            CampsiteDetailsMainButtonState.JOIN -> {
+                //Try to join the campsite lottery
+                //TODO: Add joining campsite lottery, and check for if that was successful before changing button
+                mainButtonState.update {
+                    CampsiteDetailsMainButtonState.LEAVE
+                }
+            }
+            //Try to leave the campsite lottery
+            //TODO: Add method of leaving campsite lottery here, and check for if that was successful before changing button
+            CampsiteDetailsMainButtonState.LEAVE -> {
+                mainButtonState.update {
+                    CampsiteDetailsMainButtonState.JOIN
+                }
+            }
+            else -> {
+                return //This case should ideally be inaccessible
+            }
+        }
+
+    }
+
+    fun updateViewedCampSite(newCampsite: Campsite){
+        viewedCampsite.update { newCampsite }
+    }
+
+    /**
+     * Called by the screen whenever the location changes.
+     *
+     * Updating [campsiteFilter] makes combine() recalculate the state,
+     * so the filtered list updates automatically.
+     *
+     * @param location the location to filter by
+     */
+    fun onCreateRating(location: String){
+        //adds a rating to the campsite
+    }
+    //TODO: Add date range
+//    fun onFilterDateRange(DateRange: dateRange){
+//        campsiteFilter.update { it.copy(dateRange = dateRange) }
+//    }
+
+
+    companion object {
+        /**
+         * Builds this ViewModel with the shared repository from the AppContainer.
+         *
+         * Android hands every factory the Application object under
+         * APPLICATION_KEY. Because the manifest registers CampsiteApp, we can
+         * cast it and reach the container. The ViewModel itself never sees
+         * the container; it only receives the repository it needs.
+         */
+        val Factory = viewModelFactory {
+            initializer {
+                val app = this[APPLICATION_KEY] as CampsiteApp
+                CampsiteDetailsViewModel(
+                    //app.container.lotteryRepository,
+                    //app.container.campsiteRepository
+               )
+            }
+        }
+    }
+}
