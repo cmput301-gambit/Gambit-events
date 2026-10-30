@@ -16,6 +16,7 @@ enum class LotteryError {
     REGISTRATION_PERIOD_IN_PAST,
     RESERVATION_PERIOD_IN_PAST,
     INVALID_WAITING_LIST,
+    NO_OWNER_ID,
 
 }
 
@@ -40,6 +41,7 @@ enum class LotteryStatus {
  * easy to unit test. [LotteryRepository] handles saving and loading.
  *
  * @property id unique ID, also used as the Firestore document ID
+ * @property ownerId The userId of the campsite owner who created the lottery.
  * @property campsites Mutable list of campsite ids to draw the lottery for.
  * @property registrationPeriod Time period where entrants can join the waitlist
  * @property reservationPeriod Time period where entrants are allowed to make reservations
@@ -52,6 +54,7 @@ enum class LotteryStatus {
 @RequiresApi(Build.VERSION_CODES.O)
 data class Lottery (
     override val id: String = "",
+    val ownerId: String = "",
     var campsites: MutableList<String> = mutableListOf(),
     var registrationPeriod: DateRange,
     var reservationPeriod: DateRange,
@@ -78,6 +81,9 @@ data class Lottery (
         }
         if (!waitingList.isValid()) {
             errors.add(LotteryError.INVALID_WAITING_LIST)
+        }
+        if (ownerId.isBlank()) {
+            errors.add(LotteryError.NO_OWNER_ID)
         }
         return errors
     }
