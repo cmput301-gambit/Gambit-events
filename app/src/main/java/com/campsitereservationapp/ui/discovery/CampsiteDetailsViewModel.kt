@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.update
  */
 data class CampsiteDetailsUiState(
     val mainButtonState: CampsiteDetailsMainButtonState = CampsiteDetailsMainButtonState.JOIN,
+    val viewedCampsiteId: String = "",
     val viewedCampsite: Campsite = Campsite()
 )
 
@@ -47,6 +48,7 @@ data class CampsiteDetailsUiState(
  */
 class CampsiteDetailsViewModel(
     //private val lotteryRepository: LotteryRepository, //TODO: Implement when lotteryRepository is added.
+    private val campsiteRepository: CampsiteRepository
 ) : ViewModel() {
 
     // State that belongs to this screen only: what the user typed.
@@ -60,20 +62,21 @@ class CampsiteDetailsViewModel(
         CampsiteDetailsMainButtonState.JOIN
     )
 
+    private val viewedCampsiteId: MutableStateFlow<String> = MutableStateFlow("")
     private val viewedCampsite: MutableStateFlow<Campsite> = MutableStateFlow(Campsite())
-
     val uiState: StateFlow<CampsiteDetailsUiState> =
 
         combine(
             //lotteryRepository.(This campsites lottery).observeAll(), // live campsite list from the repository
             mainButtonState,
-            viewedCampsite
-        ) { /*lotteries,*/ newButtonState, campsite ->
+            viewedCampsiteId,
+        ) { /*lotteries,*/ newButtonState, campsiteId,  ->
 
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteDetailsUiState(
                 newButtonState,
-                campsite
+                campsiteId,
+                viewedCampsite = campsiteRepository.get(campsiteId) ?: Campsite() //Returns an empty campsite if no campsite is found.
             )
         }
             // stateIn() turns the stream into a StateFlow the screen can read.
@@ -130,8 +133,8 @@ class CampsiteDetailsViewModel(
      *
      * @param newCampsite the campsite to display for this screen
      */
-    fun updateViewedCampSite(newCampsite: Campsite){
-        viewedCampsite.update { newCampsite }
+    fun updateViewedCampSiteId(newCampsiteId: String){
+        viewedCampsiteId.update { newCampsiteId }
     }
 
     /**
@@ -164,7 +167,7 @@ class CampsiteDetailsViewModel(
                 CampsiteDetailsViewModel(
                     //TODO: enable once lotteryRepository is implemented.
                     //app.container.lotteryRepository,
-                    //app.container.campsiteRepository
+                    app.container.campsiteRepository
                )
             }
         }

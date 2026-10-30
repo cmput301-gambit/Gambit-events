@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 
 // Test daa
 import com.campsitereservationapp.data.SampleData
@@ -37,6 +38,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun CampsiteListScreen(
+    navController: NavController,
     viewModel: CampsiteListViewModel = viewModel(factory = CampsiteListViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -101,13 +103,19 @@ fun CampsiteListScreen(
 
         }
         //Create all the campsite cards
-        state.campsites.forEach { CampsiteSummaryCard(it) }
+        state.campsites.forEach { CampsiteSummaryCard(
+            it,
+            {
+                navController.navigate("EntrantCampsiteDetails/" + it.id)
+            }
+        ) }
     }
 }
 
 @Composable
 fun CampsiteSummaryCard(
-    campsite: Campsite
+    campsite: Campsite,
+    onClickDetails: () -> Unit
 ) {
     val name: String = campsite.name
     val location: String = campsite.location
@@ -122,9 +130,7 @@ fun CampsiteSummaryCard(
                 Text("Capacity: $capacity")
             }
             Button(
-                onClick = {
-                    //Go to details screen
-                }
+                onClick = onClickDetails
             ) {
                 Text("Details")
             }

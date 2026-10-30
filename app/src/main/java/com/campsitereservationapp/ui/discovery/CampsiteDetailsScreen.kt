@@ -29,14 +29,14 @@ enum class CampsiteDetailsMainButtonState{
  */
 @Composable
 fun CampsiteDetailsScreen(
-    viewedCampsite : Campsite,
+    viewedCampsiteId : String,
     viewModel: CampsiteDetailsViewModel = viewModel(factory = CampsiteDetailsViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
 
     //Try to update the page if the campsite is invalid
     if(!state.viewedCampsite.isValid()){
-        viewModel.updateViewedCampSite(viewedCampsite)
+        viewModel.updateViewedCampSiteId(viewedCampsiteId)
     }
 
 
