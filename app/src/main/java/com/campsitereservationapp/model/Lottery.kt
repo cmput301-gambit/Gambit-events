@@ -42,7 +42,7 @@ enum class LotteryStatus {
  *
  * @property id unique ID, also used as the Firestore document ID
  * @property ownerId The userId of the campsite owner who created the lottery.
- * @property campsites Mutable list of campsite ids to draw the lottery for.
+ * @property campsiteIds Mutable list of campsite ids to draw the lottery for.
  * @property registrationPeriod Time period where entrants can join the waitlist
  * @property reservationPeriod Time period where entrants are allowed to make reservations
  * @property stage The current stage of the lottery
@@ -55,7 +55,7 @@ enum class LotteryStatus {
 data class Lottery (
     override val id: String = "",
     val ownerId: String = "",
-    var campsites: MutableList<String> = mutableListOf(),
+    var campsiteIds: MutableList<String> = mutableListOf(),
     var registrationPeriod: DateRange,
     var reservationPeriod: DateRange,
     var stage: LotteryStatus = LotteryStatus.DRAFT,
@@ -67,7 +67,7 @@ data class Lottery (
         if (winnerAmount < 1) {
             errors.add(LotteryError.WINNER_AMOUNT_LESS_THAN_ONE)
         }
-        if (campsites.isEmpty()) {
+        if (campsiteIds.isEmpty()) {
             errors.add(LotteryError.NO_CAMPSITES)
         }
         if (registrationPeriod.finish.isAfter(reservationPeriod.start)) {
@@ -105,9 +105,9 @@ data class Lottery (
      * @param entrant Entrant to be added to the waiting list
      * @return Returns true when entrant has been successfully added, false otherwise.
      * */
-    fun addEntrant(entrant: Entrant): Boolean {
+    fun addEntrant(entrantId: String): Boolean {
         if (stage == LotteryStatus.OPEN) {
-            return waitingList.addEntrant(entrant)
+            return waitingList.addEntrant(entrantId)
         }
         return false
     }
@@ -118,9 +118,9 @@ data class Lottery (
      * @param entrant Entrant to be removed from the waiting list
      * @return Returns true when entrant has been successfully removed, false otherwise.
      * */
-    fun removeEntrant(entrant: Entrant): Boolean {
+    fun removeEntrant(entrantId: String): Boolean {
         if (stage == LotteryStatus.OPEN) {
-            return waitingList.removeEntrant(entrant)
+            return waitingList.removeEntrant(entrantId)
         }
         return false
     }

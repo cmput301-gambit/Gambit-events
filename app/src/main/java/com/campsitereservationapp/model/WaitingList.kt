@@ -73,9 +73,9 @@ class WaitingList(
      * @return Returns true when the entrant has successfully been added, returns false when the
      * entrant is denied, such as the user already being in the lottery or the lottery being full.
      * */
-    fun addEntrant(entrant: Entrant): Boolean {
-        if (entrant.userId !in entrantList && !isFull) {
-            entrantList.add(entrant.userId)
+    fun addEntrant(entrantId: String): Boolean {
+        if (entrantId !in entrantList && !isFull) {
+            entrantList.add(entrantId)
             if (entrantList.size == entrantCap) {
                 isFull = true
             }
@@ -91,9 +91,9 @@ class WaitingList(
      * @return Returns true when the passed [Entrant] is successfully removed from the entrantList.
      * Returns false otherwise.
      * */
-    fun removeEntrant(entrant: Entrant): Boolean {
-        if (entrant.userId in entrantList) {
-            entrantList.remove(entrant.userId)
+    fun removeEntrant(entrantId: String): Boolean {
+        if (entrantId in entrantList) {
+            entrantList.remove(entrantId)
             if (isFull) { isFull = false }
             return true
         }

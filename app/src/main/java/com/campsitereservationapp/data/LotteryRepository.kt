@@ -26,7 +26,7 @@ class LotteryRepository(campsiteRepository: CampsiteRepository) : Repository<Lot
                       ownerId: String? = null, userId: String? = null): Flow<List<Lottery>> =
         observeAll().map { lotteries -> lotteries.filter {
             (it!=null) && (lotteryStage == null || it.stage == lotteryStage) &&
-                    (campsiteId == null || it.campsites.contains(campsiteId)) &&
+                    (campsiteId == null || it.campsiteIds.contains(campsiteId)) &&
                     (ownerId == null || it.ownerId == ownerId) &&
                     (userId == null || it.waitingList.entrantList.contains(userId))}
         }
