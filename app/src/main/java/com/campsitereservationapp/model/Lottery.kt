@@ -16,6 +16,7 @@ enum class LotteryError {
     REGISTRATION_PERIOD_IN_PAST,
     RESERVATION_PERIOD_IN_PAST,
     INVALID_WAITING_LIST,
+    NO_OWNER_ID,
 
 }
 
@@ -30,7 +31,10 @@ enum class LotteryStatus {
 }
 
 /**
- * Lottery data structure that can operate the associated waiting list
+ * Lottery data structure that can operate the associated waiting list.
+ * Completes US 02.04.01 and resolved issue #24
+ * Completes US 02.04.05 and resolves issue #28
+ * Completes US 02.04.04 and partially resolves #27
  *
  * **Purpose:** [LotteryRepository] is able to create and operate a [Lottery] which
  * holds information such as the campsites, the registration and reservation periods,
@@ -40,7 +44,8 @@ enum class LotteryStatus {
  * easy to unit test. [LotteryRepository] handles saving and loading.
  *
  * @property id unique ID, also used as the Firestore document ID
- * @property campsites Mutable list of campsites to draw the lottery for.
+ * @property ownerId The userId of the campsite owner who created the lottery.
+ * @property campsiteIds Mutable list of campsite ids to draw the lottery for.
  * @property registrationPeriod Time period where entrants can join the waitlist
  * @property reservationPeriod Time period where entrants are allowed to make reservations
  * @property stage The current stage of the lottery
@@ -52,7 +57,8 @@ enum class LotteryStatus {
 @RequiresApi(Build.VERSION_CODES.O)
 data class Lottery (
     override val id: String = "",
-    var campsites: MutableList<Campsite> = mutableListOf(),
+    val ownerId: String = "",
+    var campsiteIds: MutableList<String> = mutableListOf(),
     var registrationPeriod: DateRange,
     var reservationPeriod: DateRange,
     var stage: LotteryStatus = LotteryStatus.DRAFT,
@@ -64,7 +70,7 @@ data class Lottery (
         if (winnerAmount < 1) {
             errors.add(LotteryError.WINNER_AMOUNT_LESS_THAN_ONE)
         }
-        if (campsites.isEmpty()) {
+        if (campsiteIds.isEmpty()) {
             errors.add(LotteryError.NO_CAMPSITES)
         }
         if (registrationPeriod.finish.isAfter(reservationPeriod.start)) {
@@ -78,6 +84,9 @@ data class Lottery (
         }
         if (!waitingList.isValid()) {
             errors.add(LotteryError.INVALID_WAITING_LIST)
+        }
+        if (ownerId.isBlank()) {
+            errors.add(LotteryError.NO_OWNER_ID)
         }
         return errors
     }
@@ -99,9 +108,9 @@ data class Lottery (
      * @param entrant Entrant to be added to the waiting list
      * @return Returns true when entrant has been successfully added, false otherwise.
      * */
-    fun addEntrant(entrant: Entrant): Boolean {
+    fun addEntrant(entrantId: String): Boolean {
         if (stage == LotteryStatus.OPEN) {
-            return waitingList.addEntrant(entrant)
+            return waitingList.addEntrant(entrantId)
         }
         return false
     }
@@ -112,9 +121,9 @@ data class Lottery (
      * @param entrant Entrant to be removed from the waiting list
      * @return Returns true when entrant has been successfully removed, false otherwise.
      * */
-    fun removeEntrant(entrant: Entrant): Boolean {
+    fun removeEntrant(entrantId: String): Boolean {
         if (stage == LotteryStatus.OPEN) {
-            return waitingList.removeEntrant(entrant)
+            return waitingList.removeEntrant(entrantId)
         }
         return false
     }
