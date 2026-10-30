@@ -59,6 +59,8 @@ class CampsiteDetailsViewModel(
     //Enum of the main button of this screen.
     private val mainButtonState : MutableStateFlow<CampsiteDetailsMainButtonState> = MutableStateFlow(
         CampsiteDetailsMainButtonState.JOIN
+        //TODO: Change this to be either JOIN or LEAVE depending on whether the user is already in that lottery.
+        //Should be done after lottery is implemented.
     )
 
     /**
