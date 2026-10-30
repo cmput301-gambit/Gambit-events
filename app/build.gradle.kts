@@ -36,6 +36,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui.graphics)
     testImplementation(libs.kotlinx.coroutines.test)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

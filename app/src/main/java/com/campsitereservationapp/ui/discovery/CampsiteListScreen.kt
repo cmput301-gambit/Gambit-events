@@ -1,6 +1,7 @@
 package com.campsitereservationapp.ui.discovery
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 
 // Test daa
 import com.campsitereservationapp.data.SampleData
@@ -37,6 +39,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun CampsiteListScreen(
+    navController: NavController,
     viewModel: CampsiteListViewModel = viewModel(factory = CampsiteListViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -54,7 +57,15 @@ fun CampsiteListScreen(
     ) {
         Spacer(modifier = Modifier.padding(vertical = 16.dp))
         /* Search Bar and Filters */
-
+            //Temporary back button
+            Text("Back",
+                modifier = Modifier
+                    .clickable(onClick =
+                        {
+                            navController.popBackStack()
+                        }
+                    )
+            )
             /* Search bar */
             TextField(
                 value = state.campsiteFilter.searchText,
@@ -87,11 +98,6 @@ fun CampsiteListScreen(
                     valueRange = 0f..20f, //TODO: Confirm the upper bound of this field somehow.
                     steps = 19 //TODO: Step count also relies on valueRange - 1, thus same problem as above.
                 )
-
-//                TextField(
-//                    value = if (state.campsiteFilter.occupancy == 0) "" else state.campsiteFilter.occupancy.toString(),
-//                    onValueChange = viewModel::onFilterOccupancy
-//                )
             }
             /*Location Field*/
             Row(){
@@ -106,13 +112,19 @@ fun CampsiteListScreen(
 
         }
         //Create all the campsite cards
-        state.campsites.forEach { CampsiteSummaryCard(it) }
+        state.campsites.forEach { CampsiteSummaryCard(
+            it,
+            {
+                navController.navigate("EntrantCampsiteDetails/" + it.id)
+            }
+        ) }
     }
 }
 
 @Composable
 fun CampsiteSummaryCard(
-    campsite: Campsite
+    campsite: Campsite,
+    onClickDetails: () -> Unit
 ) {
     val name: String = campsite.name
     val location: String = campsite.location
@@ -127,9 +139,7 @@ fun CampsiteSummaryCard(
                 Text("Capacity: $capacity")
             }
             Button(
-                onClick = {
-                    //Go to details screen
-                }
+                onClick = onClickDetails
             ) {
                 Text("Details")
             }
