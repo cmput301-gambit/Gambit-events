@@ -1,6 +1,7 @@
 package com.campsitereservationapp.ui.discovery
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -56,7 +57,15 @@ fun CampsiteListScreen(
     ) {
         Spacer(modifier = Modifier.padding(vertical = 16.dp))
         /* Search Bar and Filters */
-
+            //Temporary back button
+            Text("Back",
+                modifier = Modifier
+                    .clickable(onClick =
+                        {
+                            navController.popBackStack()
+                        }
+                    )
+            )
             /* Search bar */
             TextField(
                 value = state.campsiteFilter.searchText,

@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui.discovery
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
@@ -11,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.campsitereservationapp.model.Campsite
 
 /**
@@ -29,12 +31,14 @@ enum class CampsiteDetailsMainButtonState{
  */
 @Composable
 fun CampsiteDetailsScreen(
+    navController: NavController,
     viewedCampsiteId : String,
     viewModel: CampsiteDetailsViewModel = viewModel(factory = CampsiteDetailsViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    //Try to update the page if the campsite is invalid
+    //Try to update the page if the campsite is invalid. Must be done here as the viewModel has no way
+    //of accessing the current viewed id by itself. Please change if you know a better method of doing this.
     if(!state.viewedCampsite.isValid()){
         viewModel.updateViewedCampSiteId(viewedCampsiteId)
     }
@@ -45,6 +49,14 @@ fun CampsiteDetailsScreen(
     ) {
         Spacer(modifier = Modifier.padding(vertical = 16.dp))
         /* Search Bar and Filters */
+        Text("Back",
+            modifier = Modifier
+                .clickable(onClick =
+                    {
+                        navController.popBackStack()
+                    }
+                )
+        )
         //Leave Button
         /* Search bar */
         Text(

@@ -20,92 +20,69 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Everything the campsite details screen needs to make and manage their status in a given
- * lottery, along with description display.
+ * Everything the entrant home screen needs to properly address the current user.
  *
  * The screen reads only this class. It never talks to a repository directly.
  *
- * @property mainButtonState determines the text displayed and behaviour of the join/leave waitlist button
+ * @property entrantName determines the text displayed in the "Welcome back, " textbox.
  */
 data class EntrantHomeUiState(
     val entrantName: String = ""
 )
 
 /**
- * Holds the state for the entrant's campsite details screen.
+ * Holds the state for the entrant home screen.
  *
- * **Purpose:** provides details on a given campsite, and also allows the user to join or leave the campsites waitlist.
- * (US 01.01.05, 01.01.06, 01.02.01, 01.02.02).
+ * **Purpose:** provides an entry point for many subsequent screens covering most of the
+ * entrant User Stories.
  *
- * **Design rationale:** MVVM. Receives its repository from the
+ * **Design rationale:** MVVM. Receives its repository and user ID from the
  * [com.campsitereservationapp.data.AppContainer] through [Factory], and
- * subscribes to the repository's live stream, so the list updates on its own
- * whenever campsite or lottery data changes.
+ * subscribes to the repository's live stream, so the screen adapts correctly to the current user.
  *
- * **Outstanding issues:** joining and leaving lotteries still need the required functions
- * The lotteryRepository still needs to be added
+ * **Outstanding issues:** Currently the default screen, when it should be determined by the
+ * current users roles.
  *
- * @property LotteryRepository The shared repository campsites come from
+ * @property userRepository The shared repository users come from
+ * @property currentEntrantId The id of the current user as a string
  */
 class EntrantHomeScreenViewModel(
     private val userRepository: UserRepository,
     private val currentEntrantId: String,
 ) : ViewModel() {
 
+    //Name to be displayed on screen
     private val entrantName : MutableStateFlow<String> = MutableStateFlow<String>(
         currentEntrantId
     )
-    // State that belongs to this screen only: what the user typed.
-    // Private and mutable, so only this ViewModel can change it.
+    //Updating the users name based on values from the userRepository. When the first time launch screen
+    //is done, this should always return a real name instead of a blank or the device ID.
     init {
         viewModelScope.launch {
             val user: User = userRepository.get(currentEntrantId) ?: User()
             entrantName.update { user.name }
         }
     }
+
     /**
      * The current screen state. The screen collects this and redraws
      * every time it changes.
      */
-
-
-
     val uiState: StateFlow<EntrantHomeUiState> =
 
         combine(
             entrantName,
         ) { /*lotteries,*/ name,  ->
-
-            // Turn raw data into exactly what the screen needs to draw.
             EntrantHomeUiState(
-                name[0], //Not sure why this needs to be indexed at 0...
+                name[0], //Not sure why this needs to be indexed at 0... it works when I add it though.
             )
         }
-            // stateIn() turns the stream into a StateFlow the screen can read.
             .stateIn(
-                // Tie the subscription to this ViewModel's lifetime.
-                // It's cancelled automatically when the ViewModel is cleared.
                 scope = viewModelScope,
-                // Stop the listener once the screen is gone for 5 seconds
                 started = SharingStarted.WhileSubscribed(5_000),
-                // What the screen shows before any data arrives.
-                // Its isLoading = true lets the screen show a spinner.
                 initialValue = EntrantHomeUiState(),
             )
 
-    /**
-     * THIS IS WIP, not final as the rating screen has no mockup presently.
-     * Called by the screen whenever the user submits a rating.
-     *
-     * Updating [newRating] makes combine() recalculate the state,
-     * automatically hiding the rating popup after making a rating, and loading the rating to the
-     * correct repository location.
-     *
-     * @param newRating the rating given by the user
-     */
-//    suspend fun updateUserDisplayedName(){
-//
-//    }
 
 
     companion object {
@@ -121,8 +98,6 @@ class EntrantHomeScreenViewModel(
             initializer {
                 val app = this[APPLICATION_KEY] as CampsiteApp
                 EntrantHomeScreenViewModel(
-                    //TODO: enable once lotteryRepository is implemented.
-                    //app.container.lotteryRepository,
                     app.container.userRepository,
                     app.container.currentUserId
                 )

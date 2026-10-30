@@ -44,26 +44,27 @@ data class CampsiteDetailsUiState(
  * **Outstanding issues:** joining and leaving lotteries still need the required functions
  * The lotteryRepository still needs to be added
  *
- * @property LotteryRepository The shared repository campsites come from
+ * @property LotteryRepository The shared repository lotteries come from
+ * @property campsiteRepository The shared repository campsites come from. Required here because the campsite can only be passed
+ * by value between this models screen and the last screen [CampsiteListScreen].
  */
 class CampsiteDetailsViewModel(
     //private val lotteryRepository: LotteryRepository, //TODO: Implement when lotteryRepository is added.
     private val campsiteRepository: CampsiteRepository
 ) : ViewModel() {
 
-    // State that belongs to this screen only: what the user typed.
-    // Private and mutable, so only this ViewModel can change it.
+    //ID of the currently viewed campsite, passed from the previous screen.
+    private val viewedCampsiteId: MutableStateFlow<String> = MutableStateFlow("")
+
+    //Enum of the main button of this screen.
+    private val mainButtonState : MutableStateFlow<CampsiteDetailsMainButtonState> = MutableStateFlow(
+        CampsiteDetailsMainButtonState.JOIN
+    )
 
     /**
      * The current screen state. The screen collects this and redraws
      * every time it changes.
      */
-    private val mainButtonState : MutableStateFlow<CampsiteDetailsMainButtonState> = MutableStateFlow(
-        CampsiteDetailsMainButtonState.JOIN
-    )
-
-    private val viewedCampsiteId: MutableStateFlow<String> = MutableStateFlow("")
-    private val viewedCampsite: MutableStateFlow<Campsite> = MutableStateFlow(Campsite())
     val uiState: StateFlow<CampsiteDetailsUiState> =
 
         combine(
@@ -131,7 +132,7 @@ class CampsiteDetailsViewModel(
      * Updating [viewedCampsite] makes combine() recalculate the state,
      * automatically making this screen display the correct info.
      *
-     * @param newCampsite the campsite to display for this screen
+     * @param newCampsiteId the id of the campsite to display for this screen
      */
     fun updateViewedCampSiteId(newCampsiteId: String){
         viewedCampsiteId.update { newCampsiteId }

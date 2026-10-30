@@ -21,7 +21,7 @@ fun CampsiteAppEntry(){
             arguments = listOf(navArgument("campsiteId"){ type = NavType.StringType})
         ) { backStackEntry ->
             val campId = backStackEntry.arguments?.getString("campsiteId") ?: return@composable
-            CampsiteDetailsScreen(viewedCampsiteId = campId)
+            CampsiteDetailsScreen(navController, viewedCampsiteId = campId)
         }
     }
 }

@@ -22,10 +22,12 @@ import androidx.navigation.NavController
  * top search bar is highlighted.
  */
 @Composable
-fun EntrantHomeScreen(navController: NavController,
-                      viewModel: EntrantHomeScreenViewModel = viewModel(factory = EntrantHomeScreenViewModel.Factory)) {
-
+fun EntrantHomeScreen(
+    navController: NavController,
+    viewModel: EntrantHomeScreenViewModel = viewModel(factory = EntrantHomeScreenViewModel.Factory)
+) {
     val state by viewModel.uiState.collectAsState()
+
     Column(){
         Spacer(Modifier.padding(vertical = 30.dp))
         /*Search Bar NOT FINAL*/
@@ -35,7 +37,7 @@ fun EntrantHomeScreen(navController: NavController,
             Text("Search")
         }
         /*Notifications*/
-        Text("Welcome back,\n" + state.entrantName) //TODO: Make this get the current users name
+        Text("Welcome back,\n" + state.entrantName)
         /*Reservations*/
         Button(onClick = {
             //Navigate to reservations screen
