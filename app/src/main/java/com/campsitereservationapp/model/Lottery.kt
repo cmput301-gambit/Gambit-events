@@ -31,7 +31,10 @@ enum class LotteryStatus {
 }
 
 /**
- * Lottery data structure that can operate the associated waiting list
+ * Lottery data structure that can operate the associated waiting list.
+ * Completes US 02.04.01 and resolved issue #24
+ * Completes US 02.04.05 and resolves issue #28
+ * Completes US 02.04.04 and partially resolves #27
  *
  * **Purpose:** [LotteryRepository] is able to create and operate a [Lottery] which
  * holds information such as the campsites, the registration and reservation periods,
