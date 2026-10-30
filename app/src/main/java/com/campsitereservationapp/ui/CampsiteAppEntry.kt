@@ -9,6 +9,7 @@ import androidx.navigation.navArgument
 import com.campsitereservationapp.ui.discovery.CampsiteDetailsScreen
 import com.campsitereservationapp.ui.discovery.CampsiteListScreen
 import com.campsitereservationapp.ui.discovery.EntrantHomeScreen
+import com.campsitereservationapp.ui.discovery.EntrantSettingsScreen
 
 @Composable
 fun CampsiteAppEntry(){
@@ -23,5 +24,6 @@ fun CampsiteAppEntry(){
             val campId = backStackEntry.arguments?.getString("campsiteId") ?: return@composable
             CampsiteDetailsScreen(navController, viewedCampsiteId = campId)
         }
+        composable("UserSettings") { EntrantSettingsScreen(navController) }
     }
 }
