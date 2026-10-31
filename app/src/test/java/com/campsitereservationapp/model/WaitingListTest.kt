@@ -21,12 +21,12 @@ class WaitingListTest {
         val entrant2 = Entrant("testEntrant2")
         val entrant3 = Entrant("testEntrant3")
         val entrant4 = Entrant("testEntrant4")
-        waitingList.addEntrant(entrant1)
-        waitingList.addEntrant(entrant2)
-        waitingList.addEntrant(entrant3)
+        waitingList.addEntrant(entrant1.userId)
+        waitingList.addEntrant(entrant2.userId)
+        waitingList.addEntrant(entrant3.userId)
         assert(waitingList.entrantList.size == 3) // All three entrants successfully added
         assert(waitingList.isFull)
-        assert(!waitingList.addEntrant(entrant4))
+        assert(!waitingList.addEntrant(entrant4.userId))
 
     }
 
@@ -36,10 +36,10 @@ class WaitingListTest {
         val entrant2 = Entrant("testEntrant2")
         val waitingList = WaitingList(entrantList = mutableListOf(entrant1.userId, entrant2.userId),
             entrantCap = 2, isFull = true)
-        waitingList.removeEntrant(entrant1)
+        waitingList.removeEntrant(entrant1.userId)
         assert(!waitingList.entrantList.contains(entrant1.userId))
         assert(!waitingList.isFull)
-        waitingList.removeEntrant(entrant2)
+        waitingList.removeEntrant(entrant2.userId)
         assert(!waitingList.entrantList.contains(entrant2.userId))
         assert(!waitingList.isFull)
     }
