@@ -22,7 +22,9 @@ import kotlin.coroutines.cancellation.CancellationException
  * UI state for the campsite registration/edit form.
  *
  * @property isLoading true while loading existing campsite data for editing
+ * @property loadError true if loading existing campsite data failed (null or exception)
  * @property isSaving true while the campsite is being saved to the repository
+ * @property saveError true if saving to the repository failed with an exception
  * @property isSaved true if the campsite was successfully saved
  * @property name display name of the campsite
  * @property description description / amenities of the campsite
@@ -36,7 +38,9 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 data class CampsiteFormUiState(
     val isLoading: Boolean = false,
+    val loadError: Boolean = false,
     val isSaving: Boolean = false,
+    val saveError: Boolean = false,
     val isSaved: Boolean = false,
     val name: String = "",
     val description: String = "",
@@ -57,8 +61,9 @@ data class CampsiteFormUiState(
  *
  * **Design rationale:** MVVM. Receives its repositories and current user ID from the
  * [com.campsitereservationapp.data.AppContainer] through [Factory], handling validation,
- * persisting new or updated campsites, preserving unedited fields via copy, and
- * promoting users to campsite owners upon registration.
+ * persisting new or updated campsites with stable ID generation for retry safety, preserving
+ * unedited fields via copy, handling async load and save errors safely, and promoting users
+ * to campsite owners upon registration.
  *
  * **Outstanding issues:** image upload and map picking not yet integrated.
  *
@@ -83,26 +88,37 @@ class CampsiteFormViewModel(
 
     private var originalCampsite: Campsite? = null
 
+    // Stable ID generation across save retries
+    private val newCampsiteId by lazy { campsiteRepository.newId() }
+
     init {
         if (editingCampsiteId != null) {
             viewModelScope.launch {
-                originalCampsite = campsiteRepository.get(editingCampsiteId)
-                originalCampsite?.let { campsite ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            name = campsite.name,
-                            description = campsite.description,
-                            location = campsite.location,
-                            capacity = campsite.capacity.toString(),
-                            tags = campsite.tags,
-                            latitude = campsite.latitude,
-                            longitude = campsite.longitude,
-                            availability = campsite.availability
-                        )
+                try {
+                    val loaded = campsiteRepository.get(editingCampsiteId)
+                    originalCampsite = loaded
+                    if (loaded != null) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                loadError = false,
+                                name = loaded.name,
+                                description = loaded.description,
+                                location = loaded.location,
+                                capacity = loaded.capacity.toString(),
+                                tags = loaded.tags,
+                                latitude = loaded.latitude,
+                                longitude = loaded.longitude,
+                                availability = loaded.availability
+                            )
+                        }
+                    } else {
+                        _uiState.update { it.copy(isLoading = false, loadError = true) }
                     }
-                } ?: run {
-                    _uiState.update { it.copy(isLoading = false) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(isLoading = false, loadError = true) }
                 }
             }
         }
@@ -174,17 +190,19 @@ class CampsiteFormViewModel(
 
     /**
      * Validates form inputs, trims text values, parses capacity, and saves the campsite
-     * to the repository (adding a new one or updating an existing one, preserving unedited fields).
-     * Promotes the user to a campsite owner upon new registration. Sets [CampsiteFormUiState.isSaving]
-     * during the operation and [CampsiteFormUiState.isSaved] upon success. Populates validation errors otherwise.
+     * to the repository (adding a new one or updating an existing one, preserving unedited fields
+     * and maintaining stable IDs for retry safety). Prevents saving if loading is active or
+     * encountered a load error. Promotes the user to a campsite owner upon new registration.
+     * Sets [CampsiteFormUiState.isSaving] during the operation and [CampsiteFormUiState.isSaved]
+     * upon success, or [CampsiteFormUiState.saveError] on exception.
      */
     fun save() {
         val state = _uiState.value
-        if (state.isLoading || state.isSaving || state.isSaved) return
+        if (state.isLoading || state.loadError || state.isSaving || state.isSaved) return
 
         val parsedCapacity = state.capacity.toIntOrNull()
         val baseCampsite = originalCampsite ?: Campsite(
-            id = campsiteRepository.newId(),
+            id = newCampsiteId,
             ownerId = currentUserId
         )
 
@@ -210,21 +228,24 @@ class CampsiteFormViewModel(
             return
         }
 
-        _uiState.update { it.copy(isSaving = true) }
+        _uiState.update { it.copy(isSaving = true, saveError = false) }
         viewModelScope.launch {
             try {
                 if (editingCampsiteId != null) {
                     campsiteRepository.update(campsite)
                 } else {
-                    campsiteRepository.add(campsite)
+                    if (campsiteRepository.get(campsite.id) != null) {
+                        campsiteRepository.update(campsite)
+                    } else {
+                        campsiteRepository.add(campsite)
+                    }
                     userRepository.promoteToOwner(currentUserId)
                 }
-                _uiState.update { it.copy(isSaving = false, isSaved = true, errors = emptyList()) }
+                _uiState.update { it.copy(isSaving = false, isSaved = true, errors = emptyList(), saveError = false) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(isSaving = false) }
-                // TODO: expose a save-failed error to the UI
+                _uiState.update { it.copy(isSaving = false, saveError = true) }
             }
         }
     }
