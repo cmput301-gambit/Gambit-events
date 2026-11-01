@@ -18,15 +18,19 @@ import com.campsitereservationapp.model.Campsite
  * @property searchText the text to query the [CampsiteRepository] name with.
  * @property location the string to query the [CampsiteRepository] locations against.
  * @property occupancy minimum number of people that the query results must accommodate for.
+ * @property occupancyText A string representation of the occupancy, which becomes an empty string
+ * when the occupancy is 0.
  * @constructor Creates a CampsiteFilter. Every field has a default, so tests can
  * set only the fields they care about.
  */
 data class CampsiteFilter (
-    public var searchText: String = "",
-    public var location: String = "",
-    public var occupancy: Int = 0,
+     var searchText: String = "",
+     var location: String = "",
+     var occupancy: Int = 0,
     //var dateRange: DateRange = null
 ) {
+    val occupancyText: String
+        get() = if (occupancy == 0) "" else occupancy.toString()
     /**
     * Returns a static list of all campsites that fulfill the current filter.
     *
