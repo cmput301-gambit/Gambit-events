@@ -1,18 +1,32 @@
 package com.campsitereservationapp.ui.discovery
 
+import android.graphics.Color
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 
@@ -29,15 +43,57 @@ fun EntrantSettingsScreen(
     viewModel: EntrantSettingsViewModel = viewModel(factory = EntrantSettingsViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsState()
-
-    Column(){
+    var tempNewName by remember { mutableStateOf(state.currentUser.name) }
+    //val tempNewPhone by remember { mutableStateOf("") }
+    //val tempNewEmail by remember { mutableStateOf("") }
+    /*Update Settings popup*/
+    Column(Modifier.fillMaxWidth()){
         Spacer(Modifier.padding(vertical = 30.dp))
+        //Temporary back button
+        Text("Back",
+            modifier = Modifier
+                .clickable(onClick =
+                    {
+                        navController.popBackStack()
+                    }
+                )
+        )
         if(state.isUpdateUserOpen){
             Popup(
-
+                alignment = Alignment.TopCenter,
+                offset = IntOffset(0, 170),
+                onDismissRequest = viewModel::toggleUpdateUserOpen,
+                properties = PopupProperties(focusable = true),
             ) {
-                Box(){
-                    Text("This is a popup")
+                Box(
+                    Modifier
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp))
+                        .padding(12.dp)
+                        .fillMaxWidth(0.75f)
+                        .fillMaxHeight(0.75f)
+                ){
+                    Column(Modifier.fillMaxWidth()){
+                        TextField(
+                            value = tempNewName,
+                            onValueChange = {tempNewName=it},//viewModel::onFilterName,
+                            placeholder = { Text("New Name") },
+                            //interactionSource = searchFieldInteraction
+                        )
+                        Button(onClick = {
+                            viewModel.updateUserDetails(
+                                tempNewName,
+                                state.currentUser.phone,
+                                state.currentUser.email,
+                                state.currentUser.profileImageId
+                            )
+                            viewModel.toggleUpdateUserOpen()
+                        }
+                        ) {
+                            Text("Update Profile")
+                        }
+                    }
+
+                    //Text("This is a popup")
                 }
             }
         }
@@ -52,9 +108,16 @@ fun EntrantSettingsScreen(
         Text("Device ID")
         Text(state.currentUser.id) //User ID is equivalent to device ID.
         /*Toggle Update Account*/
-        Button(onClick = viewModel::toggleUpdateUserOpen){
-            Text("Update Account Details")
-        }
+
+            Button(onClick = {
+                if(!state.isUpdateUserOpen)
+                    viewModel.toggleUpdateUserOpen()
+                }
+            ){
+                Text("Update Account Details")
+            }
+
+
         /*Toggle Receive Notifications*/
         Text("Notifications")
         Row(){

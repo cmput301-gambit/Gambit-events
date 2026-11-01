@@ -59,7 +59,7 @@ class EntrantHomeScreenViewModel(
     //is done, this should always return a real name instead of a blank or the device ID.
     init {
         viewModelScope.launch {
-            val user: User = userRepository.get(currentEntrantId) ?: User()
+            val user: User = userRepository.getOrCreate(currentEntrantId)
             entrantName.update { user.name }
         }
     }
@@ -71,10 +71,10 @@ class EntrantHomeScreenViewModel(
     val uiState: StateFlow<EntrantHomeUiState> =
 
         combine(
-            entrantName,
-        ) { /*lotteries,*/ name,  ->
+            userRepository.observe(currentEntrantId),
+        ) { /*lotteries,*/ user,  -> //The lotteries observing will be used to add an icon over the menu if any have changed
             EntrantHomeUiState(
-                name[0], //Not sure why this needs to be indexed at 0... it works when I add it though.
+                user[0]?.name ?: "", //Not sure why this needs to be indexed at 0... it works when I add it though.
             )
         }
             .stateIn(

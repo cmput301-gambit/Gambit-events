@@ -64,7 +64,7 @@ class EntrantSettingsViewModel(
     //is done, this should always return a real name instead of a blank or the device ID.
     init {
         viewModelScope.launch {
-            val user: User = userRepository.get(currentUserId) ?: User()
+            val user: User = userRepository.getOrCreate(currentUserId)
             currentUser.update { user }
         }
     }
@@ -76,11 +76,11 @@ class EntrantSettingsViewModel(
     val uiState: StateFlow<EntrantSettingsState> =
 
         combine(
-            currentUser,
+            userRepository.observe(currentUserId),
             isUpdateUserOpen,
         ) { newUser, updateOpen ->
             EntrantSettingsState(
-                currentUser = newUser,
+                currentUser = newUser ?: User(),
                 isUpdateUserOpen = updateOpen,
             )
         }
@@ -91,24 +91,33 @@ class EntrantSettingsViewModel(
             )
 
     fun updateUserDetails(
-            newName: String,
-            newPhone: String,
-            newEmail: String,
-            newProfileImageId: String,
+            newName: String? = null,
+            newPhone: String? = null,
+            newEmail: String? = null,
+            newProfileImageId: String? = null,
+            newNotificationsEnabled: Boolean? = null,
             ){
-        currentUser.update { it.copy(
-                name = newName,
-                phone = newPhone,
-                email = newEmail,
-                profileImageId = newProfileImageId,
-            )
+        viewModelScope.launch {
+                val current = userRepository.getOrCreate(currentUserId)
+                //TODO: Currently this line updates only locally, should update the user in the db instead
+                userRepository.update(
+                    current.copy(
+                        name = newName ?: current.name,
+                        phone = newPhone ?: current.phone,
+                        email = newEmail ?: current.email,
+                        profileImageId = newProfileImageId ?: current.profileImageId,
+                        notificationsEnabled = newNotificationsEnabled ?: current.notificationsEnabled
+                    )
+                )
+            }
         }
-    }
 
     fun toggleReceiveNotifications(){
-        currentUser.update { it.copy(
-            notificationsEnabled = !it.notificationsEnabled
-        ) }
+        viewModelScope.launch {
+            updateUserDetails(
+                newNotificationsEnabled = !userRepository.getOrCreate(currentUserId).notificationsEnabled
+            )
+        }
     }
 
     fun toggleUpdateUserOpen(){
