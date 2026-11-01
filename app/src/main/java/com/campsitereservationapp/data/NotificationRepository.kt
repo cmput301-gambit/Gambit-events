@@ -3,9 +3,6 @@ package com.campsitereservationapp.data
 import android.app.Notification
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-
-package com.campsitereservationapp.data
-
 import android.os.Build
 import androidx.annotation.RequiresApi
 
