@@ -26,7 +26,7 @@ All project deliverables are in the [Wiki](https://github.com/cmput301-gambit/ga
 
 ## AI Use Statement
 
-N/A
+`Anthropic, Claude AI Sonnet 5.5: Advanced Components and stylization`
 
 ## License
 
