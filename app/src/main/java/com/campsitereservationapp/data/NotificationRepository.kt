@@ -1,6 +1,6 @@
 package com.campsitereservationapp.data
 
-import android.app.Notification
+import com.campsitereservationapp.model.Notification
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import android.os.Build
