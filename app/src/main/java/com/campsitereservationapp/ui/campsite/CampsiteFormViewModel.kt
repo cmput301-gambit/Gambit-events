@@ -21,6 +21,7 @@ import kotlin.coroutines.cancellation.CancellationException
 /**
  * UI state for the campsite registration/edit form.
  *
+ * @property isLoading true while loading existing campsite data for editing
  * @property isSaving true while the campsite is being saved to the repository
  * @property isSaved true if the campsite was successfully saved
  * @property name display name of the campsite
@@ -34,6 +35,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * @property errors list of validation errors encountered during save attempts
  */
 data class CampsiteFormUiState(
+    val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     val name: String = "",
@@ -55,7 +57,8 @@ data class CampsiteFormUiState(
  *
  * **Design rationale:** MVVM. Receives its repositories and current user ID from the
  * [com.campsitereservationapp.data.AppContainer] through [Factory], handling validation,
- * persisting new or updated campsites, and promoting users to campsite owners upon registration.
+ * persisting new or updated campsites, preserving unedited fields via copy, and
+ * promoting users to campsite owners upon registration.
  *
  * **Outstanding issues:** image upload and map picking not yet integrated.
  *
@@ -71,19 +74,23 @@ class CampsiteFormViewModel(
     private val editingCampsiteId: String? = null,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(CampsiteFormUiState())
+    private val _uiState = MutableStateFlow(CampsiteFormUiState(isLoading = editingCampsiteId != null))
 
     /**
      * Observable stream of the current form UI state.
      */
     val uiState: StateFlow<CampsiteFormUiState> = _uiState.asStateFlow()
 
+    private var originalCampsite: Campsite? = null
+
     init {
         if (editingCampsiteId != null) {
             viewModelScope.launch {
-                campsiteRepository.get(editingCampsiteId)?.let { campsite ->
+                originalCampsite = campsiteRepository.get(editingCampsiteId)
+                originalCampsite?.let { campsite ->
                     _uiState.update {
                         it.copy(
+                            isLoading = false,
                             name = campsite.name,
                             description = campsite.description,
                             location = campsite.location,
@@ -94,6 +101,8 @@ class CampsiteFormViewModel(
                             availability = campsite.availability
                         )
                     }
+                } ?: run {
+                    _uiState.update { it.copy(isLoading = false) }
                 }
             }
         }
@@ -165,18 +174,21 @@ class CampsiteFormViewModel(
 
     /**
      * Validates form inputs, trims text values, parses capacity, and saves the campsite
-     * to the repository (adding a new one or updating an existing one). Promotes the user
-     * to a campsite owner upon new registration. Sets [CampsiteFormUiState.isSaving] during
-     * the operation and [CampsiteFormUiState.isSaved] upon success. Populates validation errors otherwise.
+     * to the repository (adding a new one or updating an existing one, preserving unedited fields).
+     * Promotes the user to a campsite owner upon new registration. Sets [CampsiteFormUiState.isSaving]
+     * during the operation and [CampsiteFormUiState.isSaved] upon success. Populates validation errors otherwise.
      */
     fun save() {
         val state = _uiState.value
-        if (state.isSaving || state.isSaved) return
+        if (state.isLoading || state.isSaving || state.isSaved) return
 
         val parsedCapacity = state.capacity.toIntOrNull()
-        val campsite = Campsite(
-            id = editingCampsiteId ?: campsiteRepository.newId(),
-            ownerId = currentUserId,
+        val baseCampsite = originalCampsite ?: Campsite(
+            id = campsiteRepository.newId(),
+            ownerId = currentUserId
+        )
+
+        val campsite = baseCampsite.copy(
             name = state.name.trim(),
             description = state.description.trim(),
             location = state.location.trim(),
