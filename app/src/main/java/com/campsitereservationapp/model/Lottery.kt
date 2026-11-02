@@ -134,12 +134,13 @@ data class Lottery (
     *
     * */
     fun drawEntrants() {
+        waitingList.entrantLosers.addAll(waitingList.entrantList)
         if (stage == LotteryStatus.DRAWN) {
             val drawAmount = minOf(winnerAmount, waitingList.entrantList.size)
             for (i in 1..drawAmount) {
                 val wonEntrant = waitingList.entrantList.random()
                 waitingList.entrantWinners.add(wonEntrant)
-                waitingList.entrantList.remove(wonEntrant)
+                waitingList.entrantLosers.remove(wonEntrant)
             }
             stage = LotteryStatus.CLOSED
             notifyEntrants()

@@ -32,6 +32,7 @@ enum class WaitingListError {
  */
 class WaitingList(
     var entrantList: MutableList<String> = mutableListOf(),
+    var entrantLosers: MutableList<String> = mutableListOf(),
     var entrantWinners: MutableList<String> = mutableListOf(),
     var entrantsDeclined: MutableList<String> = mutableListOf(),
     var entrantCap: Int = -1,
