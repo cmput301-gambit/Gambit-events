@@ -13,7 +13,7 @@ import com.campsitereservationapp.model.Campsite
  * easy to unit test. CampsiteRepository handles saving and loading.
  *
  * **Outstanding issues:**
- * - Does not have a [DateRange] as the class does not exist yet.
+ * - Does not have a [com.campsitereservationapp.model.DateRange] as the class does not exist yet.
  *
  * @property searchText the text to query the [CampsiteRepository] name with.
  * @property location the string to query the [CampsiteRepository] locations against.

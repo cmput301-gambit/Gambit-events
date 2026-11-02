@@ -1,8 +1,5 @@
 package com.campsitereservationapp.model
 
-import android.os.Build
-import androidx.annotation.RequiresApi
-import com.campsitereservationapp.data.DateRange
 import java.time.LocalDate
 
 /**
@@ -54,7 +51,7 @@ enum class LotteryStatus {
  * @constructor Creates a lottery. registrationPeriod and reservationPeriod do not have default
  * arguments.
  */
-@RequiresApi(Build.VERSION_CODES.O)
+
 data class Lottery (
     override val id: String = "",
     val ownerId: String = "",

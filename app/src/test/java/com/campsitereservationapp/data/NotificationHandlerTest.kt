@@ -1,10 +1,12 @@
 package com.campsitereservationapp.data
 
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.NotificationType
 import com.campsitereservationapp.model.WaitingList
+import com.campsitereservationapp.service.NotificationHandler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -12,7 +14,7 @@ import org.junit.Test
 import java.time.LocalDate
 
 /**
- * Unit tests for [NotificationHandler].
+ * Unit tests for [com.campsitereservationapp.service.NotificationHandler].
  *
  * **Purpose:** checks that a drawn lottery creates one win or lose
  * notification per entrant (US 01.03.01, 01.03.02).
@@ -23,10 +25,12 @@ class NotificationHandlerTest {
     private val pineRidge = Campsite("campsite-pine-ridge", ownerId = "owner-bobby", name = "Pine Ridge")
     private val registrationPeriod = DateRange(
         LocalDate.now().plusDays(1),
-        LocalDate.now().plusDays(5))
+        LocalDate.now().plusDays(5)
+    )
     private val reservationPeriod = DateRange(
         LocalDate.now().plusDays(6),
-        LocalDate.now().plusDays(8))
+        LocalDate.now().plusDays(8)
+    )
 
     private fun closedLottery(winners: List<String>, losers: List<String>) = Lottery(
         "lottery-pine-ridge",
