@@ -33,6 +33,7 @@ enum class WaitingListError {
 class WaitingList(
     var entrantList: MutableList<String> = mutableListOf(),
     var entrantWinners: MutableList<String> = mutableListOf(),
+    var entrantsDeclined: MutableList<String> = mutableListOf(),
     var entrantCap: Int = -1,
     var isFull: Boolean = false,
 ) {
@@ -94,6 +95,22 @@ class WaitingList(
         if (entrantId in entrantList) {
             entrantList.remove(entrantId)
             if (isFull) { isFull = false }
+            return true
+        }
+        return false
+    }
+
+    /**
+     * If the entrant's id is in the winner's list, they have the option of also being added to the
+     * declined list. Being in the declined list removes the entrant's id from the winner's list.
+     * @param entrantId A string representing the userId of the entrant to decline the reservation.
+     * @return True if the entrantId was in the winner list and not in the declined list. False
+     * otherwise.
+     * */
+    fun entrantDeclined(entrantId: String): Boolean {
+        if (entrantWinners.contains(entrantId) && !entrantsDeclined.contains(entrantId)) {
+            entrantsDeclined.add(entrantId)
+            entrantWinners.remove(entrantId)
             return true
         }
         return false
