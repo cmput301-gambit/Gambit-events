@@ -54,6 +54,13 @@ fun EntrantHomeScreen(
             }
         }
         /*Settings Button*/
+        Button(
+            onClick = {
+                navController.navigate("UserSettings")
+            }
+        ) {
+            Text("Settings")
+        }
     }
 
 }
