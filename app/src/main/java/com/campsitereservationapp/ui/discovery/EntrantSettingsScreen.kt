@@ -43,7 +43,7 @@ fun EntrantSettingsScreen(
     viewModel: EntrantSettingsViewModel = viewModel(factory = EntrantSettingsViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsState()
-    var tempNewName by remember { mutableStateOf(state.currentUser.name) }
+    var tempNewName by remember(state.currentUser.name) { mutableStateOf(state.currentUser.name) }
     //val tempNewPhone by remember { mutableStateOf("") }
     //val tempNewEmail by remember { mutableStateOf("") }
     /*Update Settings popup*/
