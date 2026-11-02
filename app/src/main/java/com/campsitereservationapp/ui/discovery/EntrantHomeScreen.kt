@@ -61,6 +61,14 @@ fun EntrantHomeScreen(
         ) {
             Text("Settings")
         }
+        /* Owner Home button */
+        Button(
+            onClick = {
+                navController.navigate("OwnerHome")
+            }
+        ) {
+            Text("Owner Home")
+        }
     }
 
 }
