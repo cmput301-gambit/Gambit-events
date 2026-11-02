@@ -1,10 +1,10 @@
 package com.campsitereservationapp.data
 
 import com.campsitereservationapp.model.Notification
+import com.campsitereservationapp.model.NotificationType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import android.os.Build
-import androidx.annotation.RequiresApi
+import java.time.LocalDate
 
 /**
  * Stores and provides [Notification] objects.
@@ -15,16 +15,20 @@ import androidx.annotation.RequiresApi
  *
  * **Design rationale:** extends [Repository] like every other repository.
  * Originally planned as a read-only NotificationLog; became a repository
- * because notifications need their read status updated. Notifications are
- * written by the NotificationHandler and never edited, except for their
- * read status.
+ * because notifications need their read status updated. Each user only
+ * downloads their own notifications, because [observeForUser] filters in
+ * the database. Sorting happens on the device so Firestore doesn't need an
+ * extra index. Its companion object converts notifications to and from
+ * Firestore documents.
  *
- * **Outstanding issues:** in memory until Firestore storage is merged;
- * observeForUser will then filter in the database instead of on the device.
- * createdAt has no time, so same-day notifications can't be ordered.
+ * **Outstanding issues:** createdAt has no time, so same-day notifications
+ * can't be ordered.
+ *
+ * @param dataSource where notifications are kept, such as [firestoreDataSource]
+ * or an [InMemoryDataSource] in tests
  */
-@RequiresApi(Build.VERSION_CODES.O)
-class NotificationRepository : Repository<Notification>() {
+class NotificationRepository(dataSource: DataSource<Notification>) :
+    Repository<Notification>(dataSource) {
 
     /**
      * Live list of the notifications sent to one user, newest first.
@@ -34,11 +38,8 @@ class NotificationRepository : Repository<Notification>() {
      * or one of theirs is marked as read
      */
     fun observeForUser(userId: String): Flow<List<Notification>> =
-        observeAll().map { notifications ->
-            notifications
-                .filter { it.recipientId == userId }
-                .sortedByDescending { it.createdAt }
-        }
+        observeWhere(Filter("recipientId", userId) { it.recipientId == userId })
+            .map { notifications -> notifications.sortedByDescending { it.createdAt } }
 
     /**
      * Live count of a user's unread notifications, for an inbox badge.
@@ -58,4 +59,55 @@ class NotificationRepository : Repository<Notification>() {
      */
     suspend fun markRead(notification: Notification): Notification =
         if (notification.read) notification else update(notification.markRead())
+
+    companion object {
+        /**
+         * Creates the Firestore data source for notifications, used by [AppContainer].
+         *
+         * @return a data source backed by the "notifications" collection
+         */
+        fun firestoreDataSource(): FirestoreDataSource<Notification> =
+            FirestoreDataSource("notifications", ::toMap, ::fromMap)
+
+        /**
+         * Converts a notification into the fields saved in Firestore.
+         *
+         * The ID is not included because it is the document ID. The type is
+         * saved by name (such as "LOTTERY_WON") and the date as "yyyy-MM-dd" text.
+         *
+         * @param notification the notification to convert
+         * @return the fields to save
+         */
+        fun toMap(notification: Notification): Map<String, Any?> = mapOf(
+            "recipientId" to notification.recipientId,
+            "lotteryId" to notification.lotteryId,
+            "type" to notification.type.name,
+            "message" to notification.message,
+            "createdAt" to notification.createdAt.toString(),
+            "read" to notification.read,
+        )
+
+        /**
+         * Rebuilds a notification from a Firestore document.
+         *
+         * Missing fields fall back to the same defaults as [Notification]'s
+         * constructor, except the type: a missing or unknown type throws,
+         * so the document is skipped rather than shown as the wrong result.
+         *
+         * @param id the document ID, used as the notification ID
+         * @param data the saved fields
+         * @return the rebuilt notification
+         * @throws IllegalArgumentException if the type is missing or unknown
+         */
+        fun fromMap(id: String, data: Map<String, Any?>): Notification = Notification(
+            id = id,
+            recipientId = data["recipientId"] as? String ?: "",
+            lotteryId = data["lotteryId"] as? String ?: "",
+            type = NotificationType.valueOf(data["type"] as? String ?: ""),
+            message = data["message"] as? String ?: "",
+            createdAt = (data["createdAt"] as? String)?.let(LocalDate::parse)
+                ?: LocalDate.of(1970, 1, 1),
+            read = data["read"] as? Boolean ?: false,
+        )
+    }
 }
