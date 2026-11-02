@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1080562179219",
+    "project_id": "gambit-campsite",
+    "storage_bucket": "gambit-campsite.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1080562179219:android:a2ade4f935642456870166",
+        "android_client_info": {
+          "package_name": "com.campsitereservationapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7NwEa-63AcvXkHbVnAqrxYKFTW4TTKqg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
