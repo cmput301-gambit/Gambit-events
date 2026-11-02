@@ -2,6 +2,7 @@ package com.campsitereservationapp.ui.campsite
 
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.UserRepository
+import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteError
 import com.campsitereservationapp.model.User
 import kotlinx.coroutines.Dispatchers
@@ -125,5 +126,33 @@ class CampsiteFormViewModelTest {
         assertEquals("Padded Name", savedCampsite.name)
         assertEquals("Padded Desc", savedCampsite.description)
         assertEquals("Padded Loc", savedCampsite.location)
+    }
+
+    @Test
+    fun editMode_loadsExistingCampsiteDataAndUpdatesWithoutIncreasingCount() = runTest {
+        val existing = Campsite(
+            id = "campsite-edit-1",
+            ownerId = "owner-bobby",
+            name = "Original Name",
+            location = "Original Loc",
+            capacity = 4
+        )
+        repository.add(existing)
+        val initialCount = repository.getAll().size
+
+        val editViewModel = CampsiteFormViewModel(repository, userRepository, "owner-bobby", "campsite-edit-1")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("Original Name", editViewModel.uiState.value.name)
+        assertEquals("Original Loc", editViewModel.uiState.value.location)
+        assertEquals("4", editViewModel.uiState.value.capacity)
+
+        editViewModel.onNameChange("Updated Name")
+        editViewModel.save()
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(editViewModel.uiState.value.isSaved)
+        assertEquals(initialCount, repository.getAll().size)
+        assertEquals("Updated Name", repository.get("campsite-edit-1")?.name)
     }
 }

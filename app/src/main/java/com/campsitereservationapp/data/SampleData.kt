@@ -63,5 +63,9 @@ object SampleData {
             id = "admin-sam", name = "Sam Okafor",
             entrant = Entrant("admin-sam"), admin = Admin("admin-sam"),
         ),
+        User(
+            id = "2f9e63b7-4130-45af-b310-905cae77b937", name = "Noah Walters",
+            entrant = Entrant(userId = "2f9e63b7-4130-45af-b310-905cae77b937")
+        )
     )
 }

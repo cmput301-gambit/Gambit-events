@@ -13,6 +13,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.campsitereservationapp.data.SampleData
+import com.campsitereservationapp.ui.CampsiteAppEntry
+import com.campsitereservationapp.ui.discovery.CampsiteDetailsScreen
 import com.campsitereservationapp.ui.discovery.CampsiteListScreen
 import com.campsitereservationapp.ui.theme.CampsiteReservationAppTheme
 
@@ -22,7 +25,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CampsiteReservationAppTheme {
-                CampsiteListScreen()
+                CampsiteAppEntry()
             }
         }
     }

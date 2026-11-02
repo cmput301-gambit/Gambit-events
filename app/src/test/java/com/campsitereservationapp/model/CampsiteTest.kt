@@ -1,8 +1,12 @@
 package com.campsitereservationapp.model
 
+import com.campsitereservationapp.data.DateRange
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 
 class CampsiteTest {
 
@@ -72,5 +76,17 @@ class CampsiteTest {
         val campsite = Campsite(name = "Pine Ridge", ownerId = "owner-bobby", capacity = 5, tags = listOf("family", ""))
         assertFalse(campsite.isValid())
         assertTrue(campsite.validate().contains(CampsiteError.BLANK_TAG))
+    }
+
+    @Test
+    fun campsite_withAvailabilityDates_storesAndExposesCorrectly() {
+        val start = LocalDate.of(2026, 6, 1)
+        val finish = LocalDate.of(2026, 6, 7)
+        val range = DateRange(start, finish)
+
+        val campsite = Campsite(name = "Pine Ridge", ownerId = "owner-bobby", capacity = 5, availability = range)
+        assertNotNull(campsite.availability)
+        assertEquals(range, campsite.availability)
+        assertTrue(campsite.isValid())
     }
 }

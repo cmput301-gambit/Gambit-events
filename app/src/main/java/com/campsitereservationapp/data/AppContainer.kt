@@ -21,6 +21,9 @@ class AppContainer(context: Context) {
     /** Shared repository for users. */
     val userRepository by lazy { UserRepository() }
 
+    /** Shared repository for notifications. */
+    val notificationRepository by lazy { NotificationRepository() }
+
     // TODO:  lotteryRepository, reservationRepository as they're created.
 
     /** The current user's ID, which is this device's ID (US 01.09.01). */
