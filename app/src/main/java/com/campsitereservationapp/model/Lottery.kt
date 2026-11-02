@@ -159,7 +159,17 @@ data class Lottery (
         return false
     }
 
-
+    /**
+     * Sends an entrant declined function call to the waiting list, where the list will add them
+     * to a list, marking them as having declined to make a reservation.
+     *
+     * @param entrantId userId of the entrant who is declining.
+     * @return Returns true when the user is successfully added to the declined list, returns false
+     * otherwise.
+     * */
+    fun declineEntrant(entrantId: String): Boolean {
+        return waitingList.entrantDeclined(entrantId)
+    }
 
     /**
      * If the current lottery stage is CLOSED then it will send the lists of lottery
