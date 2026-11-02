@@ -1,7 +1,5 @@
 package com.campsitereservationapp.model
 
-import com.campsitereservationapp.data.DateRange
-
 /**
  * Errors that can occur when validating a [Campsite].
  */
