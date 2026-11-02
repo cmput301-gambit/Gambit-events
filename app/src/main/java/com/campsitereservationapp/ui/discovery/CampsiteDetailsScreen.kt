@@ -17,24 +17,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.campsitereservationapp.model.Campsite
 
 /**
  * Used to represent the finite states of the main button at the bottom of the screen.
  */
-enum class CampsiteDetailsMainButtonState{
+enum class CampsiteDetailsMainButtonState {
     JOIN,
     LEAVE,
     UNAVAILABLE
 }
 
 /**
- * Screen used to fulfill US 01.01.05, 01.01.06, 01.02.01, 01.02.02, 01.13.01, and US 02.01.04 (View campsite details).
+ * Screen used to fulfill US 01.01.05, 01.01.06, 01.02.01, 01.02.02, and 01.13.01 (View campsite details).
+ *
+ * @param navController navigation controller used for screen transitions
+ * @param viewedCampsiteId ID of the campsite to display
+ * @param viewModel view model holding campsite details state
  */
 @Composable
 fun CampsiteDetailsScreen(
     navController: NavController,
-    viewedCampsiteId : String,
+    viewedCampsiteId: String,
     viewModel: CampsiteDetailsViewModel = viewModel(factory = CampsiteDetailsViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -49,13 +52,9 @@ fun CampsiteDetailsScreen(
             .verticalScroll(rememberScrollState())
     ) {
         Spacer(modifier = Modifier.padding(vertical = 16.dp))
-        Text("Back",
-            modifier = Modifier
-                .clickable(onClick =
-                    {
-                        navController.popBackStack()
-                    }
-                )
+        Text(
+            text = "Back",
+            modifier = Modifier.clickable { navController.popBackStack() }
         )
         Spacer(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -66,16 +65,6 @@ fun CampsiteDetailsScreen(
         )
 
         Spacer(modifier = Modifier.padding(vertical = 4.dp))
-
-        // Owner Badge if viewing own campsite
-        if (state.isOwner) {
-            Text(
-                text = "Owner View",
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelLarge
-            )
-            Spacer(modifier = Modifier.padding(vertical = 4.dp))
-        }
 
         // Location
         if (state.viewedCampsite.location.isNotBlank()) {
@@ -114,18 +103,16 @@ fun CampsiteDetailsScreen(
 
         Spacer(modifier = Modifier.padding(vertical = 8.dp))
 
-        // Join / Leave Waitlist Button (Entrants only, hidden for campsite owners)
-        if (!state.isOwner) {
-            Button(
-                onClick = viewModel::updateButtonState
-            ){
-                val txt = when (state.mainButtonState) {
-                    CampsiteDetailsMainButtonState.JOIN -> "Join Waitlist"
-                    CampsiteDetailsMainButtonState.LEAVE -> "Leave Waitlist"
-                    CampsiteDetailsMainButtonState.UNAVAILABLE -> "Unavailable"
-                }
-                Text(txt)
+        // Join / Leave Waitlist Button
+        Button(
+            onClick = viewModel::updateButtonState
+        ) {
+            val txt = when (state.mainButtonState) {
+                CampsiteDetailsMainButtonState.JOIN -> "Join Waitlist"
+                CampsiteDetailsMainButtonState.LEAVE -> "Leave Waitlist"
+                CampsiteDetailsMainButtonState.UNAVAILABLE -> "Unavailable"
             }
+            Text(txt)
         }
     }
 }

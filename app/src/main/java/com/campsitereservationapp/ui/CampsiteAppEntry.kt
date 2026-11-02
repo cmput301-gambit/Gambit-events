@@ -39,13 +39,6 @@ fun CampsiteAppEntry(){
             val campId = backStackEntry.arguments?.getString("campsiteId") ?: return@composable
             CampsiteDetailsScreen(navController, viewedCampsiteId = campId)
         }
-        composable(
-            route = "OwnerCampsiteDetails/{campsiteId}",
-            arguments = listOf(navArgument("campsiteId"){ type = NavType.StringType})
-        ) { backStackEntry ->
-            val campId = backStackEntry.arguments?.getString("campsiteId") ?: return@composable
-            CampsiteDetailsScreen(navController, viewedCampsiteId = campId)
-        }
         composable("UserSettings") { EntrantSettingsScreen(navController) }
     }
 }
