@@ -4,9 +4,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -17,17 +21,15 @@ import com.campsitereservationapp.model.Campsite
 
 /**
  * Used to represent the finite states of the main button at the bottom of the screen.
- * JOIN will attempt to join the lottery for the currently viewed campsite
- * LEAVE will attempt to remove the current user from the viewed campsite
- * UNAVAILABLE is the default case if something goes wrong (ex. the lottery closes while viewing the screen.)
  */
 enum class CampsiteDetailsMainButtonState{
     JOIN,
     LEAVE,
     UNAVAILABLE
 }
+
 /**
- * Screen used to fulfill US 01.01.05, 01.01.06, 01.02.01, 01.02.02, and 01.13.01
+ * Screen used to fulfill US 01.01.05, 01.01.06, 01.02.01, 01.02.02, 01.13.01, and US 02.01.04 (View campsite details).
  */
 @Composable
 fun CampsiteDetailsScreen(
@@ -37,18 +39,16 @@ fun CampsiteDetailsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    //Try to update the page if the campsite is invalid. Must be done here as the viewModel has no way
-    //of accessing the current viewed id by itself. Please change if you know a better method of doing this.
-    if(!state.viewedCampsite.isValid()){
+    LaunchedEffect(viewedCampsiteId) {
         viewModel.updateViewedCampSiteId(viewedCampsiteId)
     }
 
-
     Column(
-        Modifier.padding(16.dp)
+        Modifier
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
     ) {
         Spacer(modifier = Modifier.padding(vertical = 16.dp))
-        /* Search Bar and Filters */
         Text("Back",
             modifier = Modifier
                 .clickable(onClick =
@@ -57,35 +57,75 @@ fun CampsiteDetailsScreen(
                     }
                 )
         )
-        //Leave Button
-        /* Search bar */
+        Spacer(modifier = Modifier.padding(vertical = 8.dp))
+
+        // Campsite Name
         Text(
-            state.viewedCampsite.name
+            text = state.viewedCampsite.name,
+            style = MaterialTheme.typography.headlineMedium
         )
-        //Campsite display image
-        //TODO: Figure out how to display state.viewedCampsite.image here.
 
+        Spacer(modifier = Modifier.padding(vertical = 4.dp))
 
-        Text("Capacity: " + state.viewedCampsite.capacity)//Campsite Capacity
-        //Rating
-        //TODO: Need to implement this visual after the rating class exists
-        //Rate button
-        //TODO: Popup card and button to rate, after rating class is added
-        //CampsiteDescription
-        Text(state.viewedCampsite.description)
-        //joinLeaveButton
-        Button(
-            onClick = viewModel::updateButtonState
-        ){
-            val txt = when {
-                state.mainButtonState == CampsiteDetailsMainButtonState.JOIN -> "Join Waitlist"
-                state.mainButtonState == CampsiteDetailsMainButtonState.LEAVE -> "Leave Waitlist"
-                state.mainButtonState == CampsiteDetailsMainButtonState.UNAVAILABLE -> "Unavailable"
-                else -> "Unavailable"
-            }
-            Text(txt) //Join or Leave Waitlist
+        // Owner Badge if viewing own campsite
+        if (state.isOwner) {
+            Text(
+                text = "Owner View",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge
+            )
+            Spacer(modifier = Modifier.padding(vertical = 4.dp))
         }
 
+        // Location
+        if (state.viewedCampsite.location.isNotBlank()) {
+            Text("Location: ${state.viewedCampsite.location}")
+        }
 
+        // Capacity / Max Occupancy
+        Text("Capacity: ${state.viewedCampsite.capacity}")
+
+        // Description / Amenities
+        if (state.viewedCampsite.description.isNotBlank()) {
+            Spacer(modifier = Modifier.padding(vertical = 4.dp))
+            Text("Description:\n${state.viewedCampsite.description}")
+        }
+
+        // Tags
+        if (state.viewedCampsite.tags.isNotEmpty()) {
+            Spacer(modifier = Modifier.padding(vertical = 4.dp))
+            Text("Tags: ${state.viewedCampsite.tags.joinToString(", ")}")
+        }
+
+        // Map Coordinates (Latitude & Longitude)
+        val lat = state.viewedCampsite.latitude
+        val lon = state.viewedCampsite.longitude
+        if (lat != null && lon != null) {
+            Spacer(modifier = Modifier.padding(vertical = 4.dp))
+            Text("Coordinates: $lat, $lon")
+        }
+
+        // Availability Date Range
+        val availability = state.viewedCampsite.availability
+        if (availability != null) {
+            Spacer(modifier = Modifier.padding(vertical = 4.dp))
+            Text("Available: ${availability.start} to ${availability.finish}")
+        }
+
+        Spacer(modifier = Modifier.padding(vertical = 8.dp))
+
+        // Join / Leave Waitlist Button (Entrants only, hidden for campsite owners)
+        if (!state.isOwner) {
+            Button(
+                onClick = viewModel::updateButtonState
+            ){
+                val txt = when (state.mainButtonState) {
+                    CampsiteDetailsMainButtonState.JOIN -> "Join Waitlist"
+                    CampsiteDetailsMainButtonState.LEAVE -> "Leave Waitlist"
+                    CampsiteDetailsMainButtonState.UNAVAILABLE -> "Unavailable"
+                }
+                Text(txt)
+            }
+        }
     }
 }
