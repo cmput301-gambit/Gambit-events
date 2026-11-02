@@ -1,6 +1,5 @@
 package com.campsitereservationapp.model
 
-import com.campsitereservationapp.data.DateRange
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -8,6 +7,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 
+/**
+ * Unit tests for [Campsite] validation and [CampsiteOwner.owns].
+ *
+ * **Purpose:** checks which campsites can be saved, and campsite ownership.
+ *
+ * **Design rationale:** plain JUnit tests with realistic campsite data;
+ * Campsite has no Android code, so no device is needed.
+ *
+ * **Outstanding issues:** None.
+ */
 class CampsiteTest {
 
     @Test
@@ -88,5 +97,15 @@ class CampsiteTest {
         assertNotNull(campsite.availability)
         assertEquals(range, campsite.availability)
         assertTrue(campsite.isValid())
+    }
+
+    @Test
+    fun owner_ownsOnlyTheirOwnCampsites() {
+        val moose = Campsite(id = "campsite-moose-meadow", name = "Moose Meadow", ownerId = "owner-jill", capacity = 3)
+        val jill = CampsiteOwner("owner-jill")
+        val bobby = CampsiteOwner("owner-bobby")
+
+        assertTrue(jill.owns(moose))
+        assertFalse(bobby.owns(moose))
     }
 }

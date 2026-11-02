@@ -1,6 +1,8 @@
 package com.campsitereservationapp.ui.campsite
 
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.MockDataSource
+import com.campsitereservationapp.data.SampleData
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteError
@@ -29,8 +31,8 @@ class CampsiteFormViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        repository = CampsiteRepository()
-        userRepository = UserRepository()
+        repository = CampsiteRepository(MockDataSource(SampleData.campsites))
+        userRepository = UserRepository(MockDataSource(SampleData.users))
         viewModel = CampsiteFormViewModel(repository, userRepository, "entrant-user")
     }
 
