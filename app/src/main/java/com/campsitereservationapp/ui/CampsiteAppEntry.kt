@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -36,6 +37,7 @@ fun CampsiteAppEntry(){
             route = "EntrantCampsiteDetails/{campsiteId}",
             arguments = listOf(navArgument("campsiteId"){ type = NavType.StringType})
         ) { backStackEntry ->
+            Log.d("CampsiteAppEntry", "Requesting Details screen with id='${backStackEntry.arguments?.getString("campsiteId")}'")
             val campId = backStackEntry.arguments?.getString("campsiteId") ?: return@composable
             CampsiteDetailsScreen(navController, viewedCampsiteId = campId)
         }

@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui.discovery
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -63,6 +64,7 @@ class CampsiteDetailsViewModel(
         //Should be done after lottery is implemented.
     )
 
+
     /**
      * The current screen state. The screen collects this and redraws
      * every time it changes.
@@ -74,12 +76,13 @@ class CampsiteDetailsViewModel(
             mainButtonState,
             viewedCampsiteId,
         ) { /*lotteries,*/ newButtonState, campsiteId,  ->
-
+            Log.d("CampsiteDetails", "Fetching campsite with id='$campsiteId'")
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteDetailsUiState(
                 newButtonState,
                 campsiteId,
-                viewedCampsite = campsiteRepository.get(campsiteId) ?: Campsite() //Returns an empty campsite if no campsite is found.
+                viewedCampsite = if (campsiteId.isBlank()) Campsite()
+                else campsiteRepository.get(campsiteId) ?: Campsite() //Returns an empty campsite if no campsite is found.
             )
         }
             // stateIn() turns the stream into a StateFlow the screen can read.
