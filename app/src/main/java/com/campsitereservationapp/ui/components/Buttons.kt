@@ -13,12 +13,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.campsitereservationapp.ui.theme.CampHover
 import com.campsitereservationapp.ui.theme.CampsiteReservationAppTheme
 
+/**
+ * Button components
+ */
+
 /*
 Sources:
 - Anthropic, Claude AI Sonnet 5.5 - Modifying Button and Outline for UI
 - Kotlin Documentation - Structure for Button component: https://kotlinlang.org/api/compose-multiplatform/material3/androidx.compose.material3/-button.html
-
- */
+*/
 
 @Composable
 fun PrimaryButton(
