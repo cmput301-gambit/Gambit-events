@@ -31,9 +31,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.Row  // you have this one
+import androidx.compose.ui.tooling.preview.Preview
+import com.campsitereservationapp.ui.theme.CampsiteReservationAppTheme
 
 
 /**
@@ -65,6 +67,8 @@ fun CampsiteFullScreen (
     description: String,
     capacity: Int,
     tags: List<String>,
+    lotteryStatus: String,
+    lotteryDates: String,
     onBack: () -> Unit,
     onEditLottery: () -> Unit,
     onViewRegistration: () -> Unit
@@ -138,6 +142,15 @@ fun CampsiteFullScreen (
         Text(location, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.headlineMedium)
         Text("Capacity: $capacity", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
+
+        Row {
+            Text("ACTIVE LOTTERY: ", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+            Text(lotteryDates, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Text(description, color = MaterialTheme.colorScheme.onPrimary)
+        Spacer(Modifier.height(24.dp))
 
 
     }
