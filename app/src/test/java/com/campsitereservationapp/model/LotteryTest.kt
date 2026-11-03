@@ -1,6 +1,5 @@
 package com.campsitereservationapp.model
 
-import com.campsitereservationapp.data.DateRange
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate

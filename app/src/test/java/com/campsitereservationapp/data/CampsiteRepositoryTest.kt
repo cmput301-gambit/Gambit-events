@@ -1,73 +1,128 @@
 package com.campsitereservationapp.data
 
 import com.campsitereservationapp.model.Campsite
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
+/**
+ * Unit tests for [CampsiteRepository] and the shared [Repository] rules.
+ *
+ * **Purpose:** checks adding, updating, deleting, ID rules and owner queries.
+ *
+ * **Design rationale:** a fresh repository backed by an [InMemoryDataSource]
+ * seeded from [SampleData] for each test, so tests never touch Firestore and
+ * can't affect each other. runTest runs suspend code.
+ *
+ * **Outstanding issues:** None.
+ */
 class CampsiteRepositoryTest {
 
-    @Test(expected = IllegalArgumentException::class)
-    fun blankId_isRejectedOnAdd() = runTest {
-        val repository = CampsiteRepository()
-        repository.add(Campsite(id = "", name = "New Site", ownerId = "owner-bobby", capacity = 3))
+    private lateinit var repository: CampsiteRepository
+
+    @Before
+    fun setUp() {
+        repository = CampsiteRepository(MockDataSource(SampleData.campsites))
+    }
+
+    private fun newCampsite(name: String = "Moose Meadow") = Campsite(
+        id = repository.newId(),
+        ownerId = "owner-jill",
+        name = name,
+        location = "Jasper, AB",
+        capacity = 3,
+    )
+
+    @Test
+    fun newId_givesDifferentIdsEachTime() {
+        assertNotEquals(repository.newId(), repository.newId())
     }
 
     @Test
-    fun newId_createsUniqueId() = runTest {
-        val repository = CampsiteRepository()
-        val id1 = repository.newId()
-        val id2 = repository.newId()
-        assertNotNull(id1)
-        assertTrue(id1.isNotBlank())
-        assertNotNull(id2)
-        assertTrue(id2.isNotBlank())
-        assertTrue(id1 != id2)
+    fun add_thenGet_returnsTheCampsite() = runTest {
+        val moose = newCampsite()
+
+        repository.add(moose)
+
+        assertEquals(moose, repository.get(moose.id))
     }
 
     @Test
-    fun givenId_isKeptOnAdd() = runTest {
-        val repository = CampsiteRepository()
-        val added = repository.add(Campsite(id = "custom-id-123", name = "Custom Site", ownerId = "owner-bobby", capacity = 3))
+    fun add_keepsTheGivenId() = runTest {
+        val moose = newCampsite().copy(id = "campsite-moose-meadow")
 
-        assertEquals("custom-id-123", added.id)
-        assertEquals(added, repository.get("custom-id-123"))
-    }
+        val saved = repository.add(moose)
 
-    @Test(expected = IllegalArgumentException::class)
-    fun duplicateId_isRejectedOnAdd() = runTest {
-        val repository = CampsiteRepository()
-        val site = Campsite(id = "site-1", name = "Site 1", ownerId = "owner-bobby", capacity = 3)
-        repository.add(site)
-        repository.add(site)
+        assertEquals("campsite-moose-meadow", saved.id)
+        assertEquals(moose, repository.get("campsite-moose-meadow"))
     }
 
     @Test
-    fun update_replacesExistingItem() = runTest {
-        val repository = CampsiteRepository()
-        val site = Campsite(id = "site-update", name = "Old Name", ownerId = "owner-bobby", capacity = 3)
-        repository.add(site)
+    fun add_withBlankId_isRejected() = runTest {
+        val error = runCatching { repository.add(Campsite(name = "No ID")) }.exceptionOrNull()
 
-        val updatedSite = site.copy(name = "New Name")
-        repository.update(updatedSite)
-
-        assertEquals("New Name", repository.get("site-update")?.name)
-    }
-
-    @Test(expected = IllegalArgumentException::class)
-    fun update_unknownId_fails() = runTest {
-        val repository = CampsiteRepository()
-        val site = Campsite(id = "unknown", name = "Unknown", ownerId = "owner-bobby", capacity = 3)
-        repository.update(site)
+        assertTrue(error is IllegalArgumentException)
     }
 
     @Test
-    fun getByOwner_returnsOnlyOwnerCampsites() = runTest {
-        val repository = CampsiteRepository()
-        val bobbySites = repository.getByOwner("owner-bobby")
-        assertTrue(bobbySites.isNotEmpty())
-        assertTrue(bobbySites.all { it.ownerId == "owner-bobby" })
+    fun add_withExistingId_isRejected() = runTest {
+        val copyOfPineRidge = Campsite(id = "campsite-pine-ridge", name = "Imposter")
+
+        val error = runCatching { repository.add(copyOfPineRidge) }.exceptionOrNull()
+
+        assertTrue(error is IllegalArgumentException)
+    }
+
+    @Test
+    fun update_replacesTheExistingCampsite() = runTest {
+        val pineRidge = repository.get("campsite-pine-ridge")!!
+
+        repository.update(pineRidge.copy(capacity = 10))
+
+        assertEquals(10, repository.get("campsite-pine-ridge")?.capacity)
+    }
+
+    @Test
+    fun update_whenCampsiteDoesNotExist_isRejected() = runTest {
+        val error = runCatching { repository.update(newCampsite()) }.exceptionOrNull()
+
+        assertTrue(error is IllegalArgumentException)
+    }
+
+    @Test
+    fun delete_removesTheCampsite() = runTest {
+        repository.delete("campsite-aspen-hollow")
+
+        assertNull(repository.get("campsite-aspen-hollow"))
+    }
+
+    @Test
+    fun observeAll_includesNewlyAddedCampsites() = runTest {
+        val moose = newCampsite()
+
+        repository.add(moose)
+
+        assertTrue(moose in repository.observeAll().first())
+    }
+
+    @Test
+    fun getByOwner_returnsOnlyThatOwnersCampsites() = runTest {
+        val names = repository.getByOwner("owner-bobby").map { it.name }
+
+        assertEquals(setOf("Pine Ridge", "Lakeside Loop"), names.toSet())
+    }
+
+    @Test
+    fun observeByOwner_updatesWhenTheOwnerAddsACampsite() = runTest {
+        assertEquals(1, repository.observeByOwner("owner-jill").first().size)
+
+        repository.add(newCampsite())
+
+        assertEquals(2, repository.observeByOwner("owner-jill").first().size)
     }
 }

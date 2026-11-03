@@ -1,7 +1,5 @@
-package com.campsitereservationapp.data
+package com.campsitereservationapp.service
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
@@ -12,11 +10,11 @@ import java.util.UUID
 /**
  * Turns the result of a lottery draw into win and lose notifications.
  *
- * **Purpose:** after a [Lottery] is drawn, creates one [Notification] for
+ * **Purpose:** after a [com.campsitereservationapp.model.Lottery] is drawn, creates one [com.campsitereservationapp.model.Notification] for
  * every entrant who joined: a win message for each winner and a lose
  * message for everyone else (US 01.03.01, 01.03.02).
  *
- * **Design rationale:** kept separate from [Lottery] so the lottery doesn't
+ * **Design rationale:** kept separate from [com.campsitereservationapp.model.Lottery] so the lottery doesn't
  * need to know how messages are worded or stored. The date and ID maker are
  * parameters so it is easy to unit test. Every entrant gets a notification,
  * even if they turned notifications off, because the in-app inbox should
@@ -26,7 +24,7 @@ import java.util.UUID
  * once it exists, and call this from wherever the draw runs
  * (Lottery.notifyEntrants).
  */
-@RequiresApi(Build.VERSION_CODES.O)
+
 class NotificationHandler {
 
     /**

@@ -1,11 +1,7 @@
-package com.campsitereservationapp.data
+package com.campsitereservationapp.model
 
-import android.os.Build
-import androidx.annotation.RequiresApi
-import kotlinx.coroutines.flow.Flow
-//import com.campsitereservationapp.data.Repository
-//import com.campsitereservationapp.data.SampleData
 import java.time.LocalDate
+
 /**
  * Represents a range of dates.
  *
@@ -16,7 +12,7 @@ import java.time.LocalDate
  *
  * **Outstanding issues:**
  */
-@RequiresApi(Build.VERSION_CODES.O)
+
 data class DateRange(
     val start: LocalDate,
     val finish: LocalDate,

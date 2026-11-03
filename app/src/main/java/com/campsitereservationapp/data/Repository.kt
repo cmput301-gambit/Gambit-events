@@ -2,46 +2,47 @@ package com.campsitereservationapp.data
 
 import com.campsitereservationapp.model.Identifiable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
-import java.util.UUID
 
 /**
  * Base class for every repository in the app.
  *
- * **Purpose:** stores items and lets the rest of the app add, update,
- * delete, look up and observe them.
+ * **Purpose:** lets the rest of the app add, update, delete, look up and
+ * observe items, and enforces the rules every repository shares.
  *
- * **Design rationale:** abstract base class because every repository
- * shares the same storage code; subclasses only add type-specific queries.
- * Items are kept in a [MutableStateFlow] so every screen observing them
- * updates automatically when anything changes.
+ * **Design rationale:** the actual storage is handed in as a [DataSource]
+ * (strategy pattern), so the same repository works with [FirestoreStore] in
+ * the app and [MockDataSource] in unit tests. This class keeps only the rules
+ * that are the same for every store, such as rejecting blank IDs.
+ * Subclasses add type-specific queries and their own Firestore mapping.
  *
- * **Outstanding issues:** backed by an in-memory list until Firestore is
- * connected (#62). Only the insides of these methods should need to change.
+ * **Outstanding issues:** None.
  *
  * @param T the type of item stored, which must have an ID
- * @param initialItems items to start with, such as [SampleData]
+ * @param dataSource where the items are actually kept
  */
-abstract class Repository<T : Identifiable>(initialItems: List<T> = emptyList()) {
-
-    // The current list of items. Private so only this class can change it;
-    // everyone else reads through observeAll() or get().
-    private val items = MutableStateFlow(initialItems)
+abstract class Repository<T : Identifiable>(private val dataSource: DataSource<T>) {
 
     /**
      * Live view of every item in the repository.
      *
      * @return a stream that emits the full list every time it changes
      */
-    open fun observeAll(): Flow<List<T>> = items
+    open fun observeAll(): Flow<List<T>> = dataSource.observeAll()
+
+    /**
+     * Live view of the items that match a filter.
+     *
+     * @param filter the condition items must meet
+     * @return a stream that emits the matching items every time they change
+     */
+    open fun observeWhere(filter: Filter<T>): Flow<List<T>> = dataSource.observeWhere(filter)
 
     /**
      * Returns every item in the repository right now, without watching for changes.
      *
      * @return a snapshot of the current list
      */
-    open suspend fun getAll(): List<T> = items.value
+    open suspend fun getAll(): List<T> = dataSource.getAll()
 
     /**
      * Looks up a single item by its ID.
@@ -49,7 +50,7 @@ abstract class Repository<T : Identifiable>(initialItems: List<T> = emptyList())
      * @param id the ID to look for
      * @return the item, or null if none has that ID
      */
-    open suspend fun get(id: String): T? = items.value.find { it.id == id }
+    open suspend fun get(id: String): T? = dataSource.get(id)
 
     /**
      * Creates a new unique ID for an item that's about to be added.
@@ -59,7 +60,7 @@ abstract class Repository<T : Identifiable>(initialItems: List<T> = emptyList())
      *
      * @return a unique ID not used by any other item
      */
-    fun newId(): String = UUID.randomUUID().toString()
+    fun newId(): String = dataSource.newId()
 
     /**
      * Adds a new item to the repository.
@@ -70,10 +71,7 @@ abstract class Repository<T : Identifiable>(initialItems: List<T> = emptyList())
      */
     open suspend fun add(item: T): T {
         require(item.id.isNotBlank()) { "Item has no ID. Use newId() when creating it." }
-        items.update { list ->
-            require(list.none { it.id == item.id }) { "Item with id ${item.id} already exists" }
-            list + item
-        }
+        dataSource.add(item)
         return item
     }
 
@@ -85,10 +83,7 @@ abstract class Repository<T : Identifiable>(initialItems: List<T> = emptyList())
      * @throws IllegalArgumentException if no item with this ID exists
      */
     open suspend fun update(item: T): T {
-        items.update { list ->
-            require(list.any { it.id == item.id }) { "Item with id ${item.id} does not exist" }
-            list.map { if (it.id == item.id) item else it }
-        }
+        dataSource.update(item)
         return item
     }
 
@@ -97,7 +92,17 @@ abstract class Repository<T : Identifiable>(initialItems: List<T> = emptyList())
      *
      * @param id the ID of the item to remove
      */
-    open suspend fun delete(id: String) {
-        items.update { list -> list.filterNot { it.id == id } }
+    open suspend fun delete(id: String) = dataSource.delete(id)
+
+    /**
+     * Adds starting items, but only if the repository is completely empty.
+     *
+     * Used on app startup so a fresh database has sample data to show,
+     * without adding duplicates every time the app opens.
+     *
+     * @param items the items to add when empty, such as [SampleData.campsites]
+     */
+    suspend fun seedIfEmpty(items: List<T>) {
+        if (getAll().isEmpty()) items.forEach { add(it) }
     }
 }
