@@ -6,16 +6,21 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,10 +33,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-
-// Test daa
+import java.time.LocalDate
 import com.campsitereservationapp.data.SampleData
 import com.campsitereservationapp.model.Campsite
+import java.time.DateTimeException
+import java.time.Instant
+import java.time.ZoneOffset
 import kotlin.math.roundToInt
 
 /**
@@ -50,6 +57,7 @@ fun CampsiteListScreen(
     val searchFieldInteraction = remember { MutableInteractionSource() }
     val searchBarHovered by searchBarInteraction.collectIsHoveredAsState()
     val searchFieldFocused by searchFieldInteraction.collectIsFocusedAsState()
+    var showDatePicker by remember {mutableStateOf(false)}
 
     val showFiltersButton = searchBarHovered || searchFieldFocused || displayFilters
     Column(
@@ -107,9 +115,16 @@ fun CampsiteListScreen(
                     onValueChange = viewModel::onFilterLocation
                 )
             }
-            /*Avaliable Dates*/
-            //TODO: Implement dates sorting here after adding it to campsiteFilter
-
+            TextButton( onClick = { showDatePicker = true} ){
+                Text(state.campsiteFilter.dateRange?.let { "${it.start} to ${it.finish}" } ?: "Any Dates")
+            }
+            /*Available Dates*/
+            if(showDatePicker){
+                DateFilterMenu(
+                    onConfirm = viewModel::onFilterDateRange,
+                    onDismiss = { showDatePicker = false }
+                )
+            }
         }
         //Create all the campsite cards
         state.campsites.forEach { CampsiteSummaryCard(
@@ -146,3 +161,31 @@ fun CampsiteSummaryCard(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DateFilterMenu(
+    onConfirm: (LocalDate?, LocalDate?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val pickerState = rememberDateRangePickerState()
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(
+                    pickerState.selectedStartDateMillis?.toLocalDate(),
+                    pickerState.selectedEndDateMillis?.toLocalDate(),
+                )
+                onDismiss()
+            }) { Text("Apply") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    ) {
+        DateRangePicker(state = pickerState)
+    }
+}
+
+private fun Long.toLocalDate(): LocalDate =
+    Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate() //Currently uses UTC, not sure if this needs to be changed

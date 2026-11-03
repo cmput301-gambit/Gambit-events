@@ -9,12 +9,15 @@ import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteFilter
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.DateRange
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import java.time.LocalDate
+import java.util.Date
 
 /**
  * Everything the campsite list screen needs to draw itself.
@@ -65,13 +68,11 @@ class CampsiteListViewModel(
         // runs again with the latest value from each.
         combine(
             campsiteRepository.observeAll(), // live campsite list from the repository
-            //searchQuery,                    // live search text from the user
             campsiteFilter,                 // live filter from the user
         ) { campsites, filter ->
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteListUiState(
                 campsites = filter.apply(campsites),//.filter { it.name.contains(query, ignoreCase = true) },
-                //searchQuery = query,
                 campsiteFilter = filter,
                 isLoading = false, // data has arrived, so we're done loading
             )
@@ -124,10 +125,21 @@ class CampsiteListViewModel(
     fun onFilterLocation(location: String){
         campsiteFilter.update { it.copy(location = location) }
     }
-    //TODO: Add date range
-//    fun onFilterDateRange(DateRange: dateRange){
-//        campsiteFilter.update { it.copy(dateRange = dateRange) }
-//    }
+    /**
+     * Called by the screen whenever the DatePicker confirms a new selection.
+     *
+     * Updating [campsiteFilter] makes combine() recalculate the state,
+     * so the filtered list updates automatically.
+     *
+     * @param start the start date to filter by.
+     * @param finish the end date to filter by.
+     */
+    fun onFilterDateRange(start: LocalDate?, finish: LocalDate?){
+        val newRange = if(start != null && finish != null && !finish.isBefore(start)) {
+            DateRange(start, finish)
+        }else null
+        campsiteFilter.update { it.copy(dateRange = newRange) }
+    }
 
 
     companion object {

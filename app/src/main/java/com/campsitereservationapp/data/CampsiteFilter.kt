@@ -1,6 +1,8 @@
 package com.campsitereservationapp.data
 
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.DateRange
+import java.time.LocalDate
 
 /**
  * A filter that acts on a [CampsiteRepository] based on its given values.
@@ -27,7 +29,7 @@ data class CampsiteFilter (
      var searchText: String = "",
      var location: String = "",
      var occupancy: Int = 0,
-    //var dateRange: DateRange = null
+     var dateRange: DateRange? = null
 ) {
     val occupancyText: String
         get() = if (occupancy == 0) "" else occupancy.toString()
@@ -40,8 +42,8 @@ data class CampsiteFilter (
     public fun apply(inputCampsites: List<Campsite>): List<Campsite>{
         val ret = mutableListOf<Campsite>()
         inputCampsites.forEach {
-            if(nameMatch(it) && locationMatch(it) && occupancyMatch(it)){
-                ret.add(it)
+            if(nameMatch(it) && locationMatch(it) && occupancyMatch(it) && dateRangeMatch(it)){
+                    ret.add(it)
             }
         }
         return ret
@@ -81,7 +83,12 @@ data class CampsiteFilter (
         return campsite.capacity >= occupancy
     }
 
-//    private fun dateRangeMatch(campsite: Campsite): Boolean {
-//        return something
-//    }
+    private fun dateRangeMatch(campsite: Campsite): Boolean {
+        val wanted = dateRange ?: return true              // no date filter, so everything matches
+        val available = campsite.availability ?: return false
+
+
+        return !wanted.start.isBefore(available.start) &&
+                !wanted.finish.isAfter(available.finish)
+    }
 }
