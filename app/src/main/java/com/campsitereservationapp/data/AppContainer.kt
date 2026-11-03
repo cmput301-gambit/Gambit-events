@@ -2,6 +2,7 @@ package com.campsitereservationapp.data
 
 import android.content.Context
 import com.campsitereservationapp.service.DeviceIdProvider
+import com.campsitereservationapp.service.NotificationHandler
 
 /**
  * Creates and holds the app's shared repositories.
@@ -32,6 +33,9 @@ class AppContainer(context: Context) {
     val notificationRepository by lazy {
         NotificationRepository(NotificationRepository.firestoreDataSource())
     }
+
+    /** Creates and saves win/lose notifications after a lottery draw. */
+    val notificationHandler by lazy { NotificationHandler(notificationRepository) }
 
     /** Shared repository for lotteries. */
     val lotteryRepository by lazy {
