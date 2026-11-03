@@ -3,6 +3,7 @@ package com.campsitereservationapp.ui.campsite
 import android.media.Rating
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,8 +24,26 @@ import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.ui.components.CampsiteCard
 import java.nio.file.WatchEvent
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Icon
 
+
+/**
+ * Campsite summary
+ * CampsiteSummaryCard: The original list card where entrants are able to view
+ * the summary of the campsite
+ *
+ *CampsitrFullScreen: Entrants are able to see the full view of the campsite
+ * information
+ */
 
 @Composable
 fun CampsiteSummary(
@@ -66,9 +85,37 @@ fun CampsiteFullScreen (
                 color = MaterialTheme.colorScheme.onPrimary,
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.weight(1f)
-
             )
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Close",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
 
+        Spacer(Modifier.height(16.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.tertiary)
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Row {
+           repeat(rating.toInt()) {
+               Icon(
+               Icons.Filled.Star,
+               contentDescription = null,
+               tint = MaterialTheme.colorScheme.secondary,
+                   modifier = Modifier.size(36.dp)
+               )
+           }
         }
 
     }
