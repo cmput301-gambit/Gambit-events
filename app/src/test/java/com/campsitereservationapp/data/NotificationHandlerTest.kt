@@ -7,6 +7,8 @@ import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.NotificationType
 import com.campsitereservationapp.model.WaitingList
 import com.campsitereservationapp.service.NotificationHandler
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -14,13 +16,15 @@ import org.junit.Test
 import java.time.LocalDate
 
 /**
- * Unit tests for [com.campsitereservationapp.service.NotificationHandler].
+ * Unit tests for [NotificationHandler].
  *
  * **Purpose:** checks that a drawn lottery creates one win or lose
- * notification per entrant (US 01.03.01, 01.03.02).
+ * notification per entrant, and that they are saved so each entrant
+ * sees theirs (US 01.03.01, 01.03.02).
  */
 class NotificationHandlerTest {
-    private val handler = NotificationHandler()
+    private val repository = NotificationRepository(MockDataSource())
+    private val handler = NotificationHandler(repository)
     private val createdOn = LocalDate.of(2026, 11, 2)
     private val pineRidge = Campsite("campsite-pine-ridge", ownerId = "owner-bobby", name = "Pine Ridge")
     private val registrationPeriod = DateRange(
@@ -118,5 +122,40 @@ class NotificationHandlerTest {
         val result = handler.createResultNotifications(lottery, listOf(pineRidge), createdOn)
 
         assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun sendResults_savesOneNotificationPerEntrant() = runTest {
+        val lottery = closedLottery(
+            winners = listOf("entrant-priya", "entrant-noah"),
+            losers = listOf("entrant-ali", "entrant-ben", "entrant-sara"),
+        )
+
+        handler.sendResultNotifications(lottery, listOf(pineRidge), createdOn)
+
+        assertEquals(5, repository.getAll().size)
+    }
+
+    @Test
+    fun sendResults_winnerSeesWinInTheirInbox() = runTest {
+        val lottery = closedLottery(listOf("entrant-priya"), listOf("entrant-ali"))
+
+        handler.sendResultNotifications(lottery, listOf(pineRidge), createdOn)
+
+        val priyasInbox = repository.observeForUser("entrant-priya").first()
+        assertEquals(1, priyasInbox.size)
+        assertEquals(NotificationType.LOTTERY_WON, priyasInbox[0].type)
+    }
+
+    @Test
+    fun sendResults_lotteryNotClosed_savesNothing() = runTest {
+        val lottery = Lottery("lottery-open", ownerId = "owner-bobby",
+            campsiteIds = mutableListOf(pineRidge.id), registrationPeriod = registrationPeriod,
+            reservationPeriod = reservationPeriod, stage = LotteryStatus.OPEN,
+            waitingList = WaitingList(mutableListOf("entrant-priya")))
+
+        handler.sendResultNotifications(lottery, listOf(pineRidge), createdOn)
+
+        assertTrue(repository.getAll().isEmpty())
     }
 }

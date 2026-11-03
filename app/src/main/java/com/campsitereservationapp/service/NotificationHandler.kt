@@ -1,5 +1,6 @@
 package com.campsitereservationapp.service
 
+import com.campsitereservationapp.data.NotificationRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
@@ -8,27 +9,51 @@ import java.time.LocalDate
 import java.util.UUID
 
 /**
- * Turns the result of a lottery draw into win and lose notifications.
+ * Turns the result of a lottery draw into win and lose notifications and saves them.
  *
- * **Purpose:** after a [com.campsitereservationapp.model.Lottery] is drawn, creates one [com.campsitereservationapp.model.Notification] for
+ * **Purpose:** after a [Lottery] is drawn, creates one [Notification] for
  * every entrant who joined: a win message for each winner and a lose
- * message for everyone else (US 01.03.01, 01.03.02).
+ * message for everyone else, and saves them in [NotificationRepository]
+ * so each entrant sees theirs in their inbox (US 01.03.01, 01.03.02).
  *
- * **Design rationale:** kept separate from [com.campsitereservationapp.model.Lottery] so the lottery doesn't
- * need to know how messages are worded or stored. The date and ID maker are
- * parameters so it is easy to unit test. Every entrant gets a notification,
- * even if they turned notifications off, because the in-app inbox should
- * always show their result; the opt-out only affects phone notifications.
+ * **Design rationale:** kept separate from [Lottery] so the lottery doesn't
+ * need to know how messages are worded or stored. The repository is passed
+ * in, like every other repository in the app, so tests can use a
+ * [com.campsitereservationapp.data.MockDataSource] instead of Firestore.
+ * Every entrant gets a notification, even if they turned notifications off,
+ * because the in-app inbox should always show their result; the opt-out
+ * only affects phone notifications.
  *
- * **Outstanding issues:** TODO save the notifications in NotificationLog
- * once it exists, and call this from wherever the draw runs
- * (Lottery.notifyEntrants).
+ * **Outstanding issues:** TODO call [sendResultNotifications] from wherever
+ * the draw runs (Lottery.notifyEntrants or the automatic draw). Calling it
+ * twice for the same lottery would save the notifications twice.
+ *
+ * @param notificationRepository where the notifications are saved
  */
-
-class NotificationHandler {
+class NotificationHandler(private val notificationRepository: NotificationRepository) {
 
     /**
-     * Creates the win and lose notifications for a drawn lottery.
+     * Creates the win and lose notifications for a drawn lottery and saves them.
+     *
+     * @param lottery the lottery; nothing is saved unless its stage is CLOSED
+     * @param campsites campsites to take names from; only those in the lottery are used
+     * @param today the date to put on each notification
+     * @return the notifications that were saved; empty if the lottery isn't closed
+     */
+    suspend fun sendResultNotifications(
+        lottery: Lottery,
+        campsites: List<Campsite>,
+        today: LocalDate = LocalDate.now(),
+    ): List<Notification> {
+        val notifications = createResultNotifications(
+            lottery, campsites, today, notificationRepository::newId
+        )
+        notifications.forEach { notificationRepository.add(it) }
+        return notifications
+    }
+
+    /**
+     * Creates the win and lose notifications for a drawn lottery, without saving them.
      *
      * @param lottery the lottery; nothing is created unless its stage is CLOSED
      * @param campsites campsites to take names from; only those in the lottery are used
