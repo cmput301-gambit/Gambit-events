@@ -1,24 +1,12 @@
 package com.campsitereservationapp.ui.entrant
 
-import android.util.Log
-import com.campsitereservationapp.data.CampsiteRepository
-import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.data.SampleData
 import com.campsitereservationapp.data.UserRepository
-import com.campsitereservationapp.model.Campsite
-import com.campsitereservationapp.model.DateRange
-import com.campsitereservationapp.model.Entrant
-import com.campsitereservationapp.model.Lottery
-import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.User
-import com.campsitereservationapp.ui.campsite.CampsiteFormViewModel
-import com.campsitereservationapp.ui.discovery.CampsiteDetailsMainButtonState
-import com.campsitereservationapp.ui.discovery.CampsiteDetailsViewModel
 import com.campsitereservationapp.ui.discovery.EntrantSettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -28,10 +16,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.time.LocalDate
+
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class EntrantSettingsViewModelTest {
@@ -50,7 +37,6 @@ class EntrantSettingsViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         repository = UserRepository(MockDataSource(SampleData.users))
-        //repository.add(user)
         viewModel = EntrantSettingsViewModel(repository, userId)
     }
 
