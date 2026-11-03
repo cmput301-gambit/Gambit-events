@@ -1,6 +1,5 @@
 package com.campsitereservationapp.ui.campsite
 
-import android.R
 import android.media.Rating
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
