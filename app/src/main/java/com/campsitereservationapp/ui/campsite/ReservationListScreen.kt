@@ -1,6 +1,7 @@
 package com.campsitereservationapp.ui.campsite
 
 
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,8 @@ import androidx.compose.ui.unit.sp
 import com.campsitereservationapp.ui.theme.CampsiteReservationAppTheme
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 
 @Composable
 fun ReservationListScreen(
@@ -49,6 +52,25 @@ fun ReservationListScreen(
         )
     }
     var toCancel by remember { mutableStateOf<String?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        TextButton(
+            onClick = { navController.popBackStack()},
+            modifier = Modifier.padding(start = 8.dp, top = 16.dp)
+        ) {
+            Text("Back", color = MaterialTheme.colorScheme.onBackground)
+        }
+        Text(
+            "My Reservations",
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
+        Spacer(Modifier.height(16.dp))
 
     if (reservations.isEmpty()) {
         Column(
@@ -130,8 +152,9 @@ fun ReservationListScreen(
             },
             dismissButton = {
                 TextButton(onClick = { toCancel = null }) { Text("Keep it") }
-            }
-        )
+                }
+            )
+        }
     }
 }
 
