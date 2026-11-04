@@ -39,7 +39,7 @@ class AppContainer(context: Context) {
 
     /** Shared repository for lotteries. */
     val lotteryRepository by lazy {
-        LotteryRepository(MockDataSource(), campsiteRepository)
+        LotteryRepository(MockDataSource(), campsiteRepository, notificationHandler)
     }
 
     /** The current user's ID, which is this device's ID (US 01.09.01). */
