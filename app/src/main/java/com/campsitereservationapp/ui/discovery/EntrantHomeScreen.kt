@@ -66,13 +66,21 @@ fun EntrantHomeScreen(
         ) {
             Text("Settings")
         }
-        /* Owner Home button */
+        /* Owner Home button (temp until we add the actual login process, testing purposes only) */
         Button(
             onClick = {
                 navController.navigate("OwnerHome")
             }
         ) {
             Text("Owner Home")
+        }
+        /* Admin Home button (temp until we add the actual login process, testing purposes only) */
+        Button(
+            onClick = {
+                navController.navigate("AdminHome")
+            }
+        ) {
+            Text("Admin Home")
         }
     }
 
