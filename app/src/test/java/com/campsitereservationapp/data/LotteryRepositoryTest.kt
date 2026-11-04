@@ -4,6 +4,7 @@ import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.WaitingList
+import com.campsitereservationapp.service.NotificationHandler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -134,5 +135,76 @@ class LotteryRepositoryTest {
         lotteryRepository.add(openLotteryWith(listOf("entrant-noah")))
 
         assertNull(lotteryRepository.leaveWaitingList("lottery-moose", "entrant-priya"))
+    }
+    // ================== Automatic Draw Test ==================
+
+    private val drawDay = LocalDate.of(2027, 5, 15)
+
+    private val notificationRepository = NotificationRepository(MockDataSource())
+
+    private fun drawingRepository() = LotteryRepository(
+        MockDataSource(),
+        CampsiteRepository(MockDataSource(SampleData.campsites)),
+        NotificationHandler(notificationRepository),
+    )
+
+    private fun summerLottery(registrationEnds: LocalDate) = Lottery(
+        id = "lottery-pine-summer", ownerId = "owner-bobby",
+        campsiteIds = listOf("campsite-pine-ridge"),
+        registrationPeriod = DateRange(LocalDate.of(2027, 5, 1), registrationEnds),
+        reservationPeriod = DateRange(LocalDate.of(2027, 6, 1), LocalDate.of(2027, 6, 30)),
+        stage = LotteryStatus.OPEN, winnerAmount = 2,
+        waitingList = WaitingList(
+            entrantList = listOf("entrant-priya", "entrant-noah", "entrant-ali", "entrant-ben", "entrant-sara"),
+        ),
+    )
+
+    @Test
+    fun drawDueLotteries_drawsEndedLotteryAndNotifiesEveryEntrant() = runTest {
+        val repository = drawingRepository()
+        repository.add(summerLottery(registrationEnds = drawDay.minusDays(1)))
+
+        repository.drawDueLotteries(drawDay)
+
+        val drawn = repository.get("lottery-pine-summer")!!
+        assertEquals(LotteryStatus.CLOSED, drawn.stage)
+        assertTrue(drawn.sentNotifications)
+        assertEquals(2, drawn.waitingList.entrantWinners.size)
+        val notifications = notificationRepository.getAll()
+        assertEquals(5, notifications.size)
+        assertEquals(2, notifications.count { it.type == NotificationType.LOTTERY_WON })
+    }
+
+    @Test
+    fun drawDueLotteries_leavesLotteriesStillTakingRegistrations() = runTest {
+        val repository = drawingRepository()
+        repository.add(summerLottery(registrationEnds = drawDay))
+
+        repository.drawDueLotteries(drawDay)
+
+        assertEquals(LotteryStatus.OPEN, repository.get("lottery-pine-summer")!!.stage)
+        assertTrue(notificationRepository.getAll().isEmpty())
+    }
+
+    @Test
+    fun drawDueLotteries_calledTwice_drawsAndNotifiesOnlyOnce() = runTest {
+        // Like two phones opening the app on draw day.
+        val repository = drawingRepository()
+        repository.add(summerLottery(registrationEnds = drawDay.minusDays(1)))
+
+        repository.drawDueLotteries(drawDay)
+        val firstWinners = repository.get("lottery-pine-summer")!!.waitingList.entrantWinners
+        repository.drawDueLotteries(drawDay)
+
+        assertEquals(firstWinners, repository.get("lottery-pine-summer")!!.waitingList.entrantWinners)
+        assertEquals(5, notificationRepository.getAll().size)
+    }
+
+    @Test
+    fun drawDueLotteries_withoutHandler_changesNothing() = runTest {
+        lotteryRepository.add(summerLottery(registrationEnds = drawDay.minusDays(1)))
+
+        assertFalse(lotteryRepository.drawDueLotteries(drawDay))
+        assertEquals(LotteryStatus.OPEN, lotteryRepository.get("lottery-pine-summer")!!.stage)
     }
 }

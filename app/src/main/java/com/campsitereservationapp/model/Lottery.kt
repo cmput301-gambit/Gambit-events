@@ -133,6 +133,22 @@ data class Lottery(
         if (stage == LotteryStatus.DRAFT) copy(stage = LotteryStatus.OPEN) else null
 
     /**
+     * Returns a copy of this lottery marked ready to draw, once its
+     * registration period is over (US 02.05.01). Registration includes its
+     * last day, so a lottery is ready from the day after it closes.
+     *
+     * @param today the current date
+     * @return the lottery in the DRAWN stage, or null if it isn't OPEN or
+     * registration hasn't ended yet
+     */
+    fun readyToDraw(today: LocalDate): Lottery? =
+        if (stage == LotteryStatus.OPEN && today.isAfter(registrationPeriod.finish)) {
+            copy(stage = LotteryStatus.DRAWN)
+        } else {
+            null
+        }
+
+    /**
      * Returns a copy of this lottery with winners picked at random and
      * everyone else marked as a loser. The stage moves from DRAWN to CLOSED.
      *

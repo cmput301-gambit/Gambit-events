@@ -112,6 +112,35 @@ class LotteryRepository(
     }
 
     /**
+     * Automatically draws every open lottery whose registration period has
+     * ended, then notifies each entrant whether they won (US 02.05.01).
+     *
+     * Called when the app starts on any device, so the owner doesn't have to
+     * do anything. Safe to run on many devices at once: moving each lottery
+     * to DRAWN and drawing it both happen inside modify, so each lottery is
+     * drawn exactly once and its notifications are sent once.
+     *
+     * Outstanding issues: a lottery is only drawn once someone opens the
+     * app after registration ends. If the app closes between the draw and
+     * the notifications, those notifications are not retried.
+     *
+     * @param today the current date; tests pass a fixed date
+     * @return true when the draws ran; false, without changing anything, if
+     * this repository has no [notificationHandler]
+     */
+    suspend fun drawDueLotteries(today: LocalDate = LocalDate.now()): Boolean {
+        if (notificationHandler == null) return false
+        // Only start a transaction for lotteries that are actually due.
+        val due = listLotteries(lotteryStage = LotteryStatus.OPEN).first()
+            .filter { it.readyToDraw(today) != null }
+        for (lottery in due) {
+            // Null means another device already moved it, which is fine.
+            modify(lottery.id) { it.readyToDraw(today) }
+        }
+        return drawLotteries()
+    }
+
+    /**
      * Adds an entrant to a lottery's waiting list and saves it, as one step.
      *
      * @param lotteryId the lottery to join

@@ -116,4 +116,26 @@ class LotteryTest {
         assertTrue(notified.sentNotifications)
         assertNull(notified.markNotified())
     }
+
+    @Test
+    fun readyToDraw_dayAfterRegistrationEnds_movesToDrawn() {
+        val dayAfter = registrationPeriod.finish.plusDays(1)
+
+        val ready = openLottery().readyToDraw(dayAfter)
+
+        assertEquals(LotteryStatus.DRAWN, ready?.stage)
+    }
+
+    @Test
+    fun readyToDraw_onLastDayOfRegistration_returnsNull() {
+        assertNull(openLottery().readyToDraw(registrationPeriod.finish))
+    }
+
+    @Test
+    fun readyToDraw_whenNotOpen_returnsNull() {
+        val dayAfter = registrationPeriod.finish.plusDays(1)
+        val draft = openLottery().copy(stage = LotteryStatus.DRAFT)
+
+        assertNull(draft.readyToDraw(dayAfter))
+    }
 }
