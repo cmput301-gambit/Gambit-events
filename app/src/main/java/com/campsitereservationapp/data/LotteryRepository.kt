@@ -5,9 +5,27 @@ import com.campsitereservationapp.model.LotteryStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class LotteryRepository(campsiteRepository: CampsiteRepository) : Repository<Lottery>() {
-
-    /**
+/**
+ * Stores and provides [Lottery] objects.
+ *
+ * **Purpose:** lets owners create and run lotteries, and lets entrants find
+ * the lotteries they can join or have joined.
+ *
+ * **Design rationale:** extends [Repository], which holds the shared rules;
+ * this class adds lottery-specific queries such as [listLotteries].
+ *
+ * **Outstanding issues:** no Firestore mapping yet, so lotteries are kept in
+ * memory and lost when the app closes. TODO: add a companion object with
+ * toMap, fromMap and firestoreDataSource like [CampsiteRepository].
+ *
+ * @param dataSource where lotteries are kept
+ * @param campsiteRepository used to look up the campsites in a lottery
+ */
+class LotteryRepository(
+    dataSource: DataSource<Lottery>,
+    campsiteRepository: CampsiteRepository,
+) : Repository<Lottery>(dataSource) {
+  /**
      * Lists the lotteries based on conditions passed as arguments. If a parameter is not set then
      * it will not check that argument.
      *

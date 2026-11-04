@@ -13,8 +13,7 @@ import org.junit.Test
  * **Purpose:** checks that each device gets exactly one user, and that
  * role changes are saved and observed (US 01.09.01).
  *
- * **Design rationale:** a fresh repository seeded from [SampleData] for
- * each test. runTest runs suspend and Flow code.
+ * **Design rationale:** a fresh repository backed by a [MockDataSource] seeded from [SampleData]. runTest runs suspend and Flow code.
  *
  * **Outstanding issues:** None.
  */
@@ -24,7 +23,7 @@ class UserRepositoryTest {
 
     @Before
     fun setUp() {
-        repository = UserRepository()
+        repository = UserRepository(MockDataSource(SampleData.users))
     }
 
     @Test

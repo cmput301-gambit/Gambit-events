@@ -34,7 +34,7 @@ enum class NotificationType {
  * @property createdAt the date the notification was created
  * @property read true once the entrant has opened it
  */
-@RequiresApi(Build.VERSION_CODES.O)
+
 data class Notification(
     override val id: String = "",
     val recipientId: String = "",
