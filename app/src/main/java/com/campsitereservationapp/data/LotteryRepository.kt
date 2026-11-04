@@ -1,7 +1,9 @@
 package com.campsitereservationapp.data
 
+import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
+import com.campsitereservationapp.service.NotificationHandler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -23,7 +25,8 @@ import kotlinx.coroutines.flow.map
  */
 class LotteryRepository(
     dataSource: DataSource<Lottery>,
-    campsiteRepository: CampsiteRepository,
+    val campsiteRepository: CampsiteRepository,
+    val notificationHandler: NotificationHandler? = null,
 ) : Repository<Lottery>(dataSource) {
   /**
      * Lists the lotteries based on conditions passed as arguments. If a parameter is not set then
@@ -40,6 +43,7 @@ class LotteryRepository(
      * @param entrantInLosers Bool for whether the userId is to be in the waitingList losers list.
      * @param entrantInWinners Bool for whether the userId is to be found in the winners list.
      * @param entrantInDeclined Bool for whether the userId is in the declined list.
+     * @param hasSentNotifications Bool condition for whether the filtered lotteries have sent notifications or not.
      * @return a stream that emits the lotteries matching the inputted conditions. Or returns every
      * lottery if every condition is left blank.
      * */
@@ -47,7 +51,8 @@ class LotteryRepository(
                       ownerId: String? = null, userId: String? = null,
                       entrantInLosers: Boolean? = null,
                       entrantInWinners: Boolean? = null,
-                      entrantInDeclined: Boolean? = null): Flow<List<Lottery>> =
+                      entrantInDeclined: Boolean? = null,
+                      hasSentNotifications: Boolean? = null): Flow<List<Lottery>> =
         observeAll().map { lotteries -> lotteries.filter {
             (it!=null) && (lotteryStage == null || it.stage == lotteryStage) &&
                     (campsiteId == null || it.campsiteIds.contains(campsiteId)) &&
@@ -55,8 +60,45 @@ class LotteryRepository(
                     (userId == null || it.waitingList.entrantList.contains(userId)) &&
                     ((entrantInWinners == null || userId == null) || (it.waitingList.entrantWinners.contains(userId) == entrantInWinners)) &&
                     ((entrantInLosers == null || userId == null) || (it.waitingList.entrantLosers.contains(userId) == entrantInLosers)) &&
-                    ((entrantInDeclined == null || userId == null) || (it.waitingList.entrantsDeclined.contains(userId) == entrantInDeclined))
+                    ((entrantInDeclined == null || userId == null) || (it.waitingList.entrantsDeclined.contains(userId) == entrantInDeclined)) &&
+                    (hasSentNotifications == null || it.sentNotifications == hasSentNotifications)
         }
+    }
+
+    /**
+     * Gets a flow of the list of lotteries that matches the conditions of the status being [LotteryStatus.DRAWN]
+     * and has not yet sent notifications ([Lottery.sentNotifications]). Then for each lottery it will draw the random winners
+     * and losers and send the notifications using the [NotificationHandler].
+     *
+     * Returns true when notifications are successfully sent, returns false when the notificationHandler
+     * is null in LotteryRepository construction call.
+     * */
+    suspend fun drawLotteries(): Boolean {
+        var hasHandler: Boolean = true
+        // Get list of all drawn lotteries that have not sent notifications.
+        val lotteries: Flow<List<Lottery>> = listLotteries(lotteryStage = LotteryStatus.DRAWN,
+            hasSentNotifications = false)
+        lotteries.collect {lotteries ->
+            lotteries.forEach {lottery ->
+                val campsiteList: MutableList<Campsite> = mutableListOf()
+                // Creates the list of campsite names
+                for (campsiteId in lottery.campsiteIds) {
+                    val campsite = campsiteRepository.get(campsiteId)
+                    if (campsite != null) {
+                        campsiteList.add(campsite)
+                    }
+                }
+                // Draws winners, sends notifications, and updates lottery's hasSentNotifications
+                lottery.drawEntrants()
+                if (notificationHandler == null) {
+                    hasHandler = false
+                } else {
+                    notificationHandler.sendResultNotifications(lottery, campsiteList)
+                }
+                lottery.notifiedEntrants()
+            }
         }
+        return hasHandler
+    }
 
 }
