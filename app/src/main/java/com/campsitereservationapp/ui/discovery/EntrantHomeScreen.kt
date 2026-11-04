@@ -45,7 +45,7 @@ fun EntrantHomeScreen(
         Text("Welcome back,\n" + state.entrantName)
         /*Reservations*/
         Button(onClick = {
-            //Navigate to reservations screen
+            navController.navigate(route = "Reservations")
             }
         ){
             Text("Reservations")

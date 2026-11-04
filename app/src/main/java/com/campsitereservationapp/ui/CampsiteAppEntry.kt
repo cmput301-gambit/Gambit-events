@@ -17,6 +17,7 @@ import com.campsitereservationapp.ui.discovery.CampsiteListScreen
 import com.campsitereservationapp.ui.discovery.EntrantHomeScreen
 import com.campsitereservationapp.ui.discovery.EntrantSettingsScreen
 import com.campsitereservationapp.ui.discovery.InboxScreen
+import com.campsitereservationapp.ui.campsite.ReservationListScreen
 /**
  * Top-level Jetpack Compose navigation entry point for the Campsite Reservation Application.
  *
@@ -35,6 +36,7 @@ fun CampsiteAppEntry(){
         composable("EntrantHome") { EntrantHomeScreen(navController) }
         composable("OwnerHome") { OwnerHomeScreen(navController) }
         composable("RegisterCampsite") { RegisterCampsiteScreen(navController) }
+        composable("Reservations") { ReservationListScreen(navController) }
         composable("AdminHome") { AdminHomeScreen(navController) }
         composable("AdminBrowseCampsites") { AdminBrowseCampsitesScreen(navController) }
         composable("AdminCampsiteList") { AdminCampsiteListScreen(navController) }

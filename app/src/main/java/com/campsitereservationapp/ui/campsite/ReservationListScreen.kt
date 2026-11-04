@@ -33,25 +33,112 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.campsitereservationapp.ui.theme.CampsiteReservationAppTheme
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 
 @Composable
-fun ReservationList () {
-    val reservation = remember {
-        mutableStateListOf("blah blah", "blah blah", "blah blah")
+fun ReservationListScreen(
+    navController: NavController
+) {
+    // Fake data for now. Swap for the real list once Firebase is hooked up.
+    val reservations = remember {
+        mutableStateListOf(
+            "Old Mountain Campsite A",
+            "Lakeside Camp",
+            "Pine Ridge"
+        )
+    }
+    var toCancel by remember { mutableStateOf<String?>(null) }
+
+    if (reservations.isEmpty()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "No active reservations",
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(reservations) { name ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "CONFIRMED",
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                name,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Text(
+                                "Jul 2 - Jul 18",
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                        Button(
+                            onClick = { toCancel = name },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiary,
+                                contentColor = MaterialTheme.colorScheme.onTertiary
+                            )
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    toCancel?.let { n ->
+        AlertDialog(
+            onDismissRequest = { toCancel = null },
+            title = { Text("Cancel reservation?") },
+            text = { Text("Cancel your stay at $n?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    reservations.remove(n)
+                    toCancel = null
+                }) { Text("Yes, cancel") }
+            },
+            dismissButton = {
+                TextButton(onClick = { toCancel = null }) { Text("Keep it") }
+            }
+        )
     }
 }
 
-var toCancel by remember { mutableStateOf<String?>(null) } // i wanna change this function
-
-if (reservation.isEmpty()) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalArrangement = Alignment.CenterHorizontally
-    ) {
-
+@Preview(showBackground = true)
+@Composable
+fun ReservationsListScreenPreview() {
+    CampsiteReservationAppTheme {
+        ReservationListScreen(rememberNavController())
     }
 }
