@@ -61,6 +61,7 @@ data class Lottery (
     var stage: LotteryStatus = LotteryStatus.DRAFT,
     var winnerAmount: Int = 1,
     var waitingList: WaitingList = WaitingList(),
+    var sentNotifications: Boolean = false,
 ): Identifiable {
     fun validate() : List<LotteryError> {
         val errors = mutableListOf<LotteryError>()
@@ -98,11 +99,11 @@ data class Lottery (
     }
 
     /**
-     * Attempts to add an [Entrant] to the waiting list. Silently fails if either the lottery status
-     * is not OPEN, whether waiting list cap is hit, or whether the entrant is already in the
+     * Attempts to add an [Entrant.userId] to the waiting list. Silently fails if either the lottery status
+     * is not OPEN, whether waiting list cap is hit, or whether the entrant's id is already in the
      * waiting list.
      *
-     * @param entrant Entrant to be added to the waiting list
+     * @param entrantId [Entrant.userId] to be added to the waiting list
      * @return Returns true when entrant has been successfully added, false otherwise.
      * */
     fun addEntrant(entrantId: String): Boolean {
@@ -113,9 +114,9 @@ data class Lottery (
     }
 
     /**
-     * Attempts to remove an [Entrant] from the waiting list if the lottery status is OPEN.
+     * Attempts to remove an [Entrant.userId] from the waiting list if the lottery status is OPEN.
      *
-     * @param entrant Entrant to be removed from the waiting list
+     * @param entrantId Entrant's userId to be removed from the waiting list
      * @return Returns true when entrant has been successfully removed, false otherwise.
      * */
     fun removeEntrant(entrantId: String): Boolean {
@@ -126,12 +127,12 @@ data class Lottery (
     }
 
     /**
-    * If the current lottery stage is DRAWN, removes the amount of winners from the entrants waiting
-     * list and puts them into a winners list inside [WaitingList]. Sets the stage from DRAWN to CLOSED.
+    * If the current lottery stage is DRAWN, splits the entrantList into winners and losers stored
+     * inside [WaitingList]. Sets the stage from DRAWN to CLOSED.
     *
     * */
     fun drawEntrants() {
-        var entrants = mutableListOf<String>()
+        val entrants = mutableListOf<String>()
         entrants.addAll(waitingList.entrantList)
         waitingList.entrantLosers.addAll(waitingList.entrantList)
         if (stage == LotteryStatus.DRAWN) {
@@ -143,7 +144,6 @@ data class Lottery (
                 waitingList.entrantLosers.remove(wonEntrant)
             }
             stage = LotteryStatus.CLOSED
-            notifyEntrants()
         }
     }
 
@@ -173,13 +173,13 @@ data class Lottery (
     }
 
     /**
-     * If the current lottery stage is CLOSED then it will send the lists of lottery
-     * winners and losers to the [NotificationHandler] to send to the entrants.
+     * If the current lottery stage is CLOSED then it will set the [sentNotifications] bool
+     *  to true, resulting in future notifications not being sent by the notificationHandler.
      *
      * */
-    fun notifyEntrants() {
+    fun notifiedEntrants() {
         if (stage == LotteryStatus.CLOSED) {
-            // TODO: USE NOTIFICATION HANDLER TO SEND NOTIFICATIONS}
+            sentNotifications = true
         }
     }
 }
