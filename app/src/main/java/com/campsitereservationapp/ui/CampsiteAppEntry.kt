@@ -13,7 +13,7 @@ import com.campsitereservationapp.ui.discovery.CampsiteDetailsScreen
 import com.campsitereservationapp.ui.discovery.CampsiteListScreen
 import com.campsitereservationapp.ui.discovery.EntrantHomeScreen
 import com.campsitereservationapp.ui.discovery.EntrantSettingsScreen
-
+import com.campsitereservationapp.ui.discovery.InboxScreen
 /**
  * Top-level Jetpack Compose navigation entry point for the Campsite Reservation Application.
  *
@@ -42,5 +42,6 @@ fun CampsiteAppEntry(){
             CampsiteDetailsScreen(navController, viewedCampsiteId = campId)
         }
         composable("UserSettings") { EntrantSettingsScreen(navController) }
+        composable("Inbox") { InboxScreen(navController) }
     }
 }

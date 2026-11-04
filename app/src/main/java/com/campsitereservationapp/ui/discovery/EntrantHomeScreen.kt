@@ -37,6 +37,11 @@ fun EntrantHomeScreen(
             Text("Search")
         }
         /*Notifications*/
+        Button(onClick = {
+            navController.navigate("Inbox")
+        }) {
+            Text("Inbox")
+        }
         Text("Welcome back,\n" + state.entrantName)
         /*Reservations*/
         Button(onClick = {
