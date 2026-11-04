@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,13 +28,14 @@ import androidx.navigation.NavController
 import com.campsitereservationapp.model.Campsite
 
 /**
- * Screen displaying the full list of campsites for admin management (US 03.04.01).
+ * Screen displaying the full list of campsites for admin management (US 03.04.01, 03.01.01).
  *
  * **Purpose:** allows administrators to view all campsites in the app, view details,
- * and remove any campsite.
+ * and remove any campsite after confirming in a popup.
  *
  * **Design rationale:** barebones card list displaying campsite summaries with "View More"
- * and "Remove" buttons bound to [AdminCampsiteListViewModel].
+ * and "Remove" buttons bound to [AdminCampsiteListViewModel]. Removing asks for
+ * confirmation first, since it also deletes the campsite's lotteries and can't be undone.
  *
  * **Outstanding issues:** none.
  *
@@ -82,12 +85,33 @@ fun AdminCampsiteListScreen(
                         navController.navigate("AdminCampsiteDetails/${campsite.id}")
                     },
                     onRemove = {
-                        viewModel.removeCampsite(campsite.id)
+                        viewModel.requestRemoval(campsite)
                     }
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
         }
+    }
+
+    // "Are you sure?" popup, shown while a removal is waiting for confirmation.
+    state.campsitePendingRemoval?.let { campsite ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelRemoval,
+            title = { Text("Remove campsite?") },
+            text = {
+                Text("This will permanently delete ${campsite.name} and its lotteries. This can't be undone.")
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmRemoval) {
+                    Text("Remove", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::cancelRemoval) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 
