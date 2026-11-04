@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -15,15 +16,15 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
 /**
- * Home screen for campsite owners.
+ * Home screen for campsite owners (US 02.01.01, US 02.03.01, US 02.09.01).
  *
  * **Purpose:** provides entry points for campsite owner management tasks,
- * such as registering a campsite and viewing lottery waitlists.
+ * including registering a campsite, viewing the list of owned campsites, and viewing waitlists.
  *
  * **Design rationale:** barebones layout using Material 3 text and buttons
  * to provide navigation options for campsite owners without styling bloat.
  *
- * **Outstanding issues:** "View My List of Campsites" action is intentionally omitted.
+ * **Outstanding issues:** none.
  *
  * @param navController navigation controller used for screen transitions
  */
@@ -62,6 +63,15 @@ fun OwnerHomeScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Button(
+            onClick = { navController.navigate("OwnerCampsiteList") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("View My List of Campsites")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
             onClick = { navController.navigate("OwnerWaitlists") },
             modifier = Modifier.fillMaxWidth()
         ) {
