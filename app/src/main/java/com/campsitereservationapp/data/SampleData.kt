@@ -3,8 +3,13 @@ package com.campsitereservationapp.data
 import com.campsitereservationapp.model.Admin
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteOwner
+import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Entrant
+import com.campsitereservationapp.model.Lottery
+import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.User
+import com.campsitereservationapp.model.WaitingList
+import java.time.LocalDate
 
 /**
  * Realistic example data shared by repositories, previews and tests.
@@ -35,6 +40,7 @@ object SampleData {
             description = "Lakefront sites with a boat launch and showers.",
             location = "Sylvan Lake, AB",
             capacity = 4,
+            availability = DateRange(LocalDate.now().minusDays(7), LocalDate.now().plusDays(7))
         ),
         Campsite(
             id = "campsite-aspen-hollow",
@@ -43,6 +49,7 @@ object SampleData {
             description = "Quiet walk-in tent sites in an aspen grove.",
             location = "Elk Island, AB",
             capacity = 2,
+            availability = DateRange(LocalDate.now().minusDays(7), LocalDate.now().plusDays(7))
         ),
         // Add sample data for other classes here such as lotteries, reservations, users, etc.
     )
@@ -66,6 +73,22 @@ object SampleData {
         User(
             id = "2f9e63b7-4130-45af-b310-905cae77b937", name = "Noah Walters",
             entrant = Entrant(userId = "2f9e63b7-4130-45af-b310-905cae77b937")
+        )
+    )
+
+    val lotteries = listOf(
+        Lottery("lottery-a", "owner-bobby",
+            mutableListOf("campsite-lakeside-loop"),
+            DateRange(LocalDate.now().minusDays(1), LocalDate.now().plusDays(7)),
+            DateRange(LocalDate.now().plusDays(8), LocalDate.now().plusDays(12)),
+            stage = LotteryStatus.OPEN
+            ),
+        Lottery("lottery-b", "owner-bobby",
+            mutableListOf("campsite-aspen-hollow"),
+            DateRange(LocalDate.now().minusDays(1), LocalDate.now().plusDays(7)),
+            DateRange(LocalDate.now().plusDays(8), LocalDate.now().plusDays(12)),
+            stage = LotteryStatus.OPEN,
+            waitingList = WaitingList(mutableListOf("entrant-user"))
         )
     )
 }

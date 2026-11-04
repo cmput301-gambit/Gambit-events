@@ -44,8 +44,8 @@ fun EntrantSettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var tempNewName by remember(state.currentUser.name) { mutableStateOf(state.currentUser.name) }
-    //val tempNewPhone by remember { mutableStateOf("") }
-    //val tempNewEmail by remember { mutableStateOf("") }
+    var tempNewPhone by remember(state.currentUser.phone) { mutableStateOf(state.currentUser.phone) }
+    var tempNewEmail by remember(state.currentUser.email) { mutableStateOf(state.currentUser.email) }
     /*Update Settings popup*/
     Column(Modifier.fillMaxWidth()){
         Spacer(Modifier.padding(vertical = 30.dp))
@@ -75,16 +75,25 @@ fun EntrantSettingsScreen(
                     Column(Modifier.fillMaxWidth()){
                         TextField(
                             value = tempNewName,
-                            onValueChange = {tempNewName=it},//viewModel::onFilterName,
+                            onValueChange = {tempNewName=it},
                             placeholder = { Text("New Name") },
-                            //interactionSource = searchFieldInteraction
+                        )
+                        TextField(
+                            value = tempNewEmail,
+                            onValueChange = {tempNewEmail=it},
+                            placeholder = { Text("New Email") },
+                        )
+                        TextField(
+                            value = tempNewPhone,
+                            onValueChange = {tempNewPhone=it},
+                            placeholder = { Text("New Phone") },
                         )
                         Button(onClick = {
                             viewModel.updateUserDetails(
                                 tempNewName,
-                                state.currentUser.phone,
-                                state.currentUser.email,
-                                state.currentUser.profileImageId
+                                tempNewPhone,
+                                tempNewEmail,
+                                state.currentUser.profileImageId //TODO: Implement profile images
                             )
                             viewModel.toggleUpdateUserOpen()
                         }
@@ -92,8 +101,6 @@ fun EntrantSettingsScreen(
                             Text("Update Profile")
                         }
                     }
-
-                    //Text("This is a popup")
                 }
             }
         }

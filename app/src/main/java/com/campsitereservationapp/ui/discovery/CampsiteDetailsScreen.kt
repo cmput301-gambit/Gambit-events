@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui.discovery
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -41,10 +42,11 @@ fun CampsiteDetailsScreen(
     viewModel: CampsiteDetailsViewModel = viewModel(factory = CampsiteDetailsViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
-
+    Log.d("CampsiteDetailsScreen", "Starting details screen with viewedCampsiteId='$viewedCampsiteId'")
     LaunchedEffect(viewedCampsiteId) {
         viewModel.updateViewedCampSiteId(viewedCampsiteId)
     }
+
 
     Column(
         Modifier

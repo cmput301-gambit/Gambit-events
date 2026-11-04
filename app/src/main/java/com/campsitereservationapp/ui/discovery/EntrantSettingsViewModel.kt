@@ -99,7 +99,8 @@ class EntrantSettingsViewModel(
             ){
         viewModelScope.launch {
                 val current = userRepository.getOrCreate(currentUserId)
-                //TODO: Currently this line updates only locally, should update the user in the db instead
+                println("Current = $current")
+                println("hasNotif? = $newNotificationsEnabled")
                 userRepository.update(
                     current.copy(
                         name = newName ?: current.name,
@@ -109,10 +110,12 @@ class EntrantSettingsViewModel(
                         notificationsEnabled = newNotificationsEnabled ?: current.notificationsEnabled
                     )
                 )
+            println("Current = ${userRepository.getOrCreate(currentUserId)}")
             }
         }
 
     fun toggleReceiveNotifications(){
+        println("Toggling user")
         viewModelScope.launch {
             updateUserDetails(
                 newNotificationsEnabled = !userRepository.getOrCreate(currentUserId).notificationsEnabled

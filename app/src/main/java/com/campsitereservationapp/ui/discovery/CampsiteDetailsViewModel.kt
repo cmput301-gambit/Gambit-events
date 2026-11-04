@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui.discovery
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -8,13 +9,18 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteFilter
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.Lottery
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Everything the campsite details screen needs to make and manage their status in a given
@@ -49,8 +55,9 @@ data class CampsiteDetailsUiState(
  * by value between this models screen and the last screen [CampsiteListScreen].
  */
 class CampsiteDetailsViewModel(
-    //private val lotteryRepository: LotteryRepository, //TODO: Implement when lotteryRepository is added.
-    private val campsiteRepository: CampsiteRepository
+    private val lotteryRepository: LotteryRepository,
+    private val campsiteRepository: CampsiteRepository,
+    private val currentEntrantId: String,
 ) : ViewModel() {
 
     //ID of the currently viewed campsite, passed from the previous screen.
@@ -59,8 +66,6 @@ class CampsiteDetailsViewModel(
     //Enum of the main button of this screen.
     private val mainButtonState : MutableStateFlow<CampsiteDetailsMainButtonState> = MutableStateFlow(
         CampsiteDetailsMainButtonState.JOIN
-        //TODO: Change this to be either JOIN or LEAVE depending on whether the user is already in that lottery.
-        //Should be done after lottery is implemented.
     )
 
     /**
@@ -70,16 +75,17 @@ class CampsiteDetailsViewModel(
     val uiState: StateFlow<CampsiteDetailsUiState> =
 
         combine(
-            //lotteryRepository.(This campsites lottery).observeAll(), // live campsite list from the repository
+            lotteryRepository.observeAll(), // could be changed to an observeWhere() call
             mainButtonState,
             viewedCampsiteId,
-        ) { /*lotteries,*/ newButtonState, campsiteId,  ->
-
+        ) { lotteries, newButtonState, campsiteId,  ->
+            //Log.d("CampsiteDetails", "Fetching campsite with id='$campsiteId'")
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteDetailsUiState(
                 newButtonState,
                 campsiteId,
-                viewedCampsite = campsiteRepository.get(campsiteId) ?: Campsite() //Returns an empty campsite if no campsite is found.
+                viewedCampsite = if (campsiteId.isBlank()) Campsite()
+                else campsiteRepository.get(campsiteId) ?: Campsite() //Returns an empty campsite if no campsite is found.
             )
         }
             // stateIn() turns the stream into a StateFlow the screen can read.
@@ -95,49 +101,88 @@ class CampsiteDetailsViewModel(
             )
 
     /**
-     * Called by the screen whenever the main button is pressed.
+     * Called by the screen whenever the main button is pressed. Contains all behaviour for joining and leaving
+     * a campsite lottery.
      *
      * Updating [mainButtonState] makes combine() recalculate the state,
      * so the buttons text and behaviour are updated.
-     * //TODO: Many changes required to properly implement joining and leaving
      */
     fun updateButtonState() {
-        //Case where the campsite suddenly doesn't have a lottery (ex. the date passed)
-        if(false){ //TODO: This should check if the given campsite has a joinable lottery
-            mainButtonState.update { CampsiteDetailsMainButtonState.UNAVAILABLE }
-            return
-        }
-        when (mainButtonState.value) {
-            CampsiteDetailsMainButtonState.JOIN -> {
-                //Try to join the campsite lottery
-                //TODO: Add joining campsite lottery, and check for if that was successful before changing button
-                mainButtonState.update {
-                    CampsiteDetailsMainButtonState.LEAVE
+        viewModelScope.launch {
+            try {
+                val camp = campsiteRepository.get(viewedCampsiteId.value)
+                val lottery = lotteryRepository
+                    .listLotteries(campsiteId = viewedCampsiteId.value)
+                    .first()
+                    .firstOrNull()
+                //Case where either a campsite stopped existing or its availability is gone, or no lottery can be found
+                if (camp?.availability == null || lottery == null) {
+                    //println("BAD CAMP OR LOTTERY")
+                    mainButtonState.update { CampsiteDetailsMainButtonState.UNAVAILABLE }
                 }
-            }
-            //Try to leave the campsite lottery
-            //TODO: Add method of leaving campsite lottery here, and check for if that was successful before changing button
-            CampsiteDetailsMainButtonState.LEAVE -> {
-                mainButtonState.update {
-                    CampsiteDetailsMainButtonState.JOIN
-                }
-            }
-            else -> {
-                return //This case should ideally be inaccessible
-            }
-        }
+                //Separating behaviour based on current button dialog
+                //No case for UNAVAILABLE, not sure if anything should be there.
+                when (mainButtonState.value) {
 
+                    CampsiteDetailsMainButtonState.JOIN -> {
+                        //println("UPDATING TO JOIN")
+                        mainButtonState.update{
+                            //println("Lottery add entrant : ${lottery}")
+                            if (lottery?.addEntrant(currentEntrantId) ?: false) CampsiteDetailsMainButtonState.LEAVE
+                            else CampsiteDetailsMainButtonState.UNAVAILABLE
+                        }
+                    }
+                    CampsiteDetailsMainButtonState.LEAVE -> {
+                        mainButtonState.update{
+                            if (lottery?.removeEntrant(currentEntrantId) ?: false) CampsiteDetailsMainButtonState.JOIN
+                            else CampsiteDetailsMainButtonState.UNAVAILABLE
+                        }
+                    }
+                    else -> {
+                        //Should something be here?
+                    }
+                }
+                //Error handling, should only be necessary while going through test cases
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("CampsiteDetails", "Failed to update lottery state", e)
+                mainButtonState.value = CampsiteDetailsMainButtonState.UNAVAILABLE
+            }
+        }
     }
     /**
      * Called by the screen on the first load.
      *
-     * Updating [viewedCampsite] makes combine() recalculate the state,
-     * automatically making this screen display the correct info.
+     * Updating [newCampsiteId] makes combine() recalculate the state,
+     * automatically making this screen display the correct info. Also updates the [mainButtonState] to be
+     * accurate to the users current state relative to the viewed campsite.
      *
      * @param newCampsiteId the id of the campsite to display for this screen
      */
     fun updateViewedCampSiteId(newCampsiteId: String){
         viewedCampsiteId.update { newCampsiteId }
+        viewModelScope.launch {
+            //Might be overkill for getting a campsite
+            val camp: Campsite = if (viewedCampsiteId.value.isBlank()) Campsite()
+            else campsiteRepository.get(viewedCampsiteId.value) ?: Campsite()
+
+            val lottery = lotteryRepository
+                .listLotteries(campsiteId = viewedCampsiteId.value)
+                .first()
+                .firstOrNull()
+
+            //Passed date or no lottery available for the camp
+            if (camp.availability == null || lottery == null) {
+                //println(lottery)
+                mainButtonState.update { CampsiteDetailsMainButtonState.UNAVAILABLE }
+            }else{
+                if(lottery.waitingList.entrantList.contains(currentEntrantId))
+                mainButtonState.update { CampsiteDetailsMainButtonState.LEAVE }
+                else mainButtonState.update { CampsiteDetailsMainButtonState.JOIN }
+            }
+        }
+
     }
 
     /**
@@ -168,9 +213,9 @@ class CampsiteDetailsViewModel(
             initializer {
                 val app = this[APPLICATION_KEY] as CampsiteApp
                 CampsiteDetailsViewModel(
-                    //TODO: enable once lotteryRepository is implemented.
-                    //app.container.lotteryRepository,
-                    app.container.campsiteRepository
+                    app.container.lotteryRepository,
+                    app.container.campsiteRepository,
+                    app.container.currentUserId
                )
             }
         }
