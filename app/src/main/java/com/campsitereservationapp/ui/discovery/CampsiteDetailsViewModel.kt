@@ -199,6 +199,23 @@ class CampsiteDetailsViewModel(
         //adds a rating to the campsite
     }
 
+    /**
+     * Deletes a campsite from the repository (admin functionality, US 03.04.01).
+     *
+     * @param campsiteId ID of the campsite to delete
+     */
+    fun deleteCampsite(campsiteId: String) {
+        viewModelScope.launch {
+            try {
+                campsiteRepository.delete(campsiteId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("CampsiteDetails", "Failed to delete campsite $campsiteId", e)
+            }
+        }
+    }
+
 
     companion object {
         /**
