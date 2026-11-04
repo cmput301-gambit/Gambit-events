@@ -57,4 +57,16 @@ class MockDataSource<T : Identifiable>(initialItems: List<T> = emptyList()) : Da
     override suspend fun delete(id: String) {
         items.update { list -> list.filterNot { it.id == id } }
     }
+
+    override suspend fun modify(id: String, change: (T) -> T?): T? {
+        var saved: T? = null
+        items.update { list ->
+            saved = null
+            val current = list.find { it.id == id } ?: return@update list
+            val changed = change(current) ?: return@update list
+            saved = changed
+            list.map { if (it.id == id) changed else it }
+        }
+        return saved
+    }
 }

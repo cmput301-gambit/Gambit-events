@@ -24,9 +24,9 @@ import java.util.UUID
  * because the in-app inbox should always show their result; the opt-out
  * only affects phone notifications.
  *
- * **Outstanding issues:** TODO call [sendResultNotifications] from wherever
- * the draw runs (Lottery.notifyEntrants or the automatic draw). Calling it
- * twice for the same lottery would save the notifications twice.
+ * **Outstanding issues:** called by LotteryRepository.drawLotteries, which
+ * makes sure each lottery's notifications are sent once. If the app closes
+ * partway through, the remaining notifications are not retried.
  *
  * @param notificationRepository where the notifications are saved
  */
