@@ -79,4 +79,19 @@ interface DataSource<T : Identifiable> {
      * @param id the ID of the item to remove
      */
     suspend fun delete(id: String)
+
+    /**
+     * Reads an item, changes it, and saves the result as one step, so no
+     * other change can happen in between.
+     *
+     * [change] may run more than once (Firestore retries if someone else
+     * changed the item at the same moment), so it must only build the new
+     * item and do nothing else, such as sending notifications.
+     *
+     * @param id the ID of the item to change
+     * @param change given the current item, returns the updated item, or
+     * null to leave it unchanged
+     * @return the saved item, or null if no item has this ID or [change] returned null
+     */
+    suspend fun modify(id: String, change: (T) -> T?): T?
 }
