@@ -4,10 +4,12 @@ import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,16 +31,25 @@ enum class CampsiteDetailsMainButtonState {
 }
 
 /**
- * Screen used to fulfill US 01.01.05, 01.01.06, 01.02.01, 01.02.02, and 01.13.01 (View campsite details).
+ * Screen used to fulfill US 01.01.05, 01.01.06, 01.02.01, 01.02.02, 01.13.01, and US 03.04.01 (View campsite details).
+ *
+ * **Purpose:** displays details for a campsite to entrants and administrators.
+ *
+ * **Design rationale:** displays campsite information and provides waitlist actions for entrants, or
+ * an Admin View tag and deletion capability for administrators (US 03.04.01).
+ *
+ * **Outstanding issues:** none.
  *
  * @param navController navigation controller used for screen transitions
  * @param viewedCampsiteId ID of the campsite to display
+ * @param isAdmin true if viewing as an administrator (US 03.04.01)
  * @param viewModel view model holding campsite details state
  */
 @Composable
 fun CampsiteDetailsScreen(
     navController: NavController,
     viewedCampsiteId: String,
+    isAdmin: Boolean = false,
     viewModel: CampsiteDetailsViewModel = viewModel(factory = CampsiteDetailsViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -46,7 +57,6 @@ fun CampsiteDetailsScreen(
     LaunchedEffect(viewedCampsiteId) {
         viewModel.updateViewedCampSiteId(viewedCampsiteId)
     }
-
 
     Column(
         Modifier
@@ -59,6 +69,16 @@ fun CampsiteDetailsScreen(
             modifier = Modifier.clickable { navController.popBackStack() }
         )
         Spacer(modifier = Modifier.padding(vertical = 8.dp))
+
+        // Admin Tag (US 03.04.01)
+        if (isAdmin) {
+            Text(
+                text = "Admin View",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge
+            )
+            Spacer(modifier = Modifier.padding(vertical = 4.dp))
+        }
 
         // Campsite Name
         Text(
@@ -105,16 +125,29 @@ fun CampsiteDetailsScreen(
 
         Spacer(modifier = Modifier.padding(vertical = 8.dp))
 
-        // Join / Leave Waitlist Button
-        Button(
-            onClick = viewModel::updateButtonState
-        ) {
-            val txt = when (state.mainButtonState) {
-                CampsiteDetailsMainButtonState.JOIN -> "Join Waitlist"
-                CampsiteDetailsMainButtonState.LEAVE -> "Leave Waitlist"
-                CampsiteDetailsMainButtonState.UNAVAILABLE -> "Unavailable"
+        // Join / Leave Waitlist Button (Entrants) or Remove Campsite Button (Admin)
+        if (isAdmin) {
+            Button(
+                onClick = {
+                    viewModel.deleteCampsite(state.viewedCampsite.id)
+                    navController.popBackStack()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Remove Campsite")
             }
-            Text(txt)
+        } else {
+            Button(
+                onClick = viewModel::updateButtonState
+            ) {
+                val txt = when (state.mainButtonState) {
+                    CampsiteDetailsMainButtonState.JOIN -> "Join Waitlist"
+                    CampsiteDetailsMainButtonState.LEAVE -> "Leave Waitlist"
+                    CampsiteDetailsMainButtonState.UNAVAILABLE -> "Unavailable"
+                }
+                Text(txt)
+            }
         }
     }
 }

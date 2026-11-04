@@ -132,14 +132,14 @@ data class Lottery (
     *
     * */
     fun drawEntrants() {
-        val entrants = mutableListOf<String>()
-        entrants.addAll(waitingList.entrantList)
         waitingList.entrantLosers.addAll(waitingList.entrantList)
         if (stage == LotteryStatus.DRAWN) {
             val drawAmount = minOf(winnerAmount, waitingList.entrantList.size)
+            val available = waitingList.entrantList.toMutableList()
             for (i in 1..drawAmount) {
-                val wonEntrant = entrants.random()
-                entrants.remove(wonEntrant)
+                if (available.isEmpty()) break
+                val wonEntrant = available.random()
+                available.remove(wonEntrant) // remove from available options, so it cant be drawn again
                 waitingList.entrantWinners.add(wonEntrant)
                 waitingList.entrantLosers.remove(wonEntrant)
             }
