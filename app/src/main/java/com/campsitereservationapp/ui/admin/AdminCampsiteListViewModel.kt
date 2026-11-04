@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.model.Campsite
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +30,7 @@ data class AdminCampsiteListUiState(
  * ViewModel for the admin campsite list screen (US 03.04.01).
  *
  * **Purpose:** allows administrators to observe all campsites in the repository
- * and delete rule-breaking campsites.
+ * and delete rule-breaking campsites along with their associated lotteries.
  *
  * **Design rationale:** MVVM. Connects directly to [CampsiteRepository.observeAll]
  * so the list updates live whenever a campsite is added, updated, or removed.
@@ -37,9 +38,11 @@ data class AdminCampsiteListUiState(
  * **Outstanding issues:** none.
  *
  * @property campsiteRepository the shared repository providing campsite data
+ * @property lotteryRepository the shared repository providing lottery data
  */
 class AdminCampsiteListViewModel(
-    private val campsiteRepository: CampsiteRepository
+    private val campsiteRepository: CampsiteRepository,
+    private val lotteryRepository: LotteryRepository
 ) : ViewModel() {
 
     /**
@@ -54,13 +57,14 @@ class AdminCampsiteListViewModel(
         )
 
     /**
-     * Removes a campsite from the repository by its ID.
+     * Removes a campsite and its associated lotteries from the repository by its ID.
      *
      * @param campsiteId ID of the campsite to delete
      */
     fun removeCampsite(campsiteId: String) {
         viewModelScope.launch {
             campsiteRepository.delete(campsiteId)
+            lotteryRepository.deleteByCampsite(campsiteId)
         }
     }
 
@@ -71,7 +75,10 @@ class AdminCampsiteListViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as CampsiteApp
-                AdminCampsiteListViewModel(app.container.campsiteRepository)
+                AdminCampsiteListViewModel(
+                    app.container.campsiteRepository,
+                    app.container.lotteryRepository
+                )
             }
         }
     }

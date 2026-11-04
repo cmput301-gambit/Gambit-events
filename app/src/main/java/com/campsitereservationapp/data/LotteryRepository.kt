@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.map
  * the lotteries they can join or have joined.
  *
  * **Design rationale:** extends [Repository], which holds the shared rules;
- * this class adds lottery-specific queries such as [listLotteries].
+ * this class adds lottery-specific queries such as [listLotteries] and [deleteByCampsite].
  *
  * **Outstanding issues:** no Firestore mapping yet, so lotteries are kept in
  * memory and lost when the app closes. TODO: add a companion object with
@@ -59,4 +59,23 @@ class LotteryRepository(
         }
         }
 
+    /**
+     * Removes all lotteries associated with a campsite, or updates multi-campsite lotteries
+     * by removing the deleted campsite ID from their list, deleting the lottery if no campsites remain.
+     *
+     * @param campsiteId ID of the campsite being deleted
+     */
+    suspend fun deleteByCampsite(campsiteId: String) {
+        val lotteries = getAll()
+        for (lottery in lotteries) {
+            if (lottery.campsiteIds.contains(campsiteId)) {
+                val updatedCampsiteIds = lottery.campsiteIds.filter { it != campsiteId }.toMutableList()
+                if (updatedCampsiteIds.isEmpty()) {
+                    delete(lottery.id)
+                } else {
+                    update(lottery.copy(campsiteIds = updatedCampsiteIds))
+                }
+            }
+        }
+    }
 }
