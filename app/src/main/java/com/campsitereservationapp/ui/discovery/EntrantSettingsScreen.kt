@@ -138,7 +138,7 @@ fun EntrantSettingsScreen(
         Row(){
             /*Policy and Guidelines Button*/
             Button(onClick = {
-                //TODO: Add policy and guidelines screen
+                navController.navigate("PolicyAndGuidelines")
             }){
                 Text("Policy and Guidelines")
             }
