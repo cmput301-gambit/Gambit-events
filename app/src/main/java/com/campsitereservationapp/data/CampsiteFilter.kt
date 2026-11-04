@@ -83,6 +83,14 @@ data class CampsiteFilter (
         return campsite.capacity >= occupancy
     }
 
+/**
+     * Returns a bool for if the desired date range is fully within the available date range.
+     * Always returns true desired date range is not provided (null).
+     * Always returns false if the campsite's availability is null.
+     *
+     * @param campsite [Campsite] to check availability
+     * @return bool for if the campsite's availability fully encases the entrant's wanted date range.
+     */
     private fun dateRangeMatch(campsite: Campsite): Boolean {
         val wanted = dateRange ?: return true              // no date filter, so everything matches
         val available = campsite.availability ?: return false
