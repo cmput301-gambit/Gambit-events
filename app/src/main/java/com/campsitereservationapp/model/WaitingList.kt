@@ -30,20 +30,20 @@ enum class WaitingListError {
  * @constructor Creates an empty waiting list, constructors are there for convenience for unit
  * testing.
  */
-class WaitingList(
-    var entrantList: MutableList<String> = mutableListOf(),
-    var entrantLosers: MutableList<String> = mutableListOf(),
-    var entrantWinners: MutableList<String> = mutableListOf(),
-    var entrantsDeclined: MutableList<String> = mutableListOf(),
-    var entrantCap: Int = -1,
-    var isFull: Boolean = false,
+data class WaitingList(
+    val entrantList: List<String> = emptyList(),
+    val entrantLosers: List<String> = emptyList(),
+    val entrantWinners: List<String> = emptyList(),
+    val entrantsDeclined: List<String> = emptyList(),
+    val entrantCap: Int = -1,
+    val isFull: Boolean = false,
 ) {
     /**
      * Validates the WaitingList fields and returns a list of errors found.
      *
      * @return list of [WaitingListError] violations
      */
-    fun validate(): MutableList<WaitingListError> {
+    fun validate(): List<WaitingListError> {
         val errors = mutableListOf<WaitingListError>()
         if (entrantList.isEmpty() && isFull) {
             errors.add(WaitingListError.NO_ENTRANTS_BUT_IS_FULL)
@@ -62,59 +62,46 @@ class WaitingList(
      *
      * @return true if the waiting list has no validation errors, false otherwise
      */
-    fun isValid(): Boolean {
-        return validate().isEmpty()
-    }
-
+    fun isValid(): Boolean = validate().isEmpty()
 
     /**
-     * Adds an entrant to the list of entrants in the waiting list.
+     * Returns a copy of this waiting list with an entrant added.
      *
-     * @param entrantId is the entrant's userId to be copied into the [entrantList].
-     * @return Returns true when the entrant has successfully been added, returns false when the
-     * entrant is denied, such as the user already being in the lottery or the lottery being full.
-     * */
-    fun addEntrant(entrantId: String): Boolean {
-        if (entrantId !in entrantList && !isFull) {
-            entrantList.add(entrantId)
-            if (entrantList.size == entrantCap) {
-                isFull = true
-            }
-            return true
-        }
-        return false
+     * @param entrantId the entrant's userId
+     * @return the updated waiting list, or null if the entrant is already on
+     * it or the list is full
+     */
+    fun withEntrant(entrantId: String): WaitingList? {
+        if (entrantId in entrantList || isFull) return null
+        val newList = entrantList + entrantId
+        return copy(entrantList = newList, isFull = newList.size == entrantCap)
     }
 
     /**
-     * Removes entrant from the [entrantList] by their userId. Takes an [Entrant]
+     * Returns a copy of this waiting list with an entrant removed, which
+     * frees their spot for someone else.
      *
-     * @param entrantId Entrant user id used to remove it from the [entrantList].
-     * @return Returns true when the passed [Entrant] is successfully removed from the entrantList.
-     * Returns false otherwise.
-     * */
-    fun removeEntrant(entrantId: String): Boolean {
-        if (entrantId in entrantList) {
-            entrantList.remove(entrantId)
-            if (isFull) { isFull = false }
-            return true
-        }
-        return false
+     * @param entrantId the entrant's userId
+     * @return the updated waiting list, or null if the entrant isn't on it
+     */
+    fun withoutEntrant(entrantId: String): WaitingList? {
+        if (entrantId !in entrantList) return null
+        return copy(entrantList = entrantList - entrantId, isFull = false)
     }
 
     /**
-     * If the entrant's id is in the winner's list, they have the option of also being added to the
-     * declined list. Being in the declined list removes the entrant's id from the winner's list.
-     * US 01.04.03 #13
-     * @param entrantId A string representing the userId of the entrant to decline the reservation.
-     * @return True if the entrantId was in the winner list and not in the declined list. False
-     * otherwise.
-     * */
-    fun entrantDeclined(entrantId: String): Boolean {
-        if (entrantWinners.contains(entrantId) && !entrantsDeclined.contains(entrantId)) {
-            entrantsDeclined.add(entrantId)
-            entrantWinners.remove(entrantId)
-            return true
-        }
-        return false
+     * Returns a copy of this waiting list where a winner has declined their
+     * spot, moving them from the winners to the declined list (US 01.04.03).
+     *
+     * @param entrantId the entrant's userId
+     * @return the updated waiting list, or null if they aren't a winner or
+     * already declined
+     */
+    fun withDecline(entrantId: String): WaitingList? {
+        if (entrantId !in entrantWinners || entrantId in entrantsDeclined) return null
+        return copy(
+            entrantWinners = entrantWinners - entrantId,
+            entrantsDeclined = entrantsDeclined + entrantId,
+        )
     }
 }

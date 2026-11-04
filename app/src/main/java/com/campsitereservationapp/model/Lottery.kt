@@ -1,6 +1,7 @@
 package com.campsitereservationapp.model
 
 import java.time.LocalDate
+import kotlin.random.Random
 
 /**
  * Errors that can occur when validating a [Lottery].
@@ -52,17 +53,17 @@ enum class LotteryStatus {
  * arguments.
  */
 
-data class Lottery (
+data class Lottery(
     override val id: String = "",
     val ownerId: String = "",
-    var campsiteIds: MutableList<String> = mutableListOf(),
-    var registrationPeriod: DateRange,
-    var reservationPeriod: DateRange,
-    var stage: LotteryStatus = LotteryStatus.DRAFT,
-    var winnerAmount: Int = 1,
-    var waitingList: WaitingList = WaitingList(),
-    var sentNotifications: Boolean = false,
-): Identifiable {
+    val campsiteIds: List<String> = emptyList(),
+    val registrationPeriod: DateRange,
+    val reservationPeriod: DateRange,
+    val stage: LotteryStatus = LotteryStatus.DRAFT,
+    val winnerAmount: Int = 1,
+    val waitingList: WaitingList = WaitingList(),
+    val sentNotifications: Boolean = false,
+) : Identifiable {
     fun validate() : List<LotteryError> {
         val errors = mutableListOf<LotteryError>()
         if (winnerAmount < 1) {
@@ -99,87 +100,72 @@ data class Lottery (
     }
 
     /**
-     * Attempts to add an [Entrant.userId] to the waiting list. Silently fails if either the lottery status
-     * is not OPEN, whether waiting list cap is hit, or whether the entrant's id is already in the
-     * waiting list.
+     * Returns a copy of this lottery with an entrant added to the waiting list.
      *
-     * @param entrantId [Entrant.userId] to be added to the waiting list
-     * @return Returns true when entrant has been successfully added, false otherwise.
-     * */
-    fun addEntrant(entrantId: String): Boolean {
-        if (stage == LotteryStatus.OPEN) {
-            return waitingList.addEntrant(entrantId)
-        }
-        return false
+     * @param entrantId the entrant's userId
+     * @return the updated lottery, or null if the lottery isn't OPEN, the
+     * entrant already joined, or the waiting list is full
+     */
+    fun withEntrant(entrantId: String): Lottery? {
+        if (stage != LotteryStatus.OPEN) return null
+        return waitingList.withEntrant(entrantId)?.let { copy(waitingList = it) }
     }
 
     /**
-     * Attempts to remove an [Entrant.userId] from the waiting list if the lottery status is OPEN.
+     * Returns a copy of this lottery with an entrant removed from the
+     * waiting list (US 01.02.02).
      *
-     * @param entrantId Entrant's userId to be removed from the waiting list
-     * @return Returns true when entrant has been successfully removed, false otherwise.
-     * */
-    fun removeEntrant(entrantId: String): Boolean {
-        if (stage == LotteryStatus.OPEN) {
-            return waitingList.removeEntrant(entrantId)
-        }
-        return false
+     * @param entrantId the entrant's userId
+     * @return the updated lottery, or null if the lottery isn't OPEN or the
+     * entrant isn't on the waiting list
+     */
+    fun withoutEntrant(entrantId: String): Lottery? {
+        if (stage != LotteryStatus.OPEN) return null
+        return waitingList.withoutEntrant(entrantId)?.let { copy(waitingList = it) }
     }
 
     /**
-    * If the current lottery stage is DRAWN, splits the entrantList into winners and losers stored
-     * inside [WaitingList]. Sets the stage from DRAWN to CLOSED.
-    *
-    * */
-    fun drawEntrants() {
-        waitingList.entrantLosers.addAll(waitingList.entrantList)
-        if (stage == LotteryStatus.DRAWN) {
-            val drawAmount = minOf(winnerAmount, waitingList.entrantList.size)
-            val available = waitingList.entrantList.toMutableList()
-            for (i in 1..drawAmount) {
-                if (available.isEmpty()) break
-                val wonEntrant = available.random()
-                available.remove(wonEntrant) // remove from available options, so it cant be drawn again
-                waitingList.entrantWinners.add(wonEntrant)
-                waitingList.entrantLosers.remove(wonEntrant)
-            }
-            stage = LotteryStatus.CLOSED
-        }
+     * Returns a copy of this lottery that entrants can join.
+     *
+     * @return the updated lottery, or null if it isn't a DRAFT
+     */
+    fun opened(): Lottery? =
+        if (stage == LotteryStatus.DRAFT) copy(stage = LotteryStatus.OPEN) else null
+
+    /**
+     * Returns a copy of this lottery with winners picked at random and
+     * everyone else marked as a loser. The stage moves from DRAWN to CLOSED.
+     *
+     * @param random the source of randomness; tests pass a seeded one so
+     * results are repeatable
+     * @return the drawn lottery, or null if the stage isn't DRAWN
+     */
+    fun drawn(random: Random = Random.Default): Lottery? {
+        if (stage != LotteryStatus.DRAWN) return null
+        val entrants = waitingList.entrantList.distinct()
+        val winners = entrants.shuffled(random).take(winnerAmount.coerceAtLeast(0))
+        val losers = entrants.filterNot { it in winners }
+        return copy(
+            stage = LotteryStatus.CLOSED,
+            waitingList = waitingList.copy(entrantWinners = winners, entrantLosers = losers),
+        )
     }
 
     /**
-     * If the lottery's current status is DRAFT sets the status to be OPEN.
+     * Returns a copy of this lottery where a winner has declined their spot.
      *
-     * @return Returns true if the status was successfully changed to OPEN, otherwise returns false.
-     * */
-    fun open(): Boolean {
-        if (stage == LotteryStatus.DRAFT) {
-            stage = LotteryStatus.OPEN
-            return true
-        }
-        return false
-    }
+     * @param entrantId the winner's userId
+     * @return the updated lottery, or null if they aren't a winner or already declined
+     */
+    fun withDecline(entrantId: String): Lottery? =
+        waitingList.withDecline(entrantId)?.let { copy(waitingList = it) }
 
     /**
-     * Sends an entrant declined function call to the waiting list, where the list will add them
-     * to a list, marking them as having declined to make a reservation.
+     * Returns a copy of this lottery marked as having sent its win/lose
+     * notifications, so they are never sent twice.
      *
-     * @param entrantId userId of the entrant who is declining.
-     * @return Returns true when the user is successfully added to the declined list, returns false
-     * otherwise.
-     * */
-    fun declineEntrant(entrantId: String): Boolean {
-        return waitingList.entrantDeclined(entrantId)
-    }
-
-    /**
-     * If the current lottery stage is CLOSED then it will set the [sentNotifications] bool
-     *  to true, resulting in future notifications not being sent by the notificationHandler.
-     *
-     * */
-    fun notifiedEntrants() {
-        if (stage == LotteryStatus.CLOSED) {
-            sentNotifications = true
-        }
-    }
+     * @return the updated lottery, or null if it isn't CLOSED or was already marked
+     */
+    fun markNotified(): Lottery? =
+        if (stage == LotteryStatus.CLOSED && !sentNotifications) copy(sentNotifications = true) else null
 }

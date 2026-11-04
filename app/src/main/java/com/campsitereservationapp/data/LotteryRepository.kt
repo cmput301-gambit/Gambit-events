@@ -74,32 +74,42 @@ class LotteryRepository(
      * is null in LotteryRepository construction call.
      * */
     suspend fun drawLotteries(): Boolean {
-        var hasHandler: Boolean = true
-        // Get list of all drawn lotteries that have not sent notifications.
-        val lotteries: Flow<List<Lottery>> = listLotteries(lotteryStage = LotteryStatus.DRAWN,
-            hasSentNotifications = false)
-        lotteries.collect {lotteries ->
-            lotteries.forEach {lottery ->
-                val campsiteList: MutableList<Campsite> = mutableListOf()
-                // Creates the list of campsite names
-                for (campsiteId in lottery.campsiteIds) {
-                    val campsite = campsiteRepository.get(campsiteId)
-                    if (campsite != null) {
-                        campsiteList.add(campsite)
-                    }
-                }
-                // Draws winners, sends notifications, and updates lottery's hasSentNotifications
-                lottery.drawEntrants()
-                if (notificationHandler == null) {
-                    hasHandler = false
-                } else {
-                    notificationHandler.sendResultNotifications(lottery, campsiteList)
-                }
-                lottery.notifiedEntrants()
-            }
+        val handler = notificationHandler ?: return false // failed to send notifications
+        // One snapshot of the lotteries ready to draw
+        val ready = listLotteries(lotteryStage = LotteryStatus.DRAWN, hasSentNotifications = false).first()
+        for (lottery in ready) {
+            // Null means another device already drew it, so skip.
+            val drawn = modify(lottery.id) { it.drawn() } ?: continue
+            val campsites = drawn.campsiteIds.mapNotNull { campsiteRepository.get(it) }
+            handler.sendResultNotifications(drawn, campsites)
+            modify(drawn.id) { it.markNotified() }
         }
-        return hasHandler
+        return true
     }
+
+    /**
+     * Adds an entrant to a lottery's waiting list and saves it, as one step.
+     *
+     * @param lotteryId the lottery to join
+     * @param entrantId the entrant's userId
+     * @return the saved lottery, or null if joining isn't allowed (not OPEN,
+     * already joined, full, or the lottery no longer exists)
+     */
+    suspend fun joinWaitingList(lotteryId: String, entrantId: String): Lottery? =
+        modify(lotteryId) { it.withEntrant(entrantId) }
+
+    /**
+     * Removes an entrant from a lottery's waiting list and saves it, as one
+     * step, freeing their spot for someone else (US 01.02.02).
+     *
+     * @param lotteryId the lottery to leave
+     * @param entrantId the entrant's userId
+     * @return the saved lottery, or null if leaving isn't allowed (not OPEN,
+     * not on the list, or the lottery no longer exists)
+     */
+    suspend fun leaveWaitingList(lotteryId: String, entrantId: String): Lottery? =
+        modify(lotteryId) { it.withoutEntrant(entrantId) }
+
 
     /**
      * Removes all lotteries associated with a campsite, or updates multi-campsite lotteries
