@@ -3,6 +3,7 @@ package com.campsitereservationapp.data
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
+import com.campsitereservationapp.model.NotificationType
 import com.campsitereservationapp.model.WaitingList
 import com.campsitereservationapp.service.NotificationHandler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,6 +23,13 @@ import java.time.LocalDate
  * **Purpose:** verifies that [LotteryRepository] correctly handles saving, updating,
  * and deleting lotteries, including campsite deletions via [LotteryRepository.deleteByCampsite],
  * and leaving a waiting list (US 01.02.02).
+ *
+ *  *
+ *  * **Design rationale:** each test gets fresh repositories backed by
+ *  * [MockDataSource], so tests never touch Firestore and can't affect each
+ *  * other. Draw tests pass a fixed date so they behave the same on any day.
+ *  *
+ *  * **Outstanding issues:** None.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LotteryRepositoryTest {

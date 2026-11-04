@@ -40,15 +40,22 @@ enum class LotteryStatus {
  *
  * **Design rationale:** plain data class with no Firestore code, so it's
  * easy to unit test. [LotteryRepository] handles saving and loading.
+ * Immutable like [Campsite]: every change returns a new copy, or null if
+ * the change isn't allowed, so [LotteryRepository] can save changes safely
+ * with modify.
+ *
+ * **Outstanding issues:** the DRAWN stage is only set by the automatic draw;
+ * owners can't trigger a draw by hand yet. Easy fix though
  *
  * @property id unique ID, also used as the Firestore document ID
  * @property ownerId The userId of the campsite owner who created the lottery.
- * @property campsiteIds Mutable list of campsite ids to draw the lottery for.
+ * @property campsiteIds IDs of the campsites this lottery is for.
  * @property registrationPeriod Time period where entrants can join the waitlist
  * @property reservationPeriod Time period where entrants are allowed to make reservations
  * @property stage The current stage of the lottery
  * @property winnerAmount The amount of winners to be drawn from the waitlist
  * @property waitingList Contains the list of waiting entrants
+ * @property sentNotifications true once win/lose notifications have been saved
  * @constructor Creates a lottery. registrationPeriod and reservationPeriod do not have default
  * arguments.
  */

@@ -16,13 +16,20 @@ enum class WaitingListError {
  * **Purpose:** During [Lottery] construction, [WaitingList] is created to hold the list of entrant
  * winners and losers. Also stores whether there is an entrant cap.
  *
- * **Design rationale:** Waiting list needs to track the list of entrant winners and losers, by
- * simply removing the winner entrants from the base entrantList we're able to separate them into
- * winners and losers.
+ * **Design rationale:** immutable data class, so every change returns a new
+ * copy (or null if the change isn't allowed) and can be saved safely by
+ * [com.campsitereservationapp.data.LotteryRepository]. [entrantList] keeps
+ * everyone who joined; after the draw, each entrant is also in either
+ * [entrantWinners] or [entrantLosers].
+ *
+ * **Outstanding issues:** [isFull] is stored rather than calculated from
+ * [entrantCap], so it can disagree with the list if edited by hand.
  *
  * @property entrantList The list of entrant userIds participating in the lottery.
+ * @property entrantLosers Entrants who were not selected in the draw.
  * @property entrantWinners The list of entrants who have been selected to be the winners of the
  * lottery.
+ * @property entrantsDeclined Winners who declined their spot (US 01.04.03).
  * @property entrantCap Integer determining how many entrants can be added to the entrantList.
  * Cannot be 0. However -1 will disable this option allowing infinite entrants to join.
  * @property isFull When [entrantCap] is enabled and the amount of entrants in [entrantList] matches
