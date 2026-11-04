@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.campsitereservationapp.ui.campsite.OwnerHomeScreen
+import com.campsitereservationapp.ui.campsite.OwnerWaitlistScreen
 import com.campsitereservationapp.ui.campsite.RegisterCampsiteScreen
 import com.campsitereservationapp.ui.discovery.CampsiteDetailsScreen
 import com.campsitereservationapp.ui.discovery.CampsiteListScreen
@@ -42,5 +43,6 @@ fun CampsiteAppEntry(){
             CampsiteDetailsScreen(navController, viewedCampsiteId = campId)
         }
         composable("UserSettings") { EntrantSettingsScreen(navController) }
+        composable("OwnerWaitlists") { OwnerWaitlistScreen(navController) }
     }
 }
