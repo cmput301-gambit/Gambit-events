@@ -46,7 +46,6 @@ class CampsiteApp : Application() {
             // US 02.05.01: draw any lottery whose registration has ended.
             // Runs on every device's app start; transactions make sure each
             // lottery is drawn only once.
-            container.lotteryRepository.drawDueLotteries()
             val drew = container.lotteryRepository.drawDueLotteries()
             Log.d("CampsiteApp", "drawDueLotteries ran: $drew")
         }

@@ -100,7 +100,8 @@ class LotteryRepository(
     suspend fun drawLotteries(): Boolean {
         val handler = notificationHandler ?: return false
         // One snapshot of the lotteries ready to draw, not a live stream.
-        val ready = listLotteries(lotteryStage = LotteryStatus.DRAWN, hasSentNotifications = false).first()
+        // Ask the server, not the phone's cache, so recent changes are seen. CRUCIAL
+        val ready = getAll().filter { it.stage == LotteryStatus.DRAWN && !it.sentNotifications }
         for (lottery in ready) {
             // Null means another device already drew it, so skip.
             val drawn = modify(lottery.id) { it.drawn() } ?: continue
@@ -131,7 +132,8 @@ class LotteryRepository(
     suspend fun drawDueLotteries(today: LocalDate = LocalDate.now()): Boolean {
         if (notificationHandler == null) return false
         // Only start a transaction for lotteries that are actually due.
-        val due = listLotteries(lotteryStage = LotteryStatus.OPEN).first()
+        // Ask the server, not the phone's cache, so recent changes are seen. CRUCIAL
+        val due = getAll().filter { it.readyToDraw(today) != null }
             .filter { it.readyToDraw(today) != null }
         for (lottery in due) {
             // Null means another device already moved it, which is fine.
