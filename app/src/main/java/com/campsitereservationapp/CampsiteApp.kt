@@ -38,6 +38,7 @@ class CampsiteApp : Application() {
         appScope.launch {
             // TODO: remove sample data seeding before the final release.
             container.campsiteRepository.seedIfEmpty(SampleData.campsites)
+            container.lotteryRepository.seedIfEmpty(SampleData.lotteries)
             // First launch: creates an entrant for this device.
             // Later launches: finds the existing user.
             container.userRepository.getOrCreate(container.currentUserId)

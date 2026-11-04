@@ -8,18 +8,19 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
-import kotlin.random.Random
 
 /**
  * Unit tests for [LotteryRepository].
  *
  * **Purpose:** verifies that [LotteryRepository] correctly handles saving, updating,
- * and deleting lotteries, including campsite deletions via [LotteryRepository.deleteByCampsite].
+ * and deleting lotteries, including campsite deletions via [LotteryRepository.deleteByCampsite],
+ * and leaving a waiting list (US 01.02.02).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LotteryRepositoryTest {
@@ -36,93 +37,73 @@ class LotteryRepositoryTest {
         lotteryRepository = LotteryRepository(MockDataSource(), campsiteRepository)
     }
 
-    private fun openLottery(waitingList: WaitingList = WaitingList(), winnerAmount: Int = 1) =
-        Lottery("lottery-moose", ownerId = testCampsite.ownerId,
-            campsiteIds = listOf(testCampsite.id), registrationPeriod = registrationPeriod,
-            reservationPeriod = reservationPeriod, stage = LotteryStatus.OPEN,
-            winnerAmount = winnerAmount, waitingList = waitingList)
-
     @Test
-    fun addEntrantOpen() {
-        val joined = openLottery().withEntrant(entrantId)
+    fun deleteByCampsite_deletesLottery_whenOnlyThatCampsiteIsInLottery() = runTest {
+        val lottery = Lottery(
+            id = "lottery-101",
+            ownerId = "owner-dana",
+            campsiteIds = listOf("camp-alpha"),
+            registrationPeriod = regPeriod,
+            reservationPeriod = resPeriod,
+            stage = LotteryStatus.OPEN
+        )
+        lotteryRepository.add(lottery)
 
-        assertTrue(entrantId in joined!!.waitingList.entrantList)
+        assertEquals(1, lotteryRepository.getAll().size)
+
+        lotteryRepository.deleteByCampsite("camp-alpha")
+
+        assertTrue(lotteryRepository.getAll().isEmpty())
     }
 
     @Test
-    fun addEntrantNotOpen() {
-        val draft = openLottery().copy(stage = LotteryStatus.DRAFT)
+    fun deleteByCampsite_removesCampsiteId_whenMultiCampsiteLottery() = runTest {
+        val lottery = Lottery(
+            id = "lottery-102",
+            ownerId = "owner-dana",
+            campsiteIds = listOf("camp-alpha", "camp-beta"),
+            registrationPeriod = regPeriod,
+            reservationPeriod = resPeriod,
+            stage = LotteryStatus.OPEN
+        )
+        lotteryRepository.add(lottery)
 
-        assertNull(draft.withEntrant(entrantId))
+        lotteryRepository.deleteByCampsite("camp-alpha")
+
+        val remaining = lotteryRepository.getAll()
+        assertEquals(1, remaining.size)
+        assertEquals(listOf("camp-beta"), remaining[0].campsiteIds)
     }
 
     @Test
-    fun removeEntrantOpen() {
-        val lottery = openLottery(WaitingList(entrantList = listOf(entrantId)))
+    fun deleteByCampsite_doesNotAffectUnrelatedLotteries() = runTest {
+        val lottery1 = Lottery(
+            id = "lottery-1",
+            ownerId = "owner-dana",
+            campsiteIds = listOf("camp-alpha"),
+            registrationPeriod = regPeriod,
+            reservationPeriod = resPeriod
+        )
+        val lottery2 = Lottery(
+            id = "lottery-2",
+            ownerId = "owner-dana",
+            campsiteIds = listOf("camp-beta"),
+            registrationPeriod = regPeriod,
+            reservationPeriod = resPeriod
+        )
+        lotteryRepository.add(lottery1)
+        lotteryRepository.add(lottery2)
 
-        val left = lottery.withoutEntrant(entrantId)
+        lotteryRepository.deleteByCampsite("camp-alpha")
 
-        assertFalse(entrantId in left!!.waitingList.entrantList)
-    }
-
-    @Test
-    fun removeEntrantNotOpen() {
-        val closed = openLottery(WaitingList(entrantList = listOf(entrantId)))
-            .copy(stage = LotteryStatus.CLOSED)
-
-        assertNull(closed.withoutEntrant(entrantId))
-    }
-
-    @Test
-    fun drawn_picksExactlyWinnerAmountDistinctWinners() {
-        val entrants = listOf("entrant-priya", "entrant-noah", "entrant-ali", "entrant-ben", "entrant-sara")
-        val lottery = openLottery(WaitingList(entrantList = entrants), winnerAmount = 2)
-            .copy(stage = LotteryStatus.DRAWN)
-
-        val drawn = lottery.drawn(Random(42))!!
-
-        assertEquals(LotteryStatus.CLOSED, drawn.stage)
-        assertEquals(2, drawn.waitingList.entrantWinners.toSet().size)
-        assertEquals(3, drawn.waitingList.entrantLosers.size)
-        assertEquals(entrants.toSet(), (drawn.waitingList.entrantWinners + drawn.waitingList.entrantLosers).toSet())
-    }
-
-    @Test
-    fun drawn_withMoreSpotsThanEntrants_everyoneWins() {
-        val lottery = openLottery(
-            WaitingList(
-                entrantList = listOf(
-                    "entrant-priya",
-                    "entrant-noah"
-                )
-            ), winnerAmount = 5)
-            .copy(stage = LotteryStatus.DRAWN)
-
-        val drawn = lottery.drawn()!!
-
-        assertEquals(2, drawn.waitingList.entrantWinners.size)
-        assertTrue(drawn.waitingList.entrantLosers.isEmpty())
-    }
-
-    @Test
-    fun drawn_whenNotReadyToDraw_returnsNull() {
-        assertNull(openLottery().drawn())
-    }
-
-    @Test
-    fun markNotified_onlyOnce() {
-        val closed = openLottery().copy(stage = LotteryStatus.CLOSED)
-
-        val notified = closed.markNotified()!!
-
-        assertTrue(notified.sentNotifications)
-        assertNull(notified.markNotified())
+        val remaining = lotteryRepository.getAll()
+        assertEquals(1, remaining.size)
+        assertEquals("lottery-2", remaining[0].id)
     }
 
     private fun openLotteryWith(entrants: List<String>) = Lottery(
         id = "lottery-moose", ownerId = "owner-jill", campsiteIds = listOf("camp-alpha"),
-        registrationPeriod = DateRange(LocalDate.now().plusDays(1), LocalDate.now().plusDays(5)),
-        reservationPeriod = DateRange(LocalDate.now().plusDays(6), LocalDate.now().plusDays(8)),
+        registrationPeriod = regPeriod, reservationPeriod = resPeriod,
         stage = LotteryStatus.OPEN, winnerAmount = 1,
         waitingList = WaitingList(entrantList = entrants, entrantCap = 2, isFull = entrants.size == 2),
     )

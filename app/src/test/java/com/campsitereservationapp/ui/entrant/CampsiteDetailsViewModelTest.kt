@@ -130,14 +130,16 @@ class CampsiteDetailsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(CampsiteDetailsMainButtonState.LEAVE, viewModel.uiState.value.mainButtonState)
-        assert(lottery.waitingList.entrantList.contains("entrant-user"))
+        val updatedLottery = lotteryRepository.get("lottery-c")
+        assert(updatedLottery?.waitingList?.entrantList?.contains("entrant-user") == true)
 
         viewModel.updateButtonState()
 
         advanceUntilIdle()
 
         assertEquals(CampsiteDetailsMainButtonState.JOIN, viewModel.uiState.value.mainButtonState)
-        assert(!lottery.waitingList.entrantList.contains("entrant-user"))
+        val leftLottery = lotteryRepository.get("lottery-c")
+        assert(leftLottery?.waitingList?.entrantList?.contains("entrant-user") == false)
 
     }
 }
