@@ -45,6 +45,16 @@ class WaitingListTest {
     }
 
 
+    @Test
+    fun entrantDeclined() {
+        val entrant1 = Entrant("testEntrant1")
+        val waitingList = WaitingList(entrantList = mutableListOf(entrant1.userId),
+            entrantWinners = mutableListOf(entrant1.userId))
+        assert(waitingList.entrantDeclined(entrant1.userId))
+        assert(waitingList.entrantsDeclined.contains(entrant1.userId))
+        assert(!waitingList.entrantWinners.contains(entrant1.userId))
+    }
+
 
 
 }

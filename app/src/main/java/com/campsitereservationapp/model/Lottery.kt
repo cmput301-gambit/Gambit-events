@@ -131,12 +131,13 @@ data class Lottery (
     *
     * */
     fun drawEntrants() {
+        waitingList.entrantLosers.addAll(waitingList.entrantList)
         if (stage == LotteryStatus.DRAWN) {
             val drawAmount = minOf(winnerAmount, waitingList.entrantList.size)
             for (i in 1..drawAmount) {
                 val wonEntrant = waitingList.entrantList.random()
                 waitingList.entrantWinners.add(wonEntrant)
-                waitingList.entrantList.remove(wonEntrant)
+                waitingList.entrantLosers.remove(wonEntrant)
             }
             stage = LotteryStatus.CLOSED
             notifyEntrants()
@@ -156,7 +157,17 @@ data class Lottery (
         return false
     }
 
-
+    /**
+     * Sends an entrant declined function call to the waiting list, where the list will add them
+     * to a list, marking them as having declined to make a reservation.
+     *
+     * @param entrantId userId of the entrant who is declining.
+     * @return Returns true when the user is successfully added to the declined list, returns false
+     * otherwise.
+     * */
+    fun declineEntrant(entrantId: String): Boolean {
+        return waitingList.entrantDeclined(entrantId)
+    }
 
     /**
      * If the current lottery stage is CLOSED then it will send the lists of lottery
