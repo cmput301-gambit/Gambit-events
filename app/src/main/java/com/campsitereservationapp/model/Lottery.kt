@@ -131,11 +131,14 @@ data class Lottery (
     *
     * */
     fun drawEntrants() {
+        var entrants = mutableListOf<String>()
+        entrants.addAll(waitingList.entrantList)
         waitingList.entrantLosers.addAll(waitingList.entrantList)
         if (stage == LotteryStatus.DRAWN) {
             val drawAmount = minOf(winnerAmount, waitingList.entrantList.size)
             for (i in 1..drawAmount) {
-                val wonEntrant = waitingList.entrantList.random()
+                val wonEntrant = entrants.random()
+                entrants.remove(wonEntrant)
                 waitingList.entrantWinners.add(wonEntrant)
                 waitingList.entrantLosers.remove(wonEntrant)
             }
