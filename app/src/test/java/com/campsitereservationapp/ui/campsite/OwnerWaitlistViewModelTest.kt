@@ -22,6 +22,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -31,7 +32,8 @@ import java.time.LocalDate
  * Unit tests for [OwnerWaitlistViewModel].
  *
  * **Purpose:** checks an owner sees only their own lotteries, with the
- * campsite name and the names of everyone on each waitlist (US 02.09.01).
+ * campsite name and the names of everyone on each waitlist, and that the
+ * screen shows loading until data arrives (US 02.09.01).
  *
  * **Design rationale:** repositories backed by [MockDataSource], so nothing
  * touches Firestore.
@@ -146,5 +148,22 @@ class OwnerWaitlistViewModelTest {
         advanceUntilIdle()
 
         assertEquals(3, viewModel.uiState.value.lotteries[0].entrantNames.size)
+    }
+
+    @Test
+    fun beforeDataArrives_isLoading() = runTest {
+        val viewModel = viewModelFor("owner-bobby")
+
+        assertTrue(viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun afterDataArrives_stopsLoading() = runTest {
+        val viewModel = viewModelFor("owner-sam")
+        startCollecting(viewModel)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertTrue(viewModel.uiState.value.lotteries.isEmpty())
     }
 }

@@ -23,7 +23,7 @@ import androidx.navigation.NavController
  * Screen where a campsite owner sees who joined each of their lotteries (US 02.09.01).
  *
  * **Purpose:** lists the owner's lotteries with the campsite name, how many
- * entrants joined, and their names.
+ * entrants joined, and their names. Shows a loading message until the data arrives.
  *
  * **Outstanding issues:** plain styling for now.
  *
@@ -54,10 +54,10 @@ fun OwnerWaitlistScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (state.lotteries.isEmpty()) {
-            Text("You don't have any lotteries yet.")
-        } else {
-            LazyColumn {
+        when {
+            state.isLoading -> Text("Loading your lotteries...")
+            state.lotteries.isEmpty() -> Text("You don't have any lotteries yet.")
+            else -> LazyColumn {
                 items(state.lotteries, key = { it.lotteryId }) { lottery ->
                     WaitlistSection(lottery)
                 }

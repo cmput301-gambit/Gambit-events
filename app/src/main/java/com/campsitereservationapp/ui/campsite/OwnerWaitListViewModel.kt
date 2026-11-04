@@ -31,9 +31,12 @@ data class LotteryWaitlist(
  * Everything the owner waitlist screen needs to draw.
  *
  * @property lotteries the current owner's lotteries and their waitlists
+ * @property isLoading true until the first data arrives, so the screen
+ * doesn't wrongly say there are no lotteries while loading
  */
 data class OwnerWaitlistUiState(
     val lotteries: List<LotteryWaitlist> = emptyList(),
+    val isLoading: Boolean = true,
 )
 
 /**
@@ -44,7 +47,8 @@ data class OwnerWaitlistUiState(
  *
  * **Design rationale:** MVVM, like the other screens. Combines the live
  * streams from the lottery, campsite and user repositories, so the list
- * updates on its own when someone joins or leaves.
+ * updates on its own when someone joins or leaves. Starts in a loading
+ * state until the first data arrives.
  *
  * **Outstanding issues:** lotteries are still kept in memory until their
  * Firestore mapping exists. Loads all users to look up names, which is fine
@@ -85,7 +89,8 @@ class OwnerWaitlistViewModel(
                             namesById[id].takeUnless { it.isNullOrBlank() } ?: id
                         },
                     )
-                }
+                },
+                isLoading = false,
             )
         }.stateIn(
             scope = viewModelScope,
