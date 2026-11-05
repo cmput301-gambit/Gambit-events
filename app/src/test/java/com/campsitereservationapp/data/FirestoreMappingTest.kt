@@ -5,9 +5,12 @@ import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteOwner
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Entrant
+import com.campsitereservationapp.model.Lottery
+import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.Notification
 import com.campsitereservationapp.model.NotificationType
 import com.campsitereservationapp.model.User
+import com.campsitereservationapp.model.WaitingList
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -159,4 +162,61 @@ class FirestoreMappingTest {
     fun notification_fromMap_withMissingType_isRejected() {
         NotificationRepository.fromMap("notification-1", mapOf("message" to "Hello"))
     }
+    // ---------- Lottery ----------
+
+    private val mooseLottery = Lottery(
+        id = "lottery-moose-summer",
+        ownerId = "owner-jill",
+        campsiteIds = listOf("campsite-moose-meadow", "campsite-aspen-hollow"),
+        registrationPeriod = DateRange(LocalDate.of(2027, 5, 1), LocalDate.of(2027, 5, 14)),
+        reservationPeriod = DateRange(LocalDate.of(2027, 6, 1), LocalDate.of(2027, 8, 31)),
+        stage = LotteryStatus.CLOSED,
+        winnerAmount = 2,
+        sentNotifications = true,
+        waitingList = WaitingList(
+            entrantList = listOf("entrant-priya", "entrant-noah", "entrant-ali"),
+            entrantWinners = listOf("entrant-noah"),
+            entrantLosers = listOf("entrant-ali"),
+            entrantsDeclined = listOf("entrant-priya"),
+            entrantCap = 3,
+            isFull = true,
+        ),
+    )
+
+    @Test
+    fun lottery_roundTrip_keepsEveryFieldIncludingTheWaitingList() {
+        val map = LotteryRepository.toMap(mooseLottery)
+
+        assertEquals(mooseLottery, LotteryRepository.fromMap(mooseLottery.id, map))
+    }
+
+    @Test
+    fun lottery_roundTrip_worksForEverySampleLottery() {
+        for (lottery in SampleData.lotteries) {
+            assertEquals(lottery, LotteryRepository.fromMap(lottery.id, LotteryRepository.toMap(lottery)))
+        }
+    }
+
+    @Test
+    fun lottery_fromMap_acceptsWholeNumbersAsLong() {
+        val fromFirestore = LotteryRepository.toMap(mooseLottery) +
+                mapOf("winnerAmount" to 2L, "waitingList" to mapOf("entrantCap" to 3L))
+
+        val lottery = LotteryRepository.fromMap(mooseLottery.id, fromFirestore)
+
+        assertEquals(2, lottery.winnerAmount)
+        assertEquals(3, lottery.waitingList.entrantCap)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun lottery_fromMap_withUnknownStage_isRejected() {
+        // Better to skip a broken lottery than to draw it by mistake.
+        LotteryRepository.fromMap(mooseLottery.id, LotteryRepository.toMap(mooseLottery) + ("stage" to "MAYBE"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun lottery_fromMap_withMissingDate_isRejected() {
+        LotteryRepository.fromMap(mooseLottery.id, LotteryRepository.toMap(mooseLottery) - "registrationStart")
+    }
+
 }

@@ -11,7 +11,7 @@ import com.campsitereservationapp.data.CampsiteFilter
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.model.Campsite
-import com.campsitereservationapp.model.Lottery
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -48,9 +48,9 @@ data class CampsiteDetailsUiState(
  * whenever campsite or lottery data changes.
  *
  * **Outstanding issues:** joining and leaving lotteries still need the required functions
- * The lotteryRepository still needs to be added
  *
- * @property LotteryRepository The shared repository lotteries come from
+ *
+ * @property [LotteryRepository] The shared repository lotteries come from
  * @property campsiteRepository The shared repository campsites come from. Required here because the campsite can only be passed
  * by value between this models screen and the last screen [CampsiteListScreen].
  */
@@ -125,18 +125,16 @@ class CampsiteDetailsViewModel(
                 when (mainButtonState.value) {
 
                     CampsiteDetailsMainButtonState.JOIN -> {
-                        //println("UPDATING TO JOIN")
-                        mainButtonState.update{
-                            //println("Lottery add entrant : ${lottery}")
-                            if (lottery?.addEntrant(currentEntrantId) ?: false) CampsiteDetailsMainButtonState.LEAVE
+                        val joined = lottery?.let { lotteryRepository.joinWaitingList(it.id, currentEntrantId) }
+                        mainButtonState.value =
+                            if (joined != null) CampsiteDetailsMainButtonState.LEAVE
                             else CampsiteDetailsMainButtonState.UNAVAILABLE
-                        }
                     }
                     CampsiteDetailsMainButtonState.LEAVE -> {
-                        mainButtonState.update{
-                            if (lottery?.removeEntrant(currentEntrantId) ?: false) CampsiteDetailsMainButtonState.JOIN
+                        val left = lottery?.let { lotteryRepository.leaveWaitingList(it.id, currentEntrantId) }
+                        mainButtonState.value =
+                            if (left != null) CampsiteDetailsMainButtonState.JOIN
                             else CampsiteDetailsMainButtonState.UNAVAILABLE
-                        }
                     }
                     else -> {
                         //Should something be here?
@@ -197,6 +195,23 @@ class CampsiteDetailsViewModel(
      */
     fun onCreateRating(newRating: Float){
         //adds a rating to the campsite
+    }
+
+    /**
+     * Deletes a campsite from the repository (admin functionality, US 03.04.01).
+     *
+     * @param campsiteId ID of the campsite to delete
+     */
+    fun deleteCampsite(campsiteId: String) {
+        viewModelScope.launch {
+            try {
+                campsiteRepository.delete(campsiteId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("CampsiteDetails", "Failed to delete campsite $campsiteId", e)
+            }
+        }
     }
 
 

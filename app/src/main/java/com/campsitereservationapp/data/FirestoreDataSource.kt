@@ -111,4 +111,14 @@ class FirestoreDataSource<T : Identifiable>(
     private companion object {
         const val TAG = "FirestoreDataSource"
     }
+
+    override suspend fun modify(id: String, change: (T) -> T?): T? {
+        val ref = collection.document(id)
+        return db.runTransaction { transaction ->
+            val current = transaction.get(ref).toItem() ?: return@runTransaction null
+            val changed = change(current) ?: return@runTransaction null
+            transaction.set(ref, toMap(changed))
+            changed
+        }.await()
+    }
 }

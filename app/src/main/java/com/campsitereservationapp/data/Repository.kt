@@ -105,4 +105,18 @@ abstract class Repository<T : Identifiable>(private val dataSource: DataSource<T
     suspend fun seedIfEmpty(items: List<T>) {
         if (getAll().isEmpty()) items.forEach { add(it) }
     }
+
+    /**
+     * Reads an item, changes it, and saves the result as one step.
+     * See [DataSource.modify].
+     *
+     * Protected so that screens call named actions, such as
+     * `leaveWaitingList`, instead of building changes themselves.
+     *
+     * @param id the ID of the item to change
+     * @param change returns the updated item, or null to leave it unchanged
+     * @return the saved item, or null if nothing was changed
+     */
+    protected suspend fun modify(id: String, change: (T) -> T?): T? =
+        dataSource.modify(id, change)
 }
