@@ -4,6 +4,8 @@ import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Reservation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import com.campsitereservationapp.model.ReservationStatus
+import java.time.LocalDate
 
 /**
  * Stores and provides [Reservation] objects.
@@ -17,12 +19,13 @@ import kotlinx.coroutines.flow.map
  * active reservation for the same campsite. Cancelling goes through modify,
  * so the read, change and save happen as one step.
  *
- * **Outstanding issues:** no Firestore mapping yet, so reservations are
- * kept in memory. TODO: add a companion object with toMap, fromMap and
- * firestoreDataSource, like [LotteryRepository]. The clash check in
- * [reserve] reads and then adds in two steps, so two devices booking the
- * same dates at the same moment could both succeed; this needs a Firestore
- * transaction once the mapping exists.
+ * **Outstanding issues:** the clash check in [reserve] reads and then adds
+ * in two steps, so two devices booking overlapping dates at the same moment
+ * could both succeed. Firestore transactions can't run queries, so fixing
+ * this needs a lock document per campsite, which is a ton of additional work.
+ *
+ * @param dataSource where reservations are kept, such as [firestoreDataSource]
+ * or a [MockDataSource] in tests
  *
  * @param dataSource where reservations are kept, such as a [MockDataSource]
  */
@@ -71,4 +74,56 @@ class ReservationRepository(dataSource: DataSource<Reservation>) :
      */
     suspend fun cancel(reservationId: String): Reservation? =
         modify(reservationId) { it.cancelled() }
+
+    companion object {
+        /**
+         * Creates the Firestore data source for reservations, used by [AppContainer].
+         *
+         * @return a data source backed by the "reservations" collection
+         */
+        fun firestoreDataSource(): FirestoreDataSource<Reservation> =
+            FirestoreDataSource("reservations", ::toMap, ::fromMap)
+
+        /**
+         * Converts a reservation into the fields saved in Firestore.
+         *
+         * The ID is not included because it is the document ID. Dates are
+         * saved as "yyyy-MM-dd" text and the status by name (such as "CONFIRMED").
+         *
+         * @param reservation the reservation to convert
+         * @return the fields to save
+         */
+        fun toMap(reservation: Reservation): Map<String, Any?> = mapOf(
+            "entrantId" to reservation.entrantId,
+            "campsiteId" to reservation.campsiteId,
+            "lotteryId" to reservation.lotteryId,
+            "start" to reservation.dates.start.toString(),
+            "finish" to reservation.dates.finish.toString(),
+            "status" to reservation.status.name,
+        )
+
+        /**
+         * Rebuilds a reservation from a Firestore document.
+         *
+         * A missing or unknown status, or missing dates, throw, so the
+         * document is skipped rather than holding dates by mistake.
+         *
+         * @param id the document ID, used as the reservation ID
+         * @param data the saved fields
+         * @return the rebuilt reservation
+         * @throws IllegalArgumentException if the status or a date is missing or invalid
+         */
+        fun fromMap(id: String, data: Map<String, Any?>): Reservation {
+            val start = requireNotNull(data["start"] as? String) { "Reservation is missing a start date" }
+            val finish = requireNotNull(data["finish"] as? String) { "Reservation is missing a finish date" }
+            return Reservation(
+                id = id,
+                entrantId = data["entrantId"] as? String ?: "",
+                campsiteId = data["campsiteId"] as? String ?: "",
+                lotteryId = data["lotteryId"] as? String ?: "",
+                dates = DateRange(LocalDate.parse(start), LocalDate.parse(finish)),
+                status = ReservationStatus.valueOf(data["status"] as? String ?: ""),
+            )
+        }
+    }
 }
