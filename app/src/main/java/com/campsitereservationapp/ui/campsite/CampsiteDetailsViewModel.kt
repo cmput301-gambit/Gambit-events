@@ -1,4 +1,4 @@
-package com.campsitereservationapp.ui.discovery
+package com.campsitereservationapp.ui.campsite
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
-import com.campsitereservationapp.data.CampsiteFilter
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.model.Campsite
@@ -52,7 +51,7 @@ data class CampsiteDetailsUiState(
  *
  * @property [LotteryRepository] The shared repository lotteries come from
  * @property campsiteRepository The shared repository campsites come from. Required here because the campsite can only be passed
- * by value between this models screen and the last screen [CampsiteListScreen].
+ * by value between this models screen and the last screen [com.campsitereservationapp.ui.discovery.CampsiteListScreen].
  */
 class CampsiteDetailsViewModel(
     private val lotteryRepository: LotteryRepository,

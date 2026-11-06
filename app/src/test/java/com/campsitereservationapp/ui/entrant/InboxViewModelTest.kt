@@ -3,7 +3,7 @@ package com.campsitereservationapp.ui.entrant
 import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.data.NotificationRepository
 import com.campsitereservationapp.model.Notification
-import com.campsitereservationapp.ui.discovery.InboxViewModel
+import com.campsitereservationapp.ui.notifications.InboxViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch

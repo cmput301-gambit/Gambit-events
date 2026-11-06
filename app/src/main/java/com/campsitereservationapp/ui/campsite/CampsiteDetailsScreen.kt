@@ -1,4 +1,4 @@
-package com.campsitereservationapp.ui.discovery
+package com.campsitereservationapp.ui.campsite
 
 import android.util.Log
 import androidx.compose.foundation.clickable

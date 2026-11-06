@@ -5,6 +5,7 @@ import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
+import com.campsitereservationapp.ui.campsite.CampsiteDetailsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
