@@ -1,4 +1,4 @@
-package com.campsitereservationapp.ui.campsite
+package com.campsitereservationapp.ui.reservations
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

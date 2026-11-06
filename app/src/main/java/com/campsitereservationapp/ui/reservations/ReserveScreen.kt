@@ -1,4 +1,4 @@
-package com.campsitereservationapp.ui.discovery
+package com.campsitereservationapp.ui.reservations
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.model.Reservation
+import com.campsitereservationapp.ui.discovery.DateFilterMenu
 
 /**
  * Screen where a lottery winner sees the free dates and reserves some

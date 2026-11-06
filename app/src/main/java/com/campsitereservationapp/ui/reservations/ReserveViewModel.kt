@@ -1,4 +1,4 @@
-package com.campsitereservationapp.ui.discovery
+package com.campsitereservationapp.ui.reservations
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -65,7 +65,7 @@ data class ReserveUiState(
  * limited to the lottery's reservation period, minus dates already booked.
  * The clash check itself lives in [ReservationRepository], so dates can't
  * be booked twice. Dates come from the same date range picker as the
- * campsite search ([DateFilterMenu]), which can't limit the days you can
+ * campsite search ([com.campsitereservationapp.ui.discovery.DateFilterMenu]), which can't limit the days you can
  * select, so this class checks that the picked dates fall inside a free
  * range.
  *

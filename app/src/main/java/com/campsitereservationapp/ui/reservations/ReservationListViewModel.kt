@@ -1,16 +1,8 @@
-package com.campsitereservationapp.ui.campsite
+package com.campsitereservationapp.ui.reservations
 
-import android.adservices.adid.AdId
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
 //import com.campsitereservationapp.data.ReservationRepository
 //import com.campsitereservationapp.model.Reservation
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 data class ReservationListUiState(
     //val reservations: List<Reservation> = emptyList(),

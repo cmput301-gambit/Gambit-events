@@ -4,7 +4,7 @@ import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.data.SampleData
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.User
-import com.campsitereservationapp.ui.discovery.EntrantSettingsViewModel
+import com.campsitereservationapp.ui.profile.EntrantSettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch

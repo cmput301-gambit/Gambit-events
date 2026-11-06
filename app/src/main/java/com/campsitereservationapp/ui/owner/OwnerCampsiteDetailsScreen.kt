@@ -1,4 +1,4 @@
-package com.campsitereservationapp.ui.campsite
+package com.campsitereservationapp.ui.owner
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -22,7 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.campsitereservationapp.ui.discovery.CampsiteDetailsViewModel
+import com.campsitereservationapp.ui.campsite.CampsiteDetailsViewModel
 
 /**
  * Screen displaying full details of an owner's campsite (US 02.01.04).

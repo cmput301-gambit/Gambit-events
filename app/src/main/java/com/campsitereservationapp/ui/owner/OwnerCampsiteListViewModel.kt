@@ -1,4 +1,4 @@
-package com.campsitereservationapp.ui.campsite
+package com.campsitereservationapp.ui.owner
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY

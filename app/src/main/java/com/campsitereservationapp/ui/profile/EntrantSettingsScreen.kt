@@ -1,13 +1,10 @@
-package com.campsitereservationapp.ui.discovery
+package com.campsitereservationapp.ui.profile
 
-import android.graphics.Color
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -57,7 +53,7 @@ import com.campsitereservationapp.ui.theme.CampsiteReservationAppTheme
 @Composable
 fun EntrantSettingsScreen(
     navController: NavController,
-    viewModel: EntrantSettingsViewModel = viewModel(factory = EntrantSettingsViewModel.Factory),
+    viewModel: EntrantSettingsViewModel = viewModel(factory = EntrantSettingsViewModel.Companion.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -224,7 +220,9 @@ private val previewUser = User(
 private fun EntrantSettingsPreview() {
     CampsiteReservationAppTheme() {
         EntrantSettingsContent(
-            state = EntrantSettingsState(currentUser = previewUser),
+            state = EntrantSettingsState(
+                currentUser = previewUser
+            ),
             onBack = {}, onToggleUpdateUser = {}, onSaveProfile = { _, _, _ -> },
             onToggleNotifications = {}, onPolicyClick = {}, onDeleteAccount = {},
         )
@@ -236,7 +234,10 @@ private fun EntrantSettingsPreview() {
 private fun EntrantSettingsPopupPreview() {
     CampsiteReservationAppTheme() {
         EntrantSettingsContent(
-            state = EntrantSettingsState(currentUser = previewUser, isUpdateUserOpen = true),
+            state = EntrantSettingsState(
+                currentUser = previewUser,
+                isUpdateUserOpen = true
+            ),
             onBack = {}, onToggleUpdateUser = {}, onSaveProfile = { _, _, _ -> },
             onToggleNotifications = {}, onPolicyClick = {}, onDeleteAccount = {},
         )
