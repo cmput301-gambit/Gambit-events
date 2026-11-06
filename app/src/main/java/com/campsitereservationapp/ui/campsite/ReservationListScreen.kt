@@ -57,6 +57,7 @@ import androidx.compose.foundation.layout.height
  * throughout the files.
  *
  * @param navController used by back button to return and go to home page
+ * @param viewModel used by entrant active reservations and deals with cancelling
  */
 
 @Composable
@@ -71,27 +72,33 @@ fun ReservationListScreen(
             "Pine Ridge"
         )
     }
+    // Function will change after ReservationRepo merge
     var toCancel by remember { mutableStateOf<String?>(null) }
 
     Column(
+        //fixes the background colour to be consistent with the UI
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        //creates the back button so entrant can go back
         TextButton(
             onClick = { navController.popBackStack()},
             modifier = Modifier.padding(start = 8.dp, top = 16.dp)
         ) {
             Text("Back", color = MaterialTheme.colorScheme.onBackground)
         }
+        //Shows the title of My Reservations
         Text(
             "My Reservations",
             color = MaterialTheme.colorScheme.onBackground,
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
+        //Space so it looks stylistic
         Spacer(Modifier.height(16.dp))
 
+    //this checks if the reservations are empty and will change columns
     if (reservations.isEmpty()) {
         Column(
             modifier = Modifier
@@ -101,13 +108,14 @@ fun ReservationListScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            //if there aren't any, display this text
             Text(
                 "No active reservations",
                 color = MaterialTheme.colorScheme.onBackground,
                 style = MaterialTheme.typography.titleMedium
             )
         }
-    } else {
+    } else { //If not empty
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -115,6 +123,7 @@ fun ReservationListScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            //shows the different reservations and how they are displayed, just like Figma mockup
             items(reservations) { name ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -123,10 +132,12 @@ fun ReservationListScreen(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
+                    //another stylistic choice to align it when it displays on the UI
                     Row(
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        //shows on what's on each card and what is being displayed on the UI
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "CONFIRMED",
@@ -144,6 +155,7 @@ fun ReservationListScreen(
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
+                        // Also with a cancel button being in there
                         Button(
                             onClick = { toCancel = name },
                             colors = ButtonDefaults.buttonColors(
@@ -158,9 +170,10 @@ fun ReservationListScreen(
             }
         }
     }
-
+    //This function is the confirmation box and if the person wants to cancel they'll have to confirm
     toCancel?.let { n ->
         AlertDialog(
+            //Alerts and makes sure entrant wants to cancel reservation
             onDismissRequest = { toCancel = null },
             title = { Text("Cancel reservation?") },
             text = { Text("Cancel your stay at $n?") },
@@ -170,6 +183,7 @@ fun ReservationListScreen(
                     toCancel = null
                 }) { Text("Yes, cancel") }
             },
+            //Gives them the option not to
             dismissButton = {
                 TextButton(onClick = { toCancel = null }) { Text("Keep it") }
                 }
@@ -178,6 +192,7 @@ fun ReservationListScreen(
     }
 }
 
+//Shows the actual preview of the app
 @Preview(showBackground = true)
 @Composable
 fun ReservationsListScreenPreview() {
