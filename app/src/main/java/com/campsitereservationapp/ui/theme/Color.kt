@@ -7,5 +7,5 @@ val CampPrimary = Color(0xFF50723C)
 val CampSecondary = Color(0xFF90C2E7)
 val CampHover = Color(0xFF4F3824)
 val CampText = Color(0xFF000000)
-val CampTertiary = Color(0xFFC3C4C2)
+val CampTertiary = Color(0xFFC3C4C2) //Grey
 val CampWhite = Color(0xFFFFFFFF)
