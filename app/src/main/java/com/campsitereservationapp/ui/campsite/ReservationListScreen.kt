@@ -1,27 +1,5 @@
 package com.campsitereservationapp.ui.campsite
 
-/**
- * Reservation List Screen (US 01.06.01, 01.07.01)
- *
- * Purpose: Show's the reservations where they're able to cancel and confirm cancellation.
- * Back button will return to home screen.
- *
- * Design Rationale: Reliant on components from the theme that's reused so screen matches the
- * Figma.
- *
- * Outstanding Issues:
- * Reservations are local so they're not dynamic to the firebase
- * Model & UI are not separate
- *
- * TODO: replace temporary list with Firebase reservation repository and
- * calls function to remove instead of removing from the list made locally
- *
- * TODO: Separate UI screen and functionality to ViewModel so it's used
- * throughout the files.
- *
- * @param navController used by back button to return and go to home page
- */
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -58,6 +36,28 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+
+/**
+ * Reservation List Screen (US 01.06.01, 01.07.01)
+ *
+ * Purpose: Show's the reservations where they're able to cancel and confirm cancellation.
+ * Back button will return to home screen.
+ *
+ * Design Rationale: Reliant on components from the theme that's reused so screen matches the
+ * Figma.
+ *
+ * Outstanding Issues:
+ * Reservations are local so they're not dynamic to the firebase
+ * Model & UI are not separate
+ *
+ * TODO: replace temporary list with Firebase reservation repository and
+ * calls function to remove instead of removing from the list made locally
+ *
+ * TODO: Separate UI screen and functionality to ViewModel so it's used
+ * throughout the files.
+ *
+ * @param navController used by back button to return and go to home page
+ */
 
 @Composable
 fun ReservationListScreen(
