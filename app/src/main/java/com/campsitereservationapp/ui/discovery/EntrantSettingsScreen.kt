@@ -100,7 +100,7 @@ fun EntrantSettingsContent(
         Spacer(Modifier.padding(vertical = 20.dp))
         Image(
             painter = painterResource(R.drawable.arrow_left_green),
-            contentDescription = "To settings icon",
+           contentDescription = "Back",
             modifier = Modifier
                 //.align(Alignment.Center)
                 .clickable(onClick = onBack)
