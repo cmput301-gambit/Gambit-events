@@ -2,6 +2,7 @@ package com.campsitereservationapp.ui.reservations
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,17 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.campsitereservationapp.model.DateRange
+import com.campsitereservationapp.model.Reservation
+import com.campsitereservationapp.ui.campsite.ReservationListItem
+import com.campsitereservationapp.ui.campsite.ReservationListUiState
+import com.campsitereservationapp.ui.campsite.ReservationListViewModel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 /**
  * Reservation List Screen (US 01.06.01, 01.07.01)
@@ -46,157 +58,184 @@ import androidx.compose.foundation.layout.height
  * Design Rationale: Reliant on components from the theme that's reused so screen matches the
  * Figma.
  *
- * Outstanding Issues:
- * Reservations are local so they're not dynamic to the firebase
- * Model & UI are not separate
+ * **Outstanding issues:** past and cancelled reservations aren't shown
+ * anywhere yet (US 01.06.02).
  *
- * TODO: replace temporary list with Firebase reservation repository and
- * calls function to remove instead of removing from the list made locally
- *
- * TODO: Separate UI screen and functionality to ViewModel so it's used
- * throughout the files.
- *
- * @param navController used by back button to return and go to home page
- * @param viewModel used by entrant active reservations and deals with cancelling
+ * @param navController used by the back button to return to the home screen
+ * @param viewModel provides the entrant's reservations and cancels them
  */
 
 @Composable
 fun ReservationListScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: ReservationListViewModel = viewModel(factory = ReservationListViewModel.Factory),
 ) {
-    // Fake data for now. Swap for the real list once Firebase is hooked up.
-    val reservations = remember {
-        mutableStateListOf(
-            "Old Mountain Campsite A",
-            "Lakeside Camp",
-            "Pine Ridge"
-        )
-    }
-    // Function will change after ReservationRepo merge
-    var toCancel by remember { mutableStateOf<String?>(null) }
+    val state by viewModel.uiState.collectAsState()
+
+    ReservationListContent(
+        state = state,
+        onBack = { navController.popBackStack() },
+        onCancel = viewModel::cancel,
+    )
+}
+
+/**
+ * Draws the reservation list from [state], with no ViewModel, so it can be
+ * previewed without Firebase.
+ *
+ * @param state the reservations to show
+ * @param onBack called when the back button is tapped
+ * @param onCancel called with a reservation's ID once the entrant confirms cancelling
+ */
+@Composable
+fun ReservationListContent(
+    state: ReservationListUiState,
+    onBack: () -> Unit,
+    onCancel: (reservationId: String) -> Unit,
+) {
+    // The reservation the entrant tapped Cancel on, waiting for confirmation.
+    var toCancel by remember { mutableStateOf<ReservationListItem?>(null) }
 
     Column(
-        //fixes the background colour to be consistent with the UI
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
     ) {
-        //creates the back button so entrant can go back
         TextButton(
-            onClick = { navController.popBackStack()},
+            onClick = onBack,
             modifier = Modifier.padding(start = 8.dp, top = 16.dp)
         ) {
             Text("Back", color = MaterialTheme.colorScheme.onBackground)
         }
-        //Shows the title of My Reservations
         Text(
             "My Reservations",
             color = MaterialTheme.colorScheme.onBackground,
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
-        //Space so it looks stylistic
         Spacer(Modifier.height(16.dp))
 
-    //this checks if the reservations are empty and will change columns
-    if (reservations.isEmpty()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            //if there aren't any, display this text
-            Text(
-                "No active reservations",
-                color = MaterialTheme.colorScheme.onBackground,
-                style = MaterialTheme.typography.titleMedium
-            )
-        }
-    } else { //If not empty
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            //shows the different reservations and how they are displayed, just like Figma mockup
-            items(reservations) { name ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(32.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
+        when {
+            state.isLoading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            state.reservations.isEmpty() -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    //another stylistic choice to align it when it displays on the UI
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        //shows on what's on each card and what is being displayed on the UI
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "CONFIRMED",
-                                color = MaterialTheme.colorScheme.secondary,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                name,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                            Text(
-                                "Jul 2 - Jul 18",
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                        // Also with a cancel button being in there
-                        Button(
-                            onClick = { toCancel = name },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiary,
-                                contentColor = MaterialTheme.colorScheme.onTertiary
+                    Text(
+                        "No active reservations",
+                        color = MaterialTheme.colorScheme.onBackground,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(state.reservations, key = { it.reservation.id }) { item ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(32.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primary
                             )
                         ) {
-                            Text("Cancel")
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "CONFIRMED",
+                                        color = MaterialTheme.colorScheme.secondary,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        item.campsiteName,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        style = MaterialTheme.typography.titleLarge
+                                    )
+                                    Text(
+                                        formatDates(item.reservation),
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                }
+                                Button(
+                                    onClick = { toCancel = item },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiary,
+                                        contentColor = MaterialTheme.colorScheme.onTertiary
+                                    )
+                                ) {
+                                    Text("Cancel")
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
-    //This function is the confirmation box and if the person wants to cancel they'll have to confirm
-    toCancel?.let { n ->
+
+    // Confirmation box, so a stray tap can't cancel a trip.
+    toCancel?.let { item ->
         AlertDialog(
-            //Alerts and makes sure entrant wants to cancel reservation
             onDismissRequest = { toCancel = null },
             title = { Text("Cancel reservation?") },
-            text = { Text("Cancel your stay at $n?") },
+            text = { Text("Cancel your stay at ${item.campsiteName}?") },
             confirmButton = {
                 TextButton(onClick = {
-                    reservations.remove(n)
+                    onCancel(item.reservation.id)
                     toCancel = null
                 }) { Text("Yes, cancel") }
             },
-            //Gives them the option not to
             dismissButton = {
                 TextButton(onClick = { toCancel = null }) { Text("Keep it") }
-                }
-            )
-        }
+            }
+        )
     }
 }
 
-//Shows the actual preview of the app
+// Shows dates like "Jul 2 - Jul 18".
+private val dayFormat = DateTimeFormatter.ofPattern("MMM d")
+
+private fun formatDates(reservation: Reservation): String =
+    "${reservation.dates.start.format(dayFormat)} - ${reservation.dates.finish.format(dayFormat)}"
+
 @Preview(showBackground = true)
 @Composable
 fun ReservationsListScreenPreview() {
     CampsiteReservationAppTheme {
-        ReservationListScreen(rememberNavController())
+        ReservationListContent(
+            state = ReservationListUiState(
+                isLoading = false,
+                reservations = listOf(
+                    ReservationListItem(
+                        Reservation(
+                            id = "reservation-1",
+                            entrantId = "entrant-priya",
+                            campsiteId = "campsite-pine-ridge",
+                            lotteryId = "lottery-a",
+                            dates = DateRange(LocalDate.of(2027, 7, 2), LocalDate.of(2027, 7, 18)),
+                        ),
+                        "Pine Ridge",
+                    ),
+                ),
+            ),
+            onBack = {},
+            onCancel = {},
+        )
     }
 }
