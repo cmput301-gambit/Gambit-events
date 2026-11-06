@@ -56,6 +56,7 @@ fun EntrantHomeScreen(
         onNotificationsClick = { navController.navigate("Inbox") },
         onOwnerHomeClick = { navController.navigate("OwnerHome") },
         onSettingsClick = { navController.navigate("UserSettings") },
+        onAdminHomeClick = { navController.navigate("AdminHome") },
     )
 }
 /**
@@ -72,6 +73,7 @@ fun EntrantHomeContent(
     onNotificationsClick: () -> Unit,
     onOwnerHomeClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onAdminHomeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     //val state by viewModel.uiState.collectAsState()
@@ -166,8 +168,15 @@ fun EntrantHomeContent(
                     .height(100.dp)
                     .offset(x = 15.dp, y = 5.dp))
 
-            Spacer(Modifier.padding(vertical = 175.dp))
-
+            Spacer(Modifier.padding(vertical = 125.dp))
+            /*Admin Home Button*/
+            Button(
+                onClick = onAdminHomeClick,
+                modifier = Modifier
+                    .offset(x = (77.dp), y = 5.dp)
+            ) {
+                Text("Owner Home")
+            }
             /*Reservations*/
             Button(onClick = {
                 //Navigate to reservations screen
@@ -205,6 +214,7 @@ fun EntrantHomeContent(
             ) {
                 Text("Owner Home")
             }
+            
         }
 
         /*Logo*/
@@ -212,7 +222,7 @@ fun EntrantHomeContent(
             painter = painterResource(R.drawable.primary_logo),
             contentDescription = "",
             modifier = Modifier
-                .size(375.dp)
+                .size(175.dp)
                 .align(Alignment.Center),
         )
     }
@@ -250,6 +260,7 @@ private fun EntrantHomeLongNamePreview() {
             onNotificationsClick = {},
             onOwnerHomeClick = {},
             onSettingsClick = {},
+            onAdminHomeClick = {},
         )
     }
 }
