@@ -19,17 +19,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.model.Notification
+import com.campsitereservationapp.model.NotificationType
 
 /**
  * Inbox screen where an entrant sees their lottery results (US 01.03.01, 01.03.02).
  *
  * **Purpose:** lists the user's win and lose notifications, newest first.
- * Unread ones are bold, and tapping one marks it as read.
+ * Unread ones are bold, and tapping one marks it as read. Tapping a win
+ * also opens the reserve screen, so the winner can pick their dates
+ * (US 01.04.01, 01.05.01).
  *
- * **Outstanding issues:** plain styling for now; needs a button on the
- * entrant home screen to open it.
+ * **Outstanding issues:** plain styling for now, and no loading state, so
+ * "No notifications yet" shows briefly before the data arrives.
  *
- * @param navController navigation controller used to go back
+ * @param navController navigation controller used to go back and to open the reserve screen
  * @param viewModel view model holding the inbox state
  */
 @Composable
@@ -60,7 +63,13 @@ fun InboxScreen(
                 items(state.notifications, key = { it.id }) { notification ->
                     NotificationRow(
                         notification = notification,
-                        onClick = { viewModel.onNotificationTapped(notification) },
+                        onClick = {
+                            viewModel.onNotificationTapped(notification)
+                            // Tapping a win takes the winner to reserve their dates.
+                            if (notification.type == NotificationType.LOTTERY_WON) {
+                                navController.navigate("Reserve/${notification.lotteryId}")
+                            }
+                        },
                     )
                 }
             }
