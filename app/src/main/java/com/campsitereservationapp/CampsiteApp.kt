@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
  * The app's Application class, created once when the app starts.
  *
  * **Purpose:** holds the [AppContainer] and makes sure a [com.campsitereservationapp.model.User]
- * exists for this device as soon as the app opens.
+ * exists for this device as soon as the app opens. Also draws any lottery whose registration period has ended.
  *
  * **Design rationale:** the Application lives as long as the app does,
  * which makes it the natural owner of app-wide objects and startup work.
@@ -38,9 +38,16 @@ class CampsiteApp : Application() {
         appScope.launch {
             // TODO: remove sample data seeding before the final release.
             container.campsiteRepository.seedIfEmpty(SampleData.campsites)
+            container.lotteryRepository.seedIfEmpty(SampleData.lotteries)
             // First launch: creates an entrant for this device.
             // Later launches: finds the existing user.
             container.userRepository.getOrCreate(container.currentUserId)
+
+            // US 02.05.01: draw any lottery whose registration has ended.
+            // Runs on every device's app start; transactions make sure each
+            // lottery is drawn only once.
+            val drew = container.lotteryRepository.drawDueLotteries()
+            Log.d("CampsiteApp", "drawDueLotteries ran: $drew")
         }
     }
 }

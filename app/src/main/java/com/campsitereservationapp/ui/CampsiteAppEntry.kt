@@ -10,14 +10,18 @@ import androidx.navigation.navArgument
 import com.campsitereservationapp.ui.admin.AdminBrowseCampsitesScreen
 import com.campsitereservationapp.ui.admin.AdminCampsiteListScreen
 import com.campsitereservationapp.ui.admin.AdminHomeScreen
+import com.campsitereservationapp.ui.campsite.EditCampsiteScreen
+import com.campsitereservationapp.ui.campsite.OwnerCampsiteDetailsScreen
+import com.campsitereservationapp.ui.campsite.OwnerCampsiteListScreen
 import com.campsitereservationapp.ui.campsite.OwnerHomeScreen
+import com.campsitereservationapp.ui.campsite.OwnerWaitlistScreen
 import com.campsitereservationapp.ui.campsite.RegisterCampsiteScreen
 import com.campsitereservationapp.ui.discovery.CampsiteDetailsScreen
 import com.campsitereservationapp.ui.discovery.CampsiteListScreen
 import com.campsitereservationapp.ui.discovery.EntrantHomeScreen
 import com.campsitereservationapp.ui.discovery.EntrantSettingsScreen
 import com.campsitereservationapp.ui.discovery.InboxScreen
-import com.campsitereservationapp.ui.campsite.ReservationListScreen
+
 /**
  * Top-level Jetpack Compose navigation entry point for the Campsite Reservation Application.
  *
@@ -36,7 +40,21 @@ fun CampsiteAppEntry(){
         composable("EntrantHome") { EntrantHomeScreen(navController) }
         composable("OwnerHome") { OwnerHomeScreen(navController) }
         composable("RegisterCampsite") { RegisterCampsiteScreen(navController) }
-        composable("Reservations") { ReservationListScreen(navController) }
+        composable("OwnerCampsiteList") { OwnerCampsiteListScreen(navController) }
+        composable(
+            route = "OwnerCampsiteDetails/{campsiteId}",
+            arguments = listOf(navArgument("campsiteId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val campId = backStackEntry.arguments?.getString("campsiteId") ?: return@composable
+            OwnerCampsiteDetailsScreen(navController, campsiteId = campId)
+        }
+        composable(
+            route = "EditCampsite/{campsiteId}",
+            arguments = listOf(navArgument("campsiteId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val campId = backStackEntry.arguments?.getString("campsiteId") ?: return@composable
+            EditCampsiteScreen(navController, campsiteId = campId)
+        }
         composable("AdminHome") { AdminHomeScreen(navController) }
         composable("AdminBrowseCampsites") { AdminBrowseCampsitesScreen(navController) }
         composable("AdminCampsiteList") { AdminCampsiteListScreen(navController) }
@@ -57,6 +75,7 @@ fun CampsiteAppEntry(){
             CampsiteDetailsScreen(navController, viewedCampsiteId = campId, isAdmin = true)
         }
         composable("UserSettings") { EntrantSettingsScreen(navController) }
+        composable("OwnerWaitlists") { OwnerWaitlistScreen(navController) }
         composable("Inbox") { InboxScreen(navController) }
     }
 }

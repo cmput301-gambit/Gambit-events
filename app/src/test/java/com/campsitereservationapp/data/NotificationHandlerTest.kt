@@ -70,13 +70,12 @@ class NotificationHandlerTest {
         val lottery = Lottery("lottery-draw", ownerId = "owner-bobby",
             campsiteIds = mutableListOf(pineRidge.id), registrationPeriod = registrationPeriod,
             reservationPeriod = reservationPeriod, winnerAmount = 2)
-        lottery.open()
-        listOf("entrant-priya", "entrant-noah", "entrant-ali", "entrant-ben", "entrant-sara")
-            .forEach { lottery.addEntrant(it) }
-        lottery.stage = LotteryStatus.DRAWN
-        lottery.drawEntrants()
+        val entrants = listOf("entrant-priya", "entrant-noah", "entrant-ali", "entrant-ben", "entrant-sara")
+        val drawn = lottery.copy(stage = LotteryStatus.DRAWN, waitingList = WaitingList(entrantList = entrants))
+            .drawn()!!
 
-        val result = handler.createResultNotifications(lottery, listOf(pineRidge), createdOn)
+        val result = handler.createResultNotifications(drawn, listOf(pineRidge), createdOn)
+
 
         assertEquals(2, result.count { it.type == NotificationType.LOTTERY_WON })
         assertEquals(3, result.count { it.type == NotificationType.LOTTERY_LOST })
