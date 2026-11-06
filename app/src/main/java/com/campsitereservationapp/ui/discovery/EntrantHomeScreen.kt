@@ -175,7 +175,7 @@ fun EntrantHomeContent(
                 modifier = Modifier
                     .offset(x = (77.dp), y = 5.dp)
             ) {
-                Text("Owner Home")
+                Text("Admin Home")
             }
             /*Reservations*/
             Button(onClick = {
