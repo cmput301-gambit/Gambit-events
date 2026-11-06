@@ -19,6 +19,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Unit tests for the Firestore conversion functions in each repository's
@@ -229,6 +230,7 @@ class FirestoreMappingTest {
         campsiteId = "campsite-pine-ridge",
         lotteryId = "lottery-pine-summer",
         dates = DateRange(LocalDate.of(2027, 7, 10), LocalDate.of(2027, 7, 14)),
+        createdAt = LocalDateTime.of(2027, 5, 16, 9, 30, 15),
     )
 
     @Test
@@ -266,6 +268,13 @@ class FirestoreMappingTest {
         ReservationRepository.fromMap(
             priyaAtPineRidge.id,
             ReservationRepository.toMap(priyaAtPineRidge) - "finish",
+        )
+    }
+    @Test(expected = IllegalArgumentException::class)
+    fun reservation_fromMap_withMissingCreationTime_isRejected() {
+        ReservationRepository.fromMap(
+            priyaAtPineRidge.id,
+            ReservationRepository.toMap(priyaAtPineRidge) - "createdAt",
         )
     }
 

@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import com.campsitereservationapp.model.ReservationStatus
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Stores and provides [Reservation] objects.
@@ -100,6 +101,8 @@ class ReservationRepository(dataSource: DataSource<Reservation>) :
             "start" to reservation.dates.start.toString(),
             "finish" to reservation.dates.finish.toString(),
             "status" to reservation.status.name,
+            "createdAt" to reservation.createdAt.toString(),
+
         )
 
         /**
@@ -116,6 +119,7 @@ class ReservationRepository(dataSource: DataSource<Reservation>) :
         fun fromMap(id: String, data: Map<String, Any?>): Reservation {
             val start = requireNotNull(data["start"] as? String) { "Reservation is missing a start date" }
             val finish = requireNotNull(data["finish"] as? String) { "Reservation is missing a finish date" }
+            val createdAt = requireNotNull(data["createdAt"] as? String) { "Reservation is missing its creation time" }
             return Reservation(
                 id = id,
                 entrantId = data["entrantId"] as? String ?: "",
@@ -123,6 +127,7 @@ class ReservationRepository(dataSource: DataSource<Reservation>) :
                 lotteryId = data["lotteryId"] as? String ?: "",
                 dates = DateRange(LocalDate.parse(start), LocalDate.parse(finish)),
                 status = ReservationStatus.valueOf(data["status"] as? String ?: ""),
+                createdAt = LocalDateTime.parse(createdAt),
             )
         }
     }
