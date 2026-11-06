@@ -31,8 +31,9 @@ import com.campsitereservationapp.model.Reservation
  *
  * **Purpose:** shows the campsite name and its free date ranges, lets the
  * user pick check-in and check-out in a date range picker, and shows a
- * confirmation with the campsite details once reserved. Anyone who can't
- * reserve sees why instead of the form.
+ * confirmation once reserved: the campsite details, the booked dates, and
+ * when the reservation was made. Anyone who can't reserve sees why instead
+ * of the form.
  *
  * **Outstanding issues:** plain styling. The picker lets you select days
  * outside the free ranges, and picking one shows an error.
@@ -128,7 +129,7 @@ private fun ReserveForm(state: ReserveUiState, viewModel: ReserveViewModel) {
  * @param campsiteName the reserved campsite
  * @param campsiteLocation where the campsite is
  * @param campsiteCapacity how many guests the campsite holds
- * @param reservation the saved reservation
+ * @param reservation the saved reservation, including when it was made
  * @param onDone called when the user taps Done
  */
 @Composable
@@ -145,6 +146,7 @@ private fun ConfirmationSection(
     Text("Location: $campsiteLocation")
     Text("Capacity: $campsiteCapacity")
     Text("${reservation.dates.start} to ${reservation.dates.finish}")
+    Text("Booked at: ${reservation.createdAt.toString().replace('T', ' ')}")
     Spacer(modifier = Modifier.height(16.dp))
     Button(onClick = onDone) { Text("Done") }
 }
