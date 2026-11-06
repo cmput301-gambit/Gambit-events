@@ -57,6 +57,7 @@ fun EntrantHomeScreen(
         onOwnerHomeClick = { navController.navigate("OwnerHome") },
         onSettingsClick = { navController.navigate("UserSettings") },
         onAdminHomeClick = { navController.navigate("AdminHome") },
+        onReservationClick = {navController.navigate("Reservations")}
     )
 }
 /**
@@ -74,6 +75,7 @@ fun EntrantHomeContent(
     onOwnerHomeClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onAdminHomeClick: () -> Unit,
+    onReservationClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     //val state by viewModel.uiState.collectAsState()
@@ -178,9 +180,7 @@ fun EntrantHomeContent(
                 Text("Admin Home")
             }
             /*Reservations*/
-            Button(onClick = {
-                //Navigate to reservations screen
-                },
+            Button(onClick = onReservationClick,
                 modifier = Modifier
                     .fillMaxWidth(0.75f)
                     .fillMaxHeight(0.4f)
@@ -261,6 +261,7 @@ private fun EntrantHomeLongNamePreview() {
             onOwnerHomeClick = {},
             onSettingsClick = {},
             onAdminHomeClick = {},
+            onReservationClick = {},
         )
     }
 }
