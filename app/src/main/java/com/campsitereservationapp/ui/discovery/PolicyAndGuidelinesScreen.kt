@@ -14,7 +14,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-
+/**
+ * Shows the app's policy and guidelines.
+ *
+ * **Purpose:** lets entrants read the app's terms and guidelines from the settings screen.
+ *
+ * **Design rationale:** static text only, so it has no ViewModel.
+ *
+ * **Outstanding issues:** the policy text is a placeholder.
+ *
+ * @param navController used to go back to the previous screen
+ */
 @Composable
 fun PolicyAndGuidelinesScreen(
     navController: NavController,
