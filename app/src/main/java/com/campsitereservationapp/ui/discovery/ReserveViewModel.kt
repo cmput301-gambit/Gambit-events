@@ -25,8 +25,11 @@ import java.time.LocalDate
  *
  * @property isLoading true until the lottery and campsite have been looked up
  * @property campsiteName name of the campsite being reserved
+ * @property campsiteLocation where the campsite is
+ * @property campsiteCapacity how many guests the campsite holds, as text
  * @property blockedReason why this user can't reserve, or null if they can
- * @property freeRanges the date ranges at the campsite that nobody has booked
+ * @property freeRanges the date ranges the winner can book: inside the campsite's
+ * availability and the lottery's reservation period, and not already booked
  * @property checkIn the check-in date picked so far, or null
  * @property checkOut the check-out date picked so far, or null
  * @property error a message about the last attempt, or null
@@ -35,6 +38,8 @@ import java.time.LocalDate
 data class ReserveUiState(
     val isLoading: Boolean = true,
     val campsiteName: String = "",
+    val campsiteLocation: String = "",
+    val campsiteCapacity: String = "",
     val blockedReason: String? = null,
     val freeRanges: List<DateRange> = emptyList(),
     val checkIn: LocalDate? = null,
@@ -56,14 +61,15 @@ data class ReserveUiState(
  *
  * **Design rationale:** MVVM, like the other screens. Only winners of a
  * drawn lottery can reserve, and each winner gets one active reservation
- * per lottery. The clash check itself lives in [ReservationRepository], so
- * dates can't be booked twice. Dates come from the same date range picker
- * as the campsite search ([DateFilterMenu]), which can't limit the days
- * you can select, so this class checks that the picked dates fall inside a
- * free range.
+ * per lottery. The dates a winner can pick are the campsite's availability
+ * limited to the lottery's reservation period, minus dates already booked.
+ * The clash check itself lives in [ReservationRepository], so dates can't
+ * be booked twice. Dates come from the same date range picker as the
+ * campsite search ([DateFilterMenu]), which can't limit the days you can
+ * select, so this class checks that the picked dates fall inside a free
+ * range.
  *
- * **Outstanding issues:** does not check the lottery's booking period
- * (reservationPeriod) yet, and uses the first campsite if a lottery has
+ * **Outstanding issues:** uses the first campsite if a lottery has
  * several. Reservations are not saved between app restarts until the
  * Firestore mapping is added.
  *
@@ -136,9 +142,17 @@ class ReserveViewModel(
         }
         campsiteId = campsite?.id
         val name = campsite?.name.orEmpty()
+        val location = campsite?.location.orEmpty()
+        val capacity = campsite?.capacity?.toString().orEmpty()
 
         if (existing != null) {
-            _uiState.value = ReserveUiState(isLoading = false, campsiteName = name, confirmation = existing)
+            _uiState.value = ReserveUiState(
+                isLoading = false,
+                campsiteName = name,
+                campsiteLocation = location,
+                campsiteCapacity = capacity,
+                confirmation = existing,
+            )
             return
         }
         if (lottery.stage != LotteryStatus.CLOSED) {
@@ -159,11 +173,23 @@ class ReserveViewModel(
             return
         }
 
-        val free = freeRanges(availability, reservationRepository.bookedDates(campsite.id))
+        // Only dates inside both the campsite's availability and the booking period.
+        val bookable = overlap(availability, lottery.reservationPeriod)
+        if (bookable == null) {
+            _uiState.value = blocked("No dates are open for booking at this campsite.", name)
+            return
+        }
+        val free = freeRanges(bookable, reservationRepository.bookedDates(campsite.id))
         _uiState.value = if (free.isEmpty()) {
             blocked("No dates are left at this campsite.", name)
         } else {
-            ReserveUiState(isLoading = false, campsiteName = name, freeRanges = free)
+            ReserveUiState(
+                isLoading = false,
+                campsiteName = name,
+                campsiteLocation = location,
+                campsiteCapacity = capacity,
+                freeRanges = free,
+            )
         }
     }
 
@@ -218,9 +244,9 @@ class ReserveViewModel(
 
     companion object {
         /**
-         * Works out which dates in a campsite's availability are not booked.
+         * Works out which dates in a range are not booked.
          *
-         * @param availability the dates the campsite can be reserved
+         * @param availability the dates that could be reserved
          * @param booked the date ranges already taken
          * @return the unbooked stretches, earliest first, first and last days included
          */
@@ -240,6 +266,19 @@ class ReserveViewModel(
             }
             if (runStart != null) ranges.add(DateRange(runStart, availability.finish))
             return ranges
+        }
+
+        /**
+         * Finds the days two date ranges have in common.
+         *
+         * @param a the first range
+         * @param b the second range
+         * @return the shared days, or null if the ranges don't overlap
+         */
+        fun overlap(a: DateRange, b: DateRange): DateRange? {
+            val start = if (a.start.isAfter(b.start)) a.start else b.start
+            val finish = if (a.finish.isBefore(b.finish)) a.finish else b.finish
+            return if (start.isAfter(finish)) null else DateRange(start, finish)
         }
 
         /**

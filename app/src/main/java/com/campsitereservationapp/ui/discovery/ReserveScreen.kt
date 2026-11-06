@@ -31,8 +31,8 @@ import com.campsitereservationapp.model.Reservation
  *
  * **Purpose:** shows the campsite name and its free date ranges, lets the
  * user pick check-in and check-out in a date range picker, and shows a
- * confirmation once reserved. Anyone who can't reserve sees why instead of
- * the form.
+ * confirmation with the campsite details once reserved. Anyone who can't
+ * reserve sees why instead of the form.
  *
  * **Outstanding issues:** plain styling. The picker lets you select days
  * outside the free ranges, and picking one shows an error.
@@ -72,6 +72,8 @@ fun ReserveScreen(
             state.isLoading -> Text("Loading...")
             confirmation != null -> ConfirmationSection(
                 campsiteName = state.campsiteName,
+                campsiteLocation = state.campsiteLocation,
+                campsiteCapacity = state.campsiteCapacity,
                 reservation = confirmation,
                 onDone = { navController.popBackStack() },
             )
@@ -124,14 +126,24 @@ private fun ReserveForm(state: ReserveUiState, viewModel: ReserveViewModel) {
  * The confirmation shown once a reservation is saved.
  *
  * @param campsiteName the reserved campsite
+ * @param campsiteLocation where the campsite is
+ * @param campsiteCapacity how many guests the campsite holds
  * @param reservation the saved reservation
  * @param onDone called when the user taps Done
  */
 @Composable
-private fun ConfirmationSection(campsiteName: String, reservation: Reservation, onDone: () -> Unit) {
+private fun ConfirmationSection(
+    campsiteName: String,
+    campsiteLocation: String,
+    campsiteCapacity: String,
+    reservation: Reservation,
+    onDone: () -> Unit,
+) {
     Text("Reservation confirmed", style = MaterialTheme.typography.titleMedium)
     Spacer(modifier = Modifier.height(8.dp))
     Text(campsiteName)
+    Text("Location: $campsiteLocation")
+    Text("Capacity: $campsiteCapacity")
     Text("${reservation.dates.start} to ${reservation.dates.finish}")
     Spacer(modifier = Modifier.height(16.dp))
     Button(onClick = onDone) { Text("Done") }

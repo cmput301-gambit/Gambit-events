@@ -33,7 +33,8 @@ import java.time.LocalDate
  * Unit tests for [ReserveViewModel].
  *
  * **Purpose:** checks that only winners of a drawn lottery can reserve, that
- * free dates are worked out correctly, and that missing, out-of-range or
+ * free dates are worked out correctly (inside the campsite's availability and
+ * the lottery's reservation period), and that missing, out-of-range or
  * already-taken dates are refused (US 01.04.01, 01.05.01).
  *
  * **Design rationale:** repositories backed by [MockDataSource], so nothing
@@ -61,13 +62,13 @@ class ReserveViewModelTest {
         availability = december(1, 10),
     )
 
-    // Priya won. Ali entered and lost.
+    // Priya won. Ali entered and lost. The reservation period covers all of December.
     private val closedLottery = Lottery(
         id = "lottery-pine-ridge",
         ownerId = "owner-bobby",
         campsiteIds = listOf("campsite-pine-ridge"),
         registrationPeriod = DateRange(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 5)),
-        reservationPeriod = DateRange(LocalDate.of(2026, 11, 6), LocalDate.of(2026, 11, 20)),
+        reservationPeriod = DateRange(LocalDate.of(2026, 11, 6), LocalDate.of(2026, 12, 31)),
         stage = LotteryStatus.CLOSED,
         waitingList = WaitingList(
             entrantList = listOf("entrant-priya", "entrant-ali"),
@@ -130,6 +131,30 @@ class ReserveViewModelTest {
         assertEquals("Pine Ridge", state.campsiteName)
         assertEquals(listOf(december(1, 3), december(6, 10)), state.freeRanges)
         assertTrue(state.canReserve)
+    }
+
+    @Test
+    fun freeRanges_areLimitedToTheLotterysReservationPeriod() = runTest {
+        lotteryRepository = LotteryRepository(
+            MockDataSource(listOf(closedLottery.copy(reservationPeriod = december(3, 8)))), campsiteRepository)
+        val viewModel = viewModelFor("entrant-priya")
+
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        assertEquals(listOf(december(3, 8)), viewModel.uiState.value.freeRanges)
+    }
+
+    @Test
+    fun reservationPeriodOutsideAvailability_isBlocked() = runTest {
+        lotteryRepository = LotteryRepository(
+            MockDataSource(listOf(closedLottery.copy(reservationPeriod = december(20, 25)))), campsiteRepository)
+        val viewModel = viewModelFor("entrant-priya")
+
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        assertEquals("No dates are open for booking at this campsite.", viewModel.uiState.value.blockedReason)
     }
 
     @Test
