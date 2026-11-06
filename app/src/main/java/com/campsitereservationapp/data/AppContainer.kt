@@ -14,7 +14,8 @@ import com.campsitereservationapp.service.NotificationHandler
  * architecture guide. Each repository is created once, on first use, and
  * this is the one place that decides which data source each one uses.
  *
- * **Outstanding issues:** TODO: add reservationRepository once it is created.
+ * **Outstanding issues:** reservations are kept in memory until their
+ * Firestore mapping is added.
  */
 class AppContainer(context: Context) {
 
@@ -39,6 +40,14 @@ class AppContainer(context: Context) {
     /** Shared repository for lotteries. */
     val lotteryRepository by lazy {
         LotteryRepository(LotteryRepository.firestoreDataSource(), campsiteRepository, notificationHandler)
+    }
+
+    /**
+     * Shared repository for reservations. Kept in memory until its
+     * Firestore mapping exists.
+     */
+    val reservationRepository by lazy {
+        ReservationRepository(MockDataSource())
     }
 
     /** The current user's ID, which is this device's ID (US 01.09.01). */
