@@ -9,6 +9,8 @@ import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.Notification
 import com.campsitereservationapp.model.NotificationType
+import com.campsitereservationapp.model.Reservation
+import com.campsitereservationapp.model.ReservationStatus
 import com.campsitereservationapp.model.User
 import com.campsitereservationapp.model.WaitingList
 import org.junit.Assert.assertEquals
@@ -17,6 +19,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Unit tests for the Firestore conversion functions in each repository's
@@ -217,6 +220,62 @@ class FirestoreMappingTest {
     @Test(expected = IllegalArgumentException::class)
     fun lottery_fromMap_withMissingDate_isRejected() {
         LotteryRepository.fromMap(mooseLottery.id, LotteryRepository.toMap(mooseLottery) - "registrationStart")
+    }
+
+    // ---------- Reservation ----------
+
+    private val priyaAtPineRidge = Reservation(
+        id = "reservation-priya-pine",
+        entrantId = "entrant-priya",
+        campsiteId = "campsite-pine-ridge",
+        lotteryId = "lottery-pine-summer",
+        dates = DateRange(LocalDate.of(2027, 7, 10), LocalDate.of(2027, 7, 14)),
+        createdAt = LocalDateTime.of(2027, 5, 16, 9, 30, 15),
+    )
+
+    @Test
+    fun reservation_roundTrip_keepsEveryField() {
+        val map = ReservationRepository.toMap(priyaAtPineRidge)
+
+        assertEquals(priyaAtPineRidge, ReservationRepository.fromMap(priyaAtPineRidge.id, map))
+    }
+
+    @Test
+    fun reservation_roundTrip_keepsCancelledStatus() {
+        val cancelled = priyaAtPineRidge.cancelled()!!
+
+        val rebuilt = ReservationRepository.fromMap(cancelled.id, ReservationRepository.toMap(cancelled))
+
+        assertEquals(ReservationStatus.CANCELLED, rebuilt.status)
+    }
+
+    @Test
+    fun reservation_savesEntrantIdUnderTheNameTheFilterUses() {
+        // observeForEntrant filters on "entrantId", so the saved field must match.
+        assertEquals("entrant-priya", ReservationRepository.toMap(priyaAtPineRidge)["entrantId"])
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun reservation_fromMap_withUnknownStatus_isRejected() {
+        ReservationRepository.fromMap(
+            priyaAtPineRidge.id,
+            ReservationRepository.toMap(priyaAtPineRidge) + ("status" to "MAYBE"),
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun reservation_fromMap_withMissingDate_isRejected() {
+        ReservationRepository.fromMap(
+            priyaAtPineRidge.id,
+            ReservationRepository.toMap(priyaAtPineRidge) - "finish",
+        )
+    }
+    @Test(expected = IllegalArgumentException::class)
+    fun reservation_fromMap_withMissingCreationTime_isRejected() {
+        ReservationRepository.fromMap(
+            priyaAtPineRidge.id,
+            ReservationRepository.toMap(priyaAtPineRidge) - "createdAt",
+        )
     }
 
 }
