@@ -10,12 +10,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,11 +29,13 @@ import com.campsitereservationapp.model.Reservation
  * Screen where a lottery winner sees the free dates and reserves some
  * (US 01.04.01, 01.05.01).
  *
- * **Purpose:** shows the campsite name and its free date ranges, takes a
- * check-in and check-out date, and shows a confirmation once reserved.
- * Anyone who can't reserve sees why instead of the form.
+ * **Purpose:** shows the campsite name and its free date ranges, lets the
+ * user pick check-in and check-out in a date range picker, and shows a
+ * confirmation once reserved. Anyone who can't reserve sees why instead of
+ * the form.
  *
- * **Outstanding issues:** plain styling, and dates are typed in as text.
+ * **Outstanding issues:** plain styling. The picker lets you select days
+ * outside the free ranges, and picking one shows an error.
  *
  * @param navController navigation controller used to go back
  * @param lotteryId the lottery the user won
@@ -77,32 +82,36 @@ fun ReserveScreen(
 }
 
 /**
- * The free dates, two date boxes, and the Reserve button.
+ * The free dates, the date picker button, and the Reserve button.
  *
  * @param state what to show
- * @param viewModel receives what the user types and taps
+ * @param viewModel receives the picked dates and the Reserve tap
  */
 @Composable
 private fun ReserveForm(state: ReserveUiState, viewModel: ReserveViewModel) {
+    var showPicker by remember { mutableStateOf(false) }
+    val checkIn = state.checkIn
+    val checkOut = state.checkOut
+
     Text(state.campsiteName, style = MaterialTheme.typography.titleMedium)
     Spacer(modifier = Modifier.height(8.dp))
     Text("Free dates:")
     state.freeRanges.forEach { range -> Text("${range.start} to ${range.finish}") }
     Spacer(modifier = Modifier.height(16.dp))
 
-    OutlinedTextField(
-        value = state.checkInText,
-        onValueChange = viewModel::onCheckInChanged,
-        label = { Text("Check-in (yyyy-mm-dd)") },
-        singleLine = true,
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    OutlinedTextField(
-        value = state.checkOutText,
-        onValueChange = viewModel::onCheckOutChanged,
-        label = { Text("Check-out (yyyy-mm-dd)") },
-        singleLine = true,
-    )
+    TextButton(onClick = { showPicker = true }) {
+        Text(
+            if (checkIn != null && checkOut != null) "$checkIn to $checkOut"
+            else "Choose dates"
+        )
+    }
+    if (showPicker) {
+        DateFilterMenu(
+            onConfirm = viewModel::onDatesPicked,
+            onDismiss = { showPicker = false },
+        )
+    }
+
     state.error?.let { message ->
         Spacer(modifier = Modifier.height(8.dp))
         Text(message, color = MaterialTheme.colorScheme.error)

@@ -33,11 +33,12 @@ import java.time.LocalDate
  * Unit tests for [ReserveViewModel].
  *
  * **Purpose:** checks that only winners of a drawn lottery can reserve, that
- * free dates are worked out correctly, and that bad, out-of-range or
+ * free dates are worked out correctly, and that missing, out-of-range or
  * already-taken dates are refused (US 01.04.01, 01.05.01).
  *
  * **Design rationale:** repositories backed by [MockDataSource], so nothing
- * touches Firestore.
+ * touches Firestore. Dates are passed in the way the date range picker
+ * hands them over.
  *
  * **Outstanding issues:** None.
  */
@@ -50,6 +51,8 @@ class ReserveViewModelTest {
 
     private fun december(start: Int, finish: Int) =
         DateRange(LocalDate.of(2026, 12, start), LocalDate.of(2026, 12, finish))
+
+    private fun day(dayOfMonth: Int) = LocalDate.of(2026, 12, dayOfMonth)
 
     private val pineRidge = Campsite(
         id = "campsite-pine-ridge",
@@ -158,8 +161,7 @@ class ReserveViewModelTest {
         viewModel.load("lottery-pine-ridge")
         advanceUntilIdle()
 
-        viewModel.onCheckInChanged("2026-12-02")
-        viewModel.onCheckOutChanged("2026-12-04")
+        viewModel.onDatesPicked(day(2), day(4))
         viewModel.reserve()
         advanceUntilIdle()
 
@@ -172,13 +174,38 @@ class ReserveViewModelTest {
     }
 
     @Test
+    fun singleDayPicked_reservesThatOneDay() = runTest {
+        val viewModel = viewModelFor("entrant-priya")
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        viewModel.onDatesPicked(day(7), null)
+        viewModel.reserve()
+        advanceUntilIdle()
+
+        assertEquals(december(7, 7), viewModel.uiState.value.confirmation?.dates)
+    }
+
+    @Test
+    fun noDatesPicked_isRefused() = runTest {
+        val viewModel = viewModelFor("entrant-priya")
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        viewModel.reserve()
+        advanceUntilIdle()
+
+        assertEquals("Choose your check-in and check-out dates first.", viewModel.uiState.value.error)
+        assertTrue(reservationRepository.getAll().isEmpty())
+    }
+
+    @Test
     fun datesOutsideTheFreeRanges_areRefused() = runTest {
         val viewModel = viewModelFor("entrant-priya")
         viewModel.load("lottery-pine-ridge")
         advanceUntilIdle()
 
-        viewModel.onCheckInChanged("2026-12-08")
-        viewModel.onCheckOutChanged("2026-12-12")
+        viewModel.onDatesPicked(day(8), day(12))
         viewModel.reserve()
         advanceUntilIdle()
 
@@ -188,28 +215,12 @@ class ReserveViewModelTest {
     }
 
     @Test
-    fun badDateText_isRefused() = runTest {
-        val viewModel = viewModelFor("entrant-priya")
-        viewModel.load("lottery-pine-ridge")
-        advanceUntilIdle()
-
-        viewModel.onCheckInChanged("tomorrow")
-        viewModel.onCheckOutChanged("2026-12-04")
-        viewModel.reserve()
-        advanceUntilIdle()
-
-        assertNotNull(viewModel.uiState.value.error)
-        assertTrue(reservationRepository.getAll().isEmpty())
-    }
-
-    @Test
     fun checkOutBeforeCheckIn_isRefused() = runTest {
         val viewModel = viewModelFor("entrant-priya")
         viewModel.load("lottery-pine-ridge")
         advanceUntilIdle()
 
-        viewModel.onCheckInChanged("2026-12-05")
-        viewModel.onCheckOutChanged("2026-12-03")
+        viewModel.onDatesPicked(day(5), day(3))
         viewModel.reserve()
         advanceUntilIdle()
 
@@ -225,8 +236,7 @@ class ReserveViewModelTest {
 
         // Ali books these dates after Priya's screen loaded.
         reservationRepository.reserve(aliBooks(december(2, 4)))
-        viewModel.onCheckInChanged("2026-12-03")
-        viewModel.onCheckOutChanged("2026-12-05")
+        viewModel.onDatesPicked(day(3), day(5))
         viewModel.reserve()
         advanceUntilIdle()
 
@@ -239,8 +249,7 @@ class ReserveViewModelTest {
         val first = viewModelFor("entrant-priya")
         first.load("lottery-pine-ridge")
         advanceUntilIdle()
-        first.onCheckInChanged("2026-12-02")
-        first.onCheckOutChanged("2026-12-04")
+        first.onDatesPicked(day(2), day(4))
         first.reserve()
         advanceUntilIdle()
 

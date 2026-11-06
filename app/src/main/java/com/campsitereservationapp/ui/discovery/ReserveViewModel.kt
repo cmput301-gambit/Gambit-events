@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.format.DateTimeParseException
 
 /**
  * Everything the reserve screen needs to draw.
@@ -28,8 +27,8 @@ import java.time.format.DateTimeParseException
  * @property campsiteName name of the campsite being reserved
  * @property blockedReason why this user can't reserve, or null if they can
  * @property freeRanges the date ranges at the campsite that nobody has booked
- * @property checkInText the check-in date as typed, like 2026-12-10
- * @property checkOutText the check-out date as typed
+ * @property checkIn the check-in date picked so far, or null
+ * @property checkOut the check-out date picked so far, or null
  * @property error a message about the last attempt, or null
  * @property confirmation the saved reservation once booking worked, or null
  */
@@ -38,8 +37,8 @@ data class ReserveUiState(
     val campsiteName: String = "",
     val blockedReason: String? = null,
     val freeRanges: List<DateRange> = emptyList(),
-    val checkInText: String = "",
-    val checkOutText: String = "",
+    val checkIn: LocalDate? = null,
+    val checkOut: LocalDate? = null,
     val error: String? = null,
     val confirmation: Reservation? = null,
 ) {
@@ -58,12 +57,15 @@ data class ReserveUiState(
  * **Design rationale:** MVVM, like the other screens. Only winners of a
  * drawn lottery can reserve, and each winner gets one active reservation
  * per lottery. The clash check itself lives in [ReservationRepository], so
- * dates can't be booked twice.
+ * dates can't be booked twice. Dates come from the same date range picker
+ * as the campsite search ([DateFilterMenu]), which can't limit the days
+ * you can select, so this class checks that the picked dates fall inside a
+ * free range.
  *
  * **Outstanding issues:** does not check the lottery's booking period
  * (reservationPeriod) yet, and uses the first campsite if a lottery has
- * several. Dates are typed in as text for now. Reservations are not saved
- * between app restarts until the Firestore mapping is added.
+ * several. Reservations are not saved between app restarts until the
+ * Firestore mapping is added.
  *
  * @param lotteryRepository where the lottery comes from
  * @param campsiteRepository where the campsite comes from
@@ -96,25 +98,19 @@ class ReserveViewModel(
     }
 
     /**
-     * Called when the check-in text changes.
+     * Called when the user confirms a date range in the picker. If only one
+     * day was picked, the end date is null and that day is used for both
+     * check-in and check-out.
      *
-     * @param text what the user typed
+     * @param checkIn the first day picked, or null if nothing was picked
+     * @param checkOut the last day picked, or null for a single day
      */
-    fun onCheckInChanged(text: String) {
-        _uiState.update { it.copy(checkInText = text, error = null) }
+    fun onDatesPicked(checkIn: LocalDate?, checkOut: LocalDate?) {
+        _uiState.update { it.copy(checkIn = checkIn, checkOut = checkOut ?: checkIn, error = null) }
     }
 
     /**
-     * Called when the check-out text changes.
-     *
-     * @param text what the user typed
-     */
-    fun onCheckOutChanged(text: String) {
-        _uiState.update { it.copy(checkOutText = text, error = null) }
-    }
-
-    /**
-     * Called when the user taps Reserve. Checks the typed dates, saves the
+     * Called when the user taps Reserve. Checks the picked dates, saves the
      * reservation, and shows the confirmation, or shows what went wrong.
      */
     fun reserve() {
@@ -177,10 +173,10 @@ class ReserveViewModel(
         val reservingCampsiteId = campsiteId ?: return
         if (!state.canReserve) return
 
-        val checkIn = parseDate(state.checkInText)
-        val checkOut = parseDate(state.checkOutText)
+        val checkIn = state.checkIn
+        val checkOut = state.checkOut
         if (checkIn == null || checkOut == null) {
-            showError("Enter both dates as yyyy-mm-dd, like 2026-12-10.")
+            showError("Choose your check-in and check-out dates first.")
             return
         }
         if (checkOut.isBefore(checkIn)) {
@@ -219,13 +215,6 @@ class ReserveViewModel(
     private fun showError(message: String) {
         _uiState.update { it.copy(error = message) }
     }
-
-    private fun parseDate(text: String): LocalDate? =
-        try {
-            LocalDate.parse(text.trim())
-        } catch (e: DateTimeParseException) {
-            null
-        }
 
     companion object {
         /**
