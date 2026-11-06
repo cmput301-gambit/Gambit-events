@@ -1,5 +1,9 @@
 package com.campsitereservationapp.model
 
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
+
+
 /**
  * Errors that can occur when validating a [Reservation].
  */
@@ -38,6 +42,7 @@ enum class ReservationStatus {
  * @property lotteryId ID of the [Lottery] the entrant won
  * @property dates the reserved dates, first and last day included
  * @property status whether the reservation is confirmed or cancelled
+ * @property createdAt when the reservation was made, to the second. Shown on the confirmation screen
  */
 data class Reservation(
     override val id: String = "",
@@ -46,6 +51,7 @@ data class Reservation(
     val lotteryId: String = "",
     val dates: DateRange,
     val status: ReservationStatus = ReservationStatus.CONFIRMED,
+    val createdAt: LocalDateTime = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS),
 ) : Identifiable {
 
     /** True while the reservation still holds its dates. */
