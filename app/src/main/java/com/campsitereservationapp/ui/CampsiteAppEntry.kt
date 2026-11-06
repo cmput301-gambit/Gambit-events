@@ -21,6 +21,7 @@ import com.campsitereservationapp.ui.discovery.CampsiteListScreen
 import com.campsitereservationapp.ui.discovery.EntrantHomeScreen
 import com.campsitereservationapp.ui.discovery.EntrantSettingsScreen
 import com.campsitereservationapp.ui.discovery.InboxScreen
+import com.campsitereservationapp.ui.campsite.ReservationListScreen
 import com.campsitereservationapp.ui.discovery.ReserveScreen
 import com.campsitereservationapp.ui.discovery.PolicyAndGuidelinesScreen
 
@@ -42,6 +43,7 @@ fun CampsiteAppEntry(){
         composable("EntrantHome") { EntrantHomeScreen(navController) }
         composable("OwnerHome") { OwnerHomeScreen(navController) }
         composable("RegisterCampsite") { RegisterCampsiteScreen(navController) }
+        composable("Reservations") { ReservationListScreen(navController) }
         composable("OwnerCampsiteList") { OwnerCampsiteListScreen(navController) }
         composable(
             route = "OwnerCampsiteDetails/{campsiteId}",
