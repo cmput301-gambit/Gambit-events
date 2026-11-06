@@ -22,6 +22,7 @@ import com.campsitereservationapp.ui.discovery.EntrantHomeScreen
 import com.campsitereservationapp.ui.discovery.EntrantSettingsScreen
 import com.campsitereservationapp.ui.discovery.InboxScreen
 import com.campsitereservationapp.ui.discovery.ReserveScreen
+import com.campsitereservationapp.ui.discovery.PolicyAndGuidelinesScreen
 
 /**
  * Top-level Jetpack Compose navigation entry point for the Campsite Reservation Application.
@@ -85,5 +86,6 @@ fun CampsiteAppEntry(){
             val lotteryId = backStackEntry.arguments?.getString("lotteryId") ?: return@composable
             ReserveScreen(navController, lotteryId = lotteryId)
         }
+        composable("PolicyAndGuidelines") { PolicyAndGuidelinesScreen(navController) }
     }
 }
