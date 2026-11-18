@@ -6,13 +6,17 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
+import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
+import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryError
+import com.campsitereservationapp.model.LotteryStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -70,9 +74,11 @@ data class LotteryFormUiState(
  */
 class LotteryFormViewModel(
     private val lotteryRepository: LotteryRepository,
+    private val campsiteRepository: CampsiteRepository,
     private val currentUserId: String,
     private val editingLotteryId: String? = null,
 ) : ViewModel() {
+    private val campsiteIds = mutableListOf<String>()
 
     private val _uiState = MutableStateFlow(LotteryFormUiState(isLoading = editingLotteryId != null))
 
@@ -115,12 +121,17 @@ class LotteryFormViewModel(
         }
     }
 
+    suspend fun getCampsites(): List<Campsite> {
+        return campsiteRepository.getByOwner(currentUserId)
+    }
+
+
     /**
      * Updates the lottery's assigned campsites from input in the form state.
      *
      * @param campsiteIds new mutable list of campsite ids
      */
-    fun onCampsiteIdsChange(campsiteIds: MutableList<String>) {
+    fun onCampsiteIdsChange() {
         _uiState.update { it.copy(campsiteIds = campsiteIds) }
     }
 
@@ -131,6 +142,16 @@ class LotteryFormViewModel(
      */
     fun onWinnerAmountChange(winnerAmount: String) {
         _uiState.update { it.copy(winnerAmount = winnerAmount) }
+    }
+
+
+
+    fun onCampsitesChangeRemove(campsiteId: String) {
+        campsiteIds.remove(campsiteId)
+    }
+
+    fun onCampsitesChangeAdd(campsiteId: String) {
+        campsiteIds.add(campsiteId)
     }
     
     /**
@@ -219,6 +240,7 @@ class LotteryFormViewModel(
                 val app = this[APPLICATION_KEY] as CampsiteApp
                 LotteryFormViewModel(
                     lotteryRepository = app.container.lotteryRepository,
+                    campsiteRepository = app.container.campsiteRepository,
                     currentUserId = app.container.currentUserId,
                     editingLotteryId = editingLotteryId
                 )
