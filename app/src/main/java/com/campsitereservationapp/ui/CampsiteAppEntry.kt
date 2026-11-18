@@ -23,6 +23,7 @@ import com.campsitereservationapp.ui.discovery.EntrantHomeScreen
 import com.campsitereservationapp.ui.discovery.EntrantSettingsScreen
 import com.campsitereservationapp.ui.discovery.InboxScreen
 import com.campsitereservationapp.ui.campsite.ReservationListScreen
+import com.campsitereservationapp.ui.discovery.OwnerLotteryDetails1Screen
 import com.campsitereservationapp.ui.discovery.ReserveScreen
 import com.campsitereservationapp.ui.discovery.PolicyAndGuidelinesScreen
 
@@ -45,6 +46,7 @@ fun CampsiteAppEntry(){
         composable("OwnerHome") { OwnerHomeScreen(navController) }
         composable("RegisterCampsite") { RegisterCampsiteScreen(navController) }
         composable("OwnerLotteryRegisterScreen") { OwnerLotteryRegisterScreen(navController) }
+        composable("OwnerLotteryDetails1") { OwnerLotteryDetails1Screen(navController) }
         composable("Reservations") { ReservationListScreen(navController) }
         composable("OwnerCampsiteList") { OwnerCampsiteListScreen(navController) }
         composable(
