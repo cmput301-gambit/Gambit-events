@@ -13,6 +13,7 @@ import com.campsitereservationapp.ui.admin.AdminBrowseCampsitesScreen
 import com.campsitereservationapp.ui.admin.AdminCampsiteListScreen
 import com.campsitereservationapp.ui.admin.AdminHomeScreen
 import com.campsitereservationapp.ui.campsite.EditCampsiteScreen
+import com.campsitereservationapp.ui.campsite.EditLotteryScreen
 import com.campsitereservationapp.ui.campsite.LotteryFormViewModel
 import com.campsitereservationapp.ui.campsite.OwnerCampsiteDetailsScreen
 import com.campsitereservationapp.ui.campsite.OwnerCampsiteListScreen
@@ -55,6 +56,13 @@ fun CampsiteAppEntry(){
             }
             val viewModel: LotteryFormViewModel = viewModel(viewModelStoreOwner = parentEntry)
             OwnerLotteryDetailsScreen(navController, viewModel=viewModel)
+        }
+        composable(
+            route="EditLottery/{lotteryId}",
+            arguments = listOf(navArgument("lotteryId") { type = NavType.StringType})
+        ) { backStackEntry ->
+            val lotteryId = backStackEntry.arguments?.getString("lotteryId") ?: return@composable
+            EditLotteryScreen(navController, lotteryId = lotteryId)
         }
         composable("Reservations") { ReservationListScreen(navController) }
         composable("OwnerCampsiteList") { OwnerCampsiteListScreen(navController) }

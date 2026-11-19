@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui.campsite
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -21,6 +22,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import kotlin.coroutines.cancellation.CancellationException
+
+// TODO: UPDATE COMMENTS
 
 /**
  * UI state for the campsite registration/edit form.
@@ -96,7 +99,9 @@ class LotteryFormViewModel(
         if (editingLotteryId != null) {
             viewModelScope.launch {
                 try {
+
                     val loaded = lotteryRepository.get(editingLotteryId)
+                    Log.d("loaded-lottery", loaded.toString())
                     originalLottery = loaded
                     if (loaded != null) {
                         _uiState.update {
@@ -171,6 +176,9 @@ class LotteryFormViewModel(
     fun onReservationPeriodChange(reservationPeriod: DateRange) {
         _uiState.update { it.copy(reservationPeriod = reservationPeriod) }
     }
+
+
+
    
 
     /**
