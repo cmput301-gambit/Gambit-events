@@ -32,6 +32,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
+// TODO: UPDATE COMMENTS
+
 @Composable
 fun OwnerLotteryDetailsScreen(
     navController: NavController,

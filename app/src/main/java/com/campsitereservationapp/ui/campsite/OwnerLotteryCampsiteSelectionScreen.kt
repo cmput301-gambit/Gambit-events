@@ -30,6 +30,8 @@ import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteError
 import com.campsitereservationapp.model.LotteryError
 
+// TODO: UPDATE COMMENTS, CREATING A LOTTERY WITH A CAMPSITE ALREADY WITH A LOTTERY WILL CREATE A NEW
+//  LOTTERY ENTRY INSTEAD OF THROWING AN ERROR OR REPLACING.
 
 /**
  * Screen for registering a lottery (US 02.04.01, US 02.04.03).
