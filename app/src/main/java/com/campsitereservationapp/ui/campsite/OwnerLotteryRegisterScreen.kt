@@ -1,16 +1,17 @@
 package com.campsitereservationapp.ui.campsite
 
+import android.R.attr.checked
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DateRangePicker
-import androidx.compose.material3.DateRangePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -20,13 +21,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewModelScope
+import android.util.Log
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteError
 import com.campsitereservationapp.model.LotteryError
 
@@ -53,92 +64,144 @@ fun OwnerLotteryRegisterScreen(
     viewModel: LotteryFormViewModel = viewModel(factory = LotteryFormViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsState()
-
+    val campsites = remember { mutableStateListOf<Campsite>()}
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
             navController.popBackStack()
         }
+        campsites.addAll(viewModel.getCampsites())
+
     }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .verticalScroll(rememberScrollState())
+
+            //.verticalScroll(rememberScrollState())
     ) {
-        Spacer(modifier = Modifier.height(30.dp))
-
         Text(
-            text = "Back",
-            modifier = Modifier.clickable { navController.popBackStack() }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Create your Lottery",
+            text = "Which campsites would you like to put a lottery for?",
             style = MaterialTheme.typography.headlineSmall
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Selected campsite ids
-        // Registration Date Period
-        val dateRangeModifier = Modifier.height(500.dp)
-        Text("Registration  Date Range", style = MaterialTheme.typography.labelLarge)
-        DateRangePicker(
-            state = rememberDateRangePickerState(),
-            modifier = dateRangeModifier
-        )
-
-        // Reservation Date Period
-        Text("Reservation Date Range", style = MaterialTheme.typography.labelLarge)
-        DateRangePicker(
-            state = rememberDateRangePickerState(),
-            modifier = dateRangeModifier
-        )
-
-
-        // Winner Amount
-        Text("Amount of Lottery Winners", style = MaterialTheme.typography.labelLarge)
-        OutlinedTextField(
-            value = state.winnerAmount,
-            onValueChange = viewModel::onWinnerAmountChange,
-            placeholder = { Text("Enter Winner Amount") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Display Validation Errors
-        if (state.errors.isNotEmpty()) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                state.errors.forEach { error ->
-                    Text(
-                        text = formatLotteryError(error),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        if (state.saveError) {
-            Text(
-                text = "Failed to save campsite. Please try again.",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        Button(
-            onClick = { viewModel.save() },
-            enabled = !state.isSaving,
-            modifier = Modifier.fillMaxWidth()
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
         ) {
-            Text(if (state.isSaving) "Saving..." else "Submit")
+            items(campsites) { campsite ->
+                campsiteRow(campsite, viewModel)
+            }
         }
+
+        ExtendedFloatingActionButton(
+            onClick = {
+                viewModel.onCampsiteIdsChange()
+                navController.navigate("OwnerLotteryDetails1")
+            }
+        ) {
+            Text("NEXT")
+        }
+
+    }
+
+//    Column(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .padding(16.dp)
+//            .verticalScroll(rememberScrollState())
+//    ) {
+//        Spacer(modifier = Modifier.height(30.dp))
+//
+//        Text(
+//            text = "Back",
+//            modifier = Modifier.clickable { navController.popBackStack() }
+//        )
+//
+//        Spacer(modifier = Modifier.height(16.dp))
+//
+//        Text(
+//            text = "Create your Lottery",
+//            style = MaterialTheme.typography.headlineSmall
+//        )
+//
+//        Spacer(modifier = Modifier.height(16.dp))
+//
+//        // Selected campsite ids
+//        // Registration Date Period
+//        val dateRangeModifier = Modifier.height(500.dp)
+//        Text("Registration  Date Range", style = MaterialTheme.typography.labelLarge)
+//        DateRangePicker(
+//            state = rememberDateRangePickerState(),
+//            modifier = dateRangeModifier
+//        )
+//
+//        // Reservation Date Period
+//        Text("Reservation Date Range", style = MaterialTheme.typography.labelLarge)
+//        DateRangePicker(
+//            state = rememberDateRangePickerState(),
+//            modifier = dateRangeModifier
+//        )
+//
+//
+//        // Winner Amount
+//        Text("Amount of Lottery Winners", style = MaterialTheme.typography.labelLarge)
+//        OutlinedTextField(
+//            value = state.winnerAmount,
+//            onValueChange = viewModel::onWinnerAmountChange,
+//            placeholder = { Text("Enter Winner Amount") },
+//            modifier = Modifier.fillMaxWidth()
+//        )
+//
+//        // Display Validation Errors
+//        if (state.errors.isNotEmpty()) {
+//            Column(modifier = Modifier.fillMaxWidth()) {
+//                state.errors.forEach { error ->
+//                    Text(
+//                        text = formatLotteryError(error),
+//                        color = MaterialTheme.colorScheme.error,
+//                        style = MaterialTheme.typography.bodySmall,
+//                        modifier = Modifier.padding(vertical = 2.dp)
+//                    )
+//                }
+//            }
+//            Spacer(modifier = Modifier.height(12.dp))
+//        }
+//
+//        if (state.saveError) {
+//            Text(
+//                text = "Failed to save campsite. Please try again.",
+//                color = MaterialTheme.colorScheme.error,
+//                style = MaterialTheme.typography.bodyMedium
+//            )
+//            Spacer(modifier = Modifier.height(12.dp))
+//        }
+//
+//        Button(
+//            onClick = { viewModel.save() },
+//            enabled = !state.isSaving,
+//            modifier = Modifier.fillMaxWidth()
+//        ) {
+//            Text(if (state.isSaving) "Saving..." else "Submit")
+//        }
+//    }
+}
+
+@Composable
+fun campsiteRow(campsite: Campsite, viewModel: LotteryFormViewModel) {
+    val checked = remember { mutableStateOf(false)}
+    Row() {
+        Checkbox(
+            checked = checked.value,
+            onCheckedChange = {
+                checked.value = it
+                if (!it) {
+                    viewModel.onCampsitesChangeRemove(campsite.id)
+                } else {
+                    viewModel.onCampsitesChangeAdd(campsite.id)
+                }
+            },
+        )
+        Text(campsite.name)
     }
 }
 
