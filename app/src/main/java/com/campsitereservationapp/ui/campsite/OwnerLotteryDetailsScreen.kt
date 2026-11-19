@@ -1,31 +1,23 @@
-package com.campsitereservationapp.ui.discovery
+package com.campsitereservationapp.ui.campsite
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DateRangePicker
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -36,14 +28,12 @@ import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteError
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.LotteryError
-import com.campsitereservationapp.ui.campsite.LotteryFormViewModel
-import com.campsitereservationapp.ui.campsite.campsiteRow
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
 @Composable
-fun OwnerLotteryDetails1Screen(
+fun OwnerLotteryDetailsScreen(
     navController: NavController,
     viewModel: LotteryFormViewModel = viewModel(factory = LotteryFormViewModel.Factory)
 ) {
@@ -170,14 +160,14 @@ fun OwnerLotteryDetails1Screen(
  */
 private fun formatLotteryError(error: LotteryError): String {
     return when (error) {
-        LotteryError.NO_CAMPSITES -> "Campsites not provided."
-        LotteryError.REGISTRATION_PERIOD_AFTER_RESERVATION_PERIOD -> "Registration period cannoy be after the reservation period"
+        LotteryError.NO_CAMPSITES -> "Campsite(s) not provided."
+        LotteryError.REGISTRATION_PERIOD_AFTER_RESERVATION_PERIOD -> "Registration period cannot be after the reservation period."
         LotteryError.WINNER_AMOUNT_LESS_THAN_ONE -> "Winner amount must be greater than 0."
         LotteryError.CAPACITY_NOT_A_NUMBER -> "Winner amount must be a valid number."
-        LotteryError.REGISTRATION_PERIOD_IN_PAST -> "Registration period cannot be set in the past"
-        LotteryError.RESERVATION_PERIOD_IN_PAST -> "Reservation period cannot be set in the past"
+        LotteryError.REGISTRATION_PERIOD_IN_PAST -> "Registration period cannot be set in the past."
+        LotteryError.RESERVATION_PERIOD_IN_PAST -> "Reservation period cannot be set in the past."
         LotteryError.INVALID_WAITING_LIST -> "Waiting list must be valid."
-        LotteryError.NO_OWNER_ID -> "Owner must be identified"
+        LotteryError.NO_OWNER_ID -> "Owner must be identified."
     }
 }
 

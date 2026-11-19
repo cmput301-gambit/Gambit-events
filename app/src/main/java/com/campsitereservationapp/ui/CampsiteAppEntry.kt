@@ -17,7 +17,8 @@ import com.campsitereservationapp.ui.campsite.LotteryFormViewModel
 import com.campsitereservationapp.ui.campsite.OwnerCampsiteDetailsScreen
 import com.campsitereservationapp.ui.campsite.OwnerCampsiteListScreen
 import com.campsitereservationapp.ui.campsite.OwnerHomeScreen
-import com.campsitereservationapp.ui.campsite.OwnerLotteryRegisterScreen
+import com.campsitereservationapp.ui.campsite.OwnerLotteryCampsiteSelectionScreen
+import com.campsitereservationapp.ui.campsite.OwnerLotteryDetailsScreen
 import com.campsitereservationapp.ui.campsite.OwnerWaitlistScreen
 import com.campsitereservationapp.ui.campsite.RegisterCampsiteScreen
 import com.campsitereservationapp.ui.discovery.CampsiteDetailsScreen
@@ -26,7 +27,6 @@ import com.campsitereservationapp.ui.discovery.EntrantHomeScreen
 import com.campsitereservationapp.ui.discovery.EntrantSettingsScreen
 import com.campsitereservationapp.ui.discovery.InboxScreen
 import com.campsitereservationapp.ui.campsite.ReservationListScreen
-import com.campsitereservationapp.ui.discovery.OwnerLotteryDetails1Screen
 import com.campsitereservationapp.ui.discovery.ReserveScreen
 import com.campsitereservationapp.ui.discovery.PolicyAndGuidelinesScreen
 
@@ -48,13 +48,13 @@ fun CampsiteAppEntry(){
         composable("EntrantHome") { EntrantHomeScreen(navController) }
         composable("OwnerHome") { OwnerHomeScreen(navController) }
         composable("RegisterCampsite") { RegisterCampsiteScreen(navController) }
-        composable("OwnerLotteryRegisterScreen") { OwnerLotteryRegisterScreen(navController) }
-        composable("OwnerLotteryDetails1") { backStackEntry ->
+        composable("OwnerLotteryCampsiteSelectionScreen") { OwnerLotteryCampsiteSelectionScreen(navController) }
+        composable("OwnerLotteryDetails") { backStackEntry ->
             val parentEntry = remember(backStackEntry) {
-                navController.getBackStackEntry("OwnerLotteryRegisterScreen")
+                navController.getBackStackEntry("OwnerLotteryCampsiteSelectionScreen")
             }
             val viewModel: LotteryFormViewModel = viewModel(viewModelStoreOwner = parentEntry)
-            OwnerLotteryDetails1Screen(navController, viewModel=viewModel)
+            OwnerLotteryDetailsScreen(navController, viewModel=viewModel)
         }
         composable("Reservations") { ReservationListScreen(navController) }
         composable("OwnerCampsiteList") { OwnerCampsiteListScreen(navController) }

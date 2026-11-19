@@ -79,7 +79,7 @@ fun OwnerHomeScreen(
         }
 
         Button(
-            onClick = { navController.navigate("OwnerLotteryRegisterScreen") },
+            onClick = { navController.navigate("OwnerLotteryCampsiteSelectionScreen") },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Create Lottery")
