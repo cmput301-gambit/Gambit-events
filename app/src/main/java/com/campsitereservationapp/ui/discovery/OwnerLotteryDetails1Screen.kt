@@ -34,9 +34,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteError
+import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.LotteryError
 import com.campsitereservationapp.ui.campsite.LotteryFormViewModel
 import com.campsitereservationapp.ui.campsite.campsiteRow
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 @Composable
 fun OwnerLotteryDetails1Screen(
@@ -45,12 +49,32 @@ fun OwnerLotteryDetails1Screen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val campsites = remember { mutableStateListOf<Campsite>()}
+    val pickerStateRegistration = rememberDateRangePickerState()
+    val pickerStateReservation = rememberDateRangePickerState()
+    val registrationPeriodStart = pickerStateRegistration.selectedStartDateMillis
+    val registrationPeriodEnd = pickerStateRegistration.selectedEndDateMillis
+    val reservationPeriodStart = pickerStateReservation.selectedStartDateMillis
+    val reservationPeriodEnd = pickerStateReservation.selectedEndDateMillis
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
             navController.popBackStack()
         }
         campsites.addAll(viewModel.getCampsites())
-        //Log.d("Campsites", viewModel.uiState.collectAsStateWithLifecycle())
+    }
+
+    LaunchedEffect(registrationPeriodStart, registrationPeriodEnd) {
+        if (registrationPeriodStart != null && registrationPeriodEnd != null) {
+
+            viewModel.onRegistrationPeriodChange(DateRange(registrationPeriodStart.toLocalDate(),
+                registrationPeriodEnd.toLocalDate()))
+        }
+    }
+
+    LaunchedEffect(reservationPeriodStart, reservationPeriodEnd) {
+        if (reservationPeriodStart != null && reservationPeriodEnd != null) {
+            viewModel.onReservationPeriodChange(DateRange(reservationPeriodStart.toLocalDate(),
+                reservationPeriodEnd.toLocalDate()))
+        }
     }
 
     Column(
@@ -80,15 +104,17 @@ fun OwnerLotteryDetails1Screen(
         val dateRangeModifier = Modifier.height(500.dp)
         Text("Registration  Date Range", style = MaterialTheme.typography.labelLarge)
         DateRangePicker(
-            state = rememberDateRangePickerState(),
-            modifier = dateRangeModifier
+            state = pickerStateRegistration,
+            modifier = dateRangeModifier,
+
         )
 
         // Reservation Date Period
         Text("Reservation Date Range", style = MaterialTheme.typography.labelLarge)
         DateRangePicker(
-            state = rememberDateRangePickerState(),
-            modifier = dateRangeModifier
+            state = pickerStateReservation,
+            modifier = dateRangeModifier,
+
         )
 
 
@@ -154,3 +180,6 @@ private fun formatLotteryError(error: LotteryError): String {
         LotteryError.NO_OWNER_ID -> "Owner must be identified"
     }
 }
+
+private fun Long.toLocalDate(): LocalDate =
+    Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate() //Currently uses UTC, not sure if this needs to be changed
