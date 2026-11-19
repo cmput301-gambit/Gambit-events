@@ -86,6 +86,16 @@ class LotteryRepository(
             }
         }
 
+    fun getLotteryFromCampsiteId(
+        campsiteId: String? = null,
+    ): Flow<List<Lottery>> =
+        observeAll().map { lotteries ->
+            lotteries.filter { lottery ->
+                        (campsiteId == null || campsiteId in lottery.campsiteIds)
+            }
+        }
+
+
     /**
      * Draws every lottery that is ready (stage DRAWN, notifications not yet
      * sent), then sends each entrant their win or lose notification.
