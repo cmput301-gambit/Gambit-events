@@ -2,6 +2,8 @@ package com.campsitereservationapp.ui
 
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -11,6 +13,7 @@ import com.campsitereservationapp.ui.admin.AdminBrowseCampsitesScreen
 import com.campsitereservationapp.ui.admin.AdminCampsiteListScreen
 import com.campsitereservationapp.ui.admin.AdminHomeScreen
 import com.campsitereservationapp.ui.campsite.EditCampsiteScreen
+import com.campsitereservationapp.ui.campsite.LotteryFormViewModel
 import com.campsitereservationapp.ui.campsite.OwnerCampsiteDetailsScreen
 import com.campsitereservationapp.ui.campsite.OwnerCampsiteListScreen
 import com.campsitereservationapp.ui.campsite.OwnerHomeScreen
@@ -46,7 +49,13 @@ fun CampsiteAppEntry(){
         composable("OwnerHome") { OwnerHomeScreen(navController) }
         composable("RegisterCampsite") { RegisterCampsiteScreen(navController) }
         composable("OwnerLotteryRegisterScreen") { OwnerLotteryRegisterScreen(navController) }
-        composable("OwnerLotteryDetails1") { OwnerLotteryDetails1Screen(navController) }
+        composable("OwnerLotteryDetails1") { backStackEntry ->
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("OwnerLotteryRegisterScreen")
+            }
+            val viewModel: LotteryFormViewModel = viewModel(viewModelStoreOwner = parentEntry)
+            OwnerLotteryDetails1Screen(navController, viewModel=viewModel)
+        }
         composable("Reservations") { ReservationListScreen(navController) }
         composable("OwnerCampsiteList") { OwnerCampsiteListScreen(navController) }
         composable(
