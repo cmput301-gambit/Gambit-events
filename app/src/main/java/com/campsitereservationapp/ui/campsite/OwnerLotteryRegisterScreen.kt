@@ -80,6 +80,16 @@ fun OwnerLotteryRegisterScreen(
 
             //.verticalScroll(rememberScrollState())
     ) {
+
+        Spacer(modifier = Modifier.height(30.dp))
+
+        Text(
+            text = "Back",
+            modifier = Modifier.clickable { navController.popBackStack() }
+        )
+
+        Spacer(modifier = Modifier.height(30.dp))
+
         Text(
             text = "Which campsites would you like to put a lottery for?",
             style = MaterialTheme.typography.headlineSmall
