@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui.graphics)
+    implementation(libs.material3)
     testImplementation(libs.kotlinx.coroutines.test)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(platform(libs.androidx.compose.bom))

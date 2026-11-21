@@ -1,25 +1,51 @@
 package com.campsitereservationapp.ui.campsite
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -39,8 +65,10 @@ fun OwnerLotteryDetailsScreen(
     navController: NavController,
     viewModel: LotteryFormViewModel = viewModel(factory = LotteryFormViewModel.Factory)
 ) {
+
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val campsites = remember { mutableStateListOf<Campsite>()}
+    val lotteryStage = remember { mutableStateOf("")}
     val pickerStateRegistration = rememberDateRangePickerState()
     val pickerStateReservation = rememberDateRangePickerState()
     val registrationPeriodStart = pickerStateRegistration.selectedStartDateMillis
@@ -91,18 +119,25 @@ fun OwnerLotteryDetailsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Selected campsite ids
         // Registration Date Period
-        val dateRangeModifier = Modifier.height(500.dp)
-        Text("Registration  Date Range", style = MaterialTheme.typography.labelLarge)
+        val dateRangeModifier = Modifier
+            .height(400.dp)
+            .fillMaxWidth(0.5f)
+            .align(Alignment.CenterHorizontally)
+        Text("Registration  Date Range", style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         DateRangePicker(
             state = pickerStateRegistration,
             modifier = dateRangeModifier,
 
         )
+        Spacer(modifier = Modifier.height(32.dp))
 
         // Reservation Date Period
-        Text("Reservation Date Range", style = MaterialTheme.typography.labelLarge)
+        Text("Reservation Date Range", style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
+        Spacer(modifier = Modifier.height(16.dp))
         DateRangePicker(
             state = pickerStateReservation,
             modifier = dateRangeModifier,
@@ -118,6 +153,8 @@ fun OwnerLotteryDetailsScreen(
             placeholder = { Text("Enter Winner Amount") },
             modifier = Modifier.fillMaxWidth()
         )
+
+        MinimalDropdownMenu(viewModel)
 
         // Display Validation Errors
         if (state.errors.isNotEmpty()) {
@@ -149,6 +186,64 @@ fun OwnerLotteryDetailsScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (state.isSaving) "Saving..." else "Submit")
+        }
+    }
+}
+
+
+@Composable
+fun MinimalDropdownMenu(viewModel: LotteryFormViewModel, lotteryStage: MutableState<String>? = null) {
+    var expanded by remember { mutableStateOf(false) }
+    var initialText = "Select Option"
+    if (lotteryStage != null) {
+        initialText = lotteryStage.value
+    }
+    val textFieldState = rememberTextFieldState(initialText)
+
+    val options: List<String> = listOf("DRAFT", "OPEN")
+    var checkedIndex by rememberSaveable { mutableIntStateOf(0) }
+    Box(
+        modifier = Modifier
+            .padding(16.dp)
+    ) {
+        ExposedDropdownMenuBox (
+            expanded = expanded,
+            onExpandedChange = { expanded = it }
+        ) {
+            TextField(
+                // The `menuAnchor` modifier must be passed to the text field to handle
+                // expanding/collapsing the menu on click. A read-only text field has
+                // the anchor type `PrimaryNotEditable`.
+                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                state = textFieldState,
+                readOnly = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                label = { Text("Lottery Status") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = ExposedDropdownMenuDefaults.textFieldColors(),
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                containerColor = MenuDefaults.groupStandardContainerColor,
+                shape = MenuDefaults.standaloneGroupShape,
+            ) {
+                val optionCount = options.size
+                options.forEachIndexed { index, option ->
+                    SelectableDropdownMenuItem(
+                        shapes = MenuDefaults.itemShape(index, optionCount),
+                        text = { Text(option, style = MaterialTheme.typography.bodyLarge) },
+                        selected = index == checkedIndex,
+                        onClick = {
+                            textFieldState.setTextAndPlaceCursorAtEnd(option)
+                            checkedIndex = index
+                            expanded = false
+                            viewModel.onStageChange(option)
+                        },
+                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                    )
+                }
+            }
         }
     }
 }
