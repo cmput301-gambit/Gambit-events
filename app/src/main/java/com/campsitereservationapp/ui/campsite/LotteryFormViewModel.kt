@@ -54,6 +54,7 @@ data class LotteryFormUiState(
     val registrationPeriod: DateRange = DateRange(LocalDate.now().plusDays(1), LocalDate.now().plusDays(5)),
     val reservationPeriod: DateRange = DateRange(LocalDate.now().plusDays(6), LocalDate.now().plusDays(10)),
     val winnerAmount: String = "",
+    val lotteryStage: String = "",
     val errors: List<LotteryError> = emptyList()
 )
 
@@ -101,7 +102,6 @@ class LotteryFormViewModel(
                 try {
 
                     val loaded = lotteryRepository.get(editingLotteryId)
-                    Log.d("loaded-lottery", loaded.toString())
                     originalLottery = loaded
                     if (loaded != null) {
                         _uiState.update {
@@ -112,6 +112,7 @@ class LotteryFormViewModel(
                                 registrationPeriod = loaded.registrationPeriod,
                                 reservationPeriod = loaded.reservationPeriod,
                                 winnerAmount = loaded.winnerAmount.toString(),
+                                lotteryStage = loaded.stage.toString()
                             )
                         }
                     } else {
@@ -149,7 +150,22 @@ class LotteryFormViewModel(
         _uiState.update { it.copy(winnerAmount = winnerAmount) }
     }
 
+    fun onStageChange(lotteryStage: String) {
+        _uiState.update { it.copy(lotteryStage = lotteryStage)}
+    }
 
+
+    fun getRegistrationRange(): DateRange {
+        return uiState.value.registrationPeriod
+    }
+
+    fun getReservationRange(): DateRange {
+        return uiState.value.reservationPeriod
+    }
+
+    fun getStage(): String {
+        return uiState.value.lotteryStage
+    }
 
     fun onCampsitesChangeRemove(campsiteId: String) {
         campsiteIds.remove(campsiteId)
@@ -199,11 +215,17 @@ class LotteryFormViewModel(
             ownerId = currentUserId
         )
 
+        var convertedStage = LotteryStatus.DRAFT
+        if (state.lotteryStage == "OPEN") {
+            convertedStage = LotteryStatus.OPEN
+        }
+
         val lottery = baseLottery.copy(
             campsiteIds = state.campsiteIds,
             registrationPeriod = state.registrationPeriod,
             reservationPeriod = state.reservationPeriod,
             winnerAmount = parsedWinnerAmount ?: 0,
+            stage = convertedStage
         )
 
         val errors = lottery.validate().toMutableList()

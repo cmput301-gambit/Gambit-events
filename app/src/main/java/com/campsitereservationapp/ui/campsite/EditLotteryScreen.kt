@@ -15,14 +15,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDateRangePickerState
+import androidx.compose.material3.setSelection
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -59,9 +62,12 @@ fun EditLotteryScreen(
     viewModel: LotteryFormViewModel = viewModel(factory = LotteryFormViewModel.provideFactory(lotteryId))
 ) {
     val state by viewModel.uiState.collectAsState()
-    val campsites = remember { mutableStateListOf<Campsite>()}
-    val pickerStateRegistration = rememberDateRangePickerState()
-    val pickerStateReservation = rememberDateRangePickerState()
+    val lotteryStage: MutableState<String> = remember { mutableStateOf(viewModel.getStage())}
+    Log.d("Stage-", lotteryStage.value)
+    val pickerStateRegistration = rememberDateRangePickerState(initialSelectedStartDate = viewModel.getRegistrationRange().start,
+        initialSelectedEndDate = viewModel.getRegistrationRange().finish)
+    val pickerStateReservation = rememberDateRangePickerState(initialSelectedStartDate = viewModel.getReservationRange().start,
+        initialSelectedEndDate = viewModel.getReservationRange().finish)
     val registrationPeriodStart = pickerStateRegistration.selectedStartDateMillis
     val registrationPeriodEnd = pickerStateRegistration.selectedEndDateMillis
     val reservationPeriodStart = pickerStateReservation.selectedStartDateMillis
@@ -71,7 +77,6 @@ fun EditLotteryScreen(
         if (state.isSaved) {
             navController.popBackStack()
         }
-        campsites.addAll(viewModel.getCampsites())
     }
     LaunchedEffect(registrationPeriodStart, registrationPeriodEnd) {
         if (registrationPeriodStart != null && registrationPeriodEnd != null) {
@@ -115,23 +120,26 @@ fun EditLotteryScreen(
             Text("Failed to load lottery details.", color = MaterialTheme.colorScheme.error)
             Log.d("EditLotteryScreen", "Passed LotteryId: $lotteryId")
         } else {
-            // Selected campsite ids
+
             // Registration Date Period
-            val dateRangeModifier = Modifier.height(500.dp)
-            Text("Registration  Date Range", style = MaterialTheme.typography.labelLarge)
+            val dateRangeModifier = Modifier
+                .height(400.dp)
+                .fillMaxWidth(0.5f)
+                .align(Alignment.CenterHorizontally)
+            Text("Registration  Date Range", style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
             DateRangePicker(
                 state = pickerStateRegistration,
                 modifier = dateRangeModifier,
+            )
 
-                )
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Reservation Date Period
-            Text("Reservation Date Range", style = MaterialTheme.typography.labelLarge)
+            Text("Reservation Date Range", style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
             DateRangePicker(
                 state = pickerStateReservation,
                 modifier = dateRangeModifier,
-
-                )
+            )
 
 
             // Winner Amount
@@ -142,6 +150,8 @@ fun EditLotteryScreen(
                 placeholder = { Text("Enter Winner Amount") },
                 modifier = Modifier.fillMaxWidth()
             )
+
+            MinimalDropdownMenu(viewModel, lotteryStage)
 
             // Display Validation Errors
             if (state.errors.isNotEmpty()) {
@@ -177,6 +187,8 @@ fun EditLotteryScreen(
         }
     }
 }
+
+
 
     /**
  * Converts a [CampsiteError] validation enum value into a user-friendly error message string.
