@@ -10,6 +10,7 @@ import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.User
 import com.campsitereservationapp.model.WaitingList
+import com.campsitereservationapp.ui.owner.OwnerWaitlistViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -29,7 +30,7 @@ import org.junit.Test
 import java.time.LocalDate
 
 /**
- * Unit tests for [OwnerWaitlistViewModel].
+ * Unit tests for [com.campsitereservationapp.ui.owner.OwnerWaitlistViewModel].
  *
  * **Purpose:** checks an owner sees only their own lotteries, with the
  * campsite name and the names of everyone on each waitlist, and that the

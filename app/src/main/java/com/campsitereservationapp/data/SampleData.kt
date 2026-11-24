@@ -14,14 +14,16 @@ import java.time.LocalDate
 /**
  * Realistic example data shared by repositories, previews and tests.
  *
- * **Purpose:** gives every screen and test the same believable data
- * before Firestore is connected.
+ * **Purpose:** gives tests, previews and a fresh database the same
+ * believable data.
  *
  * **Design rationale:** one shared object so sample data isn't
- * duplicated across files; stable IDs so tests can look items up.
+ * duplicated across files; stable IDs so tests can look items up. Dates
+ * are relative to today, and each campsite's availability covers its
+ * lottery's booking period, so a sample winner always has dates to book.
  *
- * **Outstanding issues:** add users, lotteries and reservations as
- * those models are created.
+ * **Outstanding issues:** dates are fixed at the moment the data is seeded
+ * into Firestore, so the seeded copies go out of date over time.
  */
 object SampleData {
     val campsites = listOf(
@@ -40,7 +42,7 @@ object SampleData {
             description = "Lakefront sites with a boat launch and showers.",
             location = "Sylvan Lake, AB",
             capacity = 4,
-            availability = DateRange(LocalDate.now().minusDays(7), LocalDate.now().plusDays(7))
+            availability = DateRange(LocalDate.now().minusDays(7), LocalDate.now().plusDays(30))
         ),
         Campsite(
             id = "campsite-aspen-hollow",
@@ -49,7 +51,7 @@ object SampleData {
             description = "Quiet walk-in tent sites in an aspen grove.",
             location = "Elk Island, AB",
             capacity = 2,
-            availability = DateRange(LocalDate.now().minusDays(7), LocalDate.now().plusDays(7))
+            availability = DateRange(LocalDate.now().minusDays(7), LocalDate.now().plusDays(30))
         ),
         // Add sample data for other classes here such as lotteries, reservations, users, etc.
     )
