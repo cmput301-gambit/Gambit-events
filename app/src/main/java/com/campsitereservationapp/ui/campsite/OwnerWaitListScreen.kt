@@ -2,12 +2,14 @@ package com.campsitereservationapp.ui.campsite
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -59,7 +61,7 @@ fun OwnerWaitlistScreen(
             state.lotteries.isEmpty() -> Text("You don't have any lotteries yet.")
             else -> LazyColumn {
                 items(state.lotteries, key = { it.lotteryId }) { lottery ->
-                    WaitlistSection(lottery)
+                    WaitlistSection(lottery, navController)
                 }
             }
         }
@@ -72,23 +74,31 @@ fun OwnerWaitlistScreen(
  * @param lottery the lottery to show
  */
 @Composable
-private fun WaitlistSection(lottery: LotteryWaitlist) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp)
-    ) {
-        Text(lottery.campsiteNames, style = MaterialTheme.typography.titleMedium)
-        Text(
-            text = "${lottery.entrantNames.size} on the waitlist",
-            style = MaterialTheme.typography.bodySmall,
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        if (lottery.entrantNames.isEmpty()) {
-            Text("No one has joined yet.")
-        } else {
-            lottery.entrantNames.forEach { name -> Text(name) }
+private fun WaitlistSection(lottery: LotteryWaitlist, navController: NavController) {
+    //Row () {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp)
+        ) {
+            Text(lottery.campsiteNames, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "${lottery.entrantNames.size} on the waitlist",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            if (lottery.entrantNames.isEmpty()) {
+                Text("No one has joined yet.")
+            } else {
+                lottery.entrantNames.forEach { name -> Text(name) }
+            }
+            Button(
+                onClick = {navController.navigate("OwnerEditLotteryCampsiteSelectionScreen/${lottery.lotteryId}")}
+            ) {
+                Text("Edit Lottery")
+            }
         }
-    }
+
+    //}
     HorizontalDivider()
 }

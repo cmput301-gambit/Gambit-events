@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui.campsite
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,7 +60,6 @@ fun OwnerLotteryDetailsScreen(
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val campsites = remember { mutableStateListOf<Campsite>()}
-    val lotteryStage = remember { mutableStateOf("")}
     val pickerStateRegistration = rememberDateRangePickerState()
     val pickerStateReservation = rememberDateRangePickerState()
     val registrationPeriodStart = pickerStateRegistration.selectedStartDateMillis

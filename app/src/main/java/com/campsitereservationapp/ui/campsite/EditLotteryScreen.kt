@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui.campsite
 
+import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,7 @@ import java.time.ZoneOffset
  * @param campsiteId ID of the campsite being edited
  * @param viewModel view model initialized in editing mode
  */
+@SuppressLint("UnrememberedMutableState")
 @Composable
 fun EditLotteryScreen(
     navController: NavController,
@@ -62,8 +64,6 @@ fun EditLotteryScreen(
     viewModel: LotteryFormViewModel = viewModel(factory = LotteryFormViewModel.provideFactory(lotteryId))
 ) {
     val state by viewModel.uiState.collectAsState()
-    val lotteryStage: MutableState<String> = remember { mutableStateOf(viewModel.getStage())}
-    Log.d("Stage-", lotteryStage.value)
     val pickerStateRegistration = rememberDateRangePickerState(initialSelectedStartDate = viewModel.getRegistrationRange().start,
         initialSelectedEndDate = viewModel.getRegistrationRange().finish)
     val pickerStateReservation = rememberDateRangePickerState(initialSelectedStartDate = viewModel.getReservationRange().start,
@@ -151,7 +151,7 @@ fun EditLotteryScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            MinimalDropdownMenu(viewModel, lotteryStage)
+            MinimalDropdownMenu(viewModel, mutableStateOf(state.lotteryStage))
 
             // Display Validation Errors
             if (state.errors.isNotEmpty()) {

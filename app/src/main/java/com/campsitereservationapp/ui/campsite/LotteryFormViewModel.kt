@@ -131,6 +131,10 @@ class LotteryFormViewModel(
         return campsiteRepository.getByOwner(currentUserId)
     }
 
+//    suspend fun getCampsitesByLottery(): List<Campsite> {
+//        return campsiteRepository.
+//    }
+
 
     /**
      * Updates the lottery's assigned campsites from input in the form state.
@@ -194,6 +198,10 @@ class LotteryFormViewModel(
     }
 
 
+    suspend fun campsiteHasLottery(campsiteId: String): Boolean {
+        val lottery: Lottery? = lotteryRepository.listLotteries(campsiteId=campsiteId).first().first()
+        return (lottery != null)
+    }
 
    
 

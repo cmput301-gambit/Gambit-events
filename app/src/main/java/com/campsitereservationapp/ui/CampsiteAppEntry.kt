@@ -17,6 +17,7 @@ import com.campsitereservationapp.ui.campsite.EditLotteryScreen
 import com.campsitereservationapp.ui.campsite.LotteryFormViewModel
 import com.campsitereservationapp.ui.campsite.OwnerCampsiteDetailsScreen
 import com.campsitereservationapp.ui.campsite.OwnerCampsiteListScreen
+import com.campsitereservationapp.ui.campsite.OwnerEditLotteryCampsiteSelectionScreen
 import com.campsitereservationapp.ui.campsite.OwnerHomeScreen
 import com.campsitereservationapp.ui.campsite.OwnerLotteryCampsiteSelectionScreen
 import com.campsitereservationapp.ui.campsite.OwnerLotteryDetailsScreen
@@ -63,6 +64,13 @@ fun CampsiteAppEntry(){
         ) { backStackEntry ->
             val lotteryId = backStackEntry.arguments?.getString("lotteryId") ?: return@composable
             EditLotteryScreen(navController, lotteryId = lotteryId)
+        }
+        composable(
+            route="OwnerEditLotteryCampsiteSelectionScreen/{lotteryId}",
+            arguments = listOf(navArgument("lotteryId") { type = NavType.StringType})
+        ) { backStackEntry ->
+            val lotteryId = backStackEntry.arguments?.getString("lotteryId") ?: return@composable
+            OwnerEditLotteryCampsiteSelectionScreen(navController, lotteryId = lotteryId)
         }
         composable("Reservations") { ReservationListScreen(navController) }
         composable("OwnerCampsiteList") { OwnerCampsiteListScreen(navController) }

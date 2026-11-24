@@ -1,5 +1,7 @@
 package com.campsitereservationapp.ui.campsite
 
+import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 
@@ -48,7 +51,6 @@ import com.campsitereservationapp.model.LotteryError
  * @param navController navigation controller used to return to the previous screen on completion
  * @param viewModel view model managing form UI state and save logic
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OwnerLotteryCampsiteSelectionScreen(
     navController: NavController,
@@ -56,12 +58,21 @@ fun OwnerLotteryCampsiteSelectionScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val campsites = remember { mutableStateListOf<Campsite>()}
+    val campsiteLotteryDict: MutableMap<String, List<Boolean>> = remember { mutableStateMapOf() }
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
             navController.popBackStack()
         }
         campsites.addAll(viewModel.getCampsites())
 
+    }
+    LaunchedEffect(campsites.isNotEmpty()) {
+        Log.d("hasLotteryMap", "Running forEach")
+        Log.d("hasLotteryMap", campsites.toString())
+        campsites.forEach { campsite ->
+            campsiteLotteryDict[campsite.id] = listOf(viewModel.campsiteHasLottery(campsite.id), false)
+            Log.d("hasLotteryMap", "Campsite Id: ${campsite.id}, hasLottery: ${campsiteLotteryDict[campsite.id]}")
+        }
     }
 
     Column(
@@ -82,7 +93,7 @@ fun OwnerLotteryCampsiteSelectionScreen(
         Spacer(modifier = Modifier.height(30.dp))
 
         Text(
-            text = "Which campsites would you like to put a lottery for?",
+            text = "Which campsites would you like to create a lottery for?",
             style = MaterialTheme.typography.headlineSmall
         )
         LazyColumn(
@@ -90,7 +101,7 @@ fun OwnerLotteryCampsiteSelectionScreen(
                 .fillMaxWidth()
         ) {
             items(campsites) { campsite ->
-                CampsiteRow(campsite, viewModel)
+                CampsiteRow(campsite, viewModel, campsiteLotteryDict)
             }
         }
 
@@ -102,15 +113,22 @@ fun OwnerLotteryCampsiteSelectionScreen(
         ) {
             Text("NEXT")
         }
-
     }
-
-
 }
 
+@SuppressLint("UnrememberedMutableState")
 @Composable
-fun CampsiteRow(campsite: Campsite, viewModel: LotteryFormViewModel) {
-    val checked = remember { mutableStateOf(false)}
+fun CampsiteRow(campsite: Campsite, viewModel: LotteryFormViewModel, campsiteLotteryDict: Map<String, List<Boolean>>) {
+    val checked = remember {  mutableStateOf(campsiteLotteryDict[campsite.id]?.get(1) ?: false)}
+    LaunchedEffect(campsiteLotteryDict[campsite.id]?.get(1) != null) {
+        checked.value = campsiteLotteryDict[campsite.id]?.get(1) == true
+    }
+//    if (campsiteLotteryDict[campsite.id]?.get(1) != null) {
+//        checked.value = campsiteLotteryDict[campsite.id]?.get(1) == true
+//    }
+    Log.d("CampRow", campsiteLotteryDict[campsite.id]?.get(1).toString())
+    Log.d("CampRow", checked.toString())
+    val lotteryConflict = remember { mutableStateOf(false)}
     Row() {
         Checkbox(
             checked = checked.value,
@@ -118,11 +136,21 @@ fun CampsiteRow(campsite: Campsite, viewModel: LotteryFormViewModel) {
                 checked.value = it
                 if (!it) {
                     viewModel.onCampsitesChangeRemove(campsite.id)
+                    lotteryConflict.value = false
                 } else {
-                    viewModel.onCampsitesChangeAdd(campsite.id)
+                    // Check if campsite is already in a lottery
+                    if (campsiteLotteryDict[campsite.id]?.get(0) == false) {
+                        viewModel.onCampsitesChangeAdd(campsite.id)
+                    } else {
+                        lotteryConflict.value = true
+                    }
                 }
             },
         )
+
         Text(campsite.name)
+        if (lotteryConflict.value) {
+            Text("Cannot select campsite, campsite is already linked to a lottery.", color = MaterialTheme.colorScheme.error,)
+        }
     }
 }
