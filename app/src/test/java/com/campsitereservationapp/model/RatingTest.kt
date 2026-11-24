@@ -24,28 +24,28 @@ class RatingTest {
 
     @Test
     fun validRating_hasNoErrors() {
-        val rating = Rating(userId = userId, score = 5, campsiteId = campId)
+        val rating = Rating(userId = userId, score = 5f, campsiteId = campId)
         assertTrue(rating.isValid())
         assertTrue(rating.validate().isEmpty())
     }
 
     @Test
     fun blankCampsiteId_returnsError() {
-        val rating = Rating(userId = userId, score = 5, campsiteId = "")
+        val rating = Rating(userId = userId, score = 5f, campsiteId = "")
         assertFalse(rating.isValid())
         assertTrue(rating.validate().contains(RatingError.BLANK_CAMP))
     }
 
     @Test
     fun blankUser_returnsError() {
-        val rating = Rating(userId = "", score = 5, campsiteId = campId)
+        val rating = Rating(userId = "", score = 5f, campsiteId = campId)
         assertFalse(rating.isValid())
         assertTrue(rating.validate().contains(RatingError.BLANK_USER))
     }
 
     @Test
     fun nonPositiveScore_returnsError() {
-        val score = -1
+        val score = -1f
         val rating = Rating(userId = userId, score = score, campsiteId = campId)
         assertFalse(rating.isValid())
         assertTrue(rating.validate().contains(RatingError.INVALID_RATING))
@@ -53,7 +53,7 @@ class RatingTest {
 
     @Test
     fun higherThanRangeScore_returnsError() {
-        val score = 6
+        val score = 6f
         val rating = Rating(userId = userId, score = score, campsiteId = campId)
         assertFalse(rating.isValid())
         assertTrue(rating.validate().contains(RatingError.INVALID_RATING))

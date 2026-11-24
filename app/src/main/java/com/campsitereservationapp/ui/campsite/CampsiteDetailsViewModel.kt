@@ -9,7 +9,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
+import com.campsitereservationapp.data.RatingRepository
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.Rating
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,7 +34,10 @@ import kotlin.coroutines.cancellation.CancellationException
 data class CampsiteDetailsUiState(
     val mainButtonState: CampsiteDetailsMainButtonState = CampsiteDetailsMainButtonState.JOIN,
     val viewedCampsiteId: String = "",
-    val viewedCampsite: Campsite = Campsite()
+    val viewedCampsite: Campsite = Campsite(),
+    val viewedCampsiteScore: Float = 0f,
+    val giveRatingPopupOpen: Boolean = false,
+    val hasGivenViewedCampsiteRating: Boolean = false
 )
 
 /**
@@ -56,12 +61,18 @@ data class CampsiteDetailsUiState(
 class CampsiteDetailsViewModel(
     private val lotteryRepository: LotteryRepository,
     private val campsiteRepository: CampsiteRepository,
+    private val ratingRepository: RatingRepository,
     private val currentEntrantId: String,
 ) : ViewModel() {
 
     //ID of the currently viewed campsite, passed from the previous screen.
     private val viewedCampsiteId: MutableStateFlow<String> = MutableStateFlow("")
 
+    private val giveRatingPopupOpen: MutableStateFlow<Boolean> = MutableStateFlow(false)
+
+    private val hasGivenRating: MutableStateFlow<Boolean> = MutableStateFlow(false)
+
+    private val campsiteScore: MutableStateFlow<Float> = MutableStateFlow(0f)
     //Enum of the main button of this screen.
     private val mainButtonState : MutableStateFlow<CampsiteDetailsMainButtonState> = MutableStateFlow(
         CampsiteDetailsMainButtonState.JOIN
@@ -182,9 +193,16 @@ class CampsiteDetailsViewModel(
 
     }
 
+    fun updateViewedCampsiteRatingScore(){
+        viewModelScope.launch {
+            campsiteScore.update { ratingRepository.averageRatingByCampsite(viewedCampsiteId.value) }
+        }
+    }
+    fun toggleRatingPopup(){
+        giveRatingPopupOpen.update { !giveRatingPopupOpen.value }
+    }
+
     /**
-     * THIS IS WIP, not final as the rating screen has no mockup presently.
-     * Called by the screen whenever the user submits a rating.
      *
      * Updating [newRating] makes combine() recalculate the state,
      * automatically hiding the rating popup after making a rating, and loading the rating to the
@@ -193,7 +211,19 @@ class CampsiteDetailsViewModel(
      * @param newRating the rating given by the user
      */
     fun onCreateRating(newRating: Float){
-        //adds a rating to the campsite
+        viewModelScope.launch {
+            ratingRepository.add(
+                Rating(
+                    id = ratingRepository.newId(),
+                    userId = currentEntrantId,
+                    campsiteId = viewedCampsiteId.value,
+                    score = newRating
+                )
+            )
+        }
+
+        toggleRatingPopup() //will always close the popup
+
     }
 
     /**
@@ -229,6 +259,7 @@ class CampsiteDetailsViewModel(
                 CampsiteDetailsViewModel(
                     app.container.lotteryRepository,
                     app.container.campsiteRepository,
+                    app.container.ratingRepository,
                     app.container.currentUserId
                )
             }

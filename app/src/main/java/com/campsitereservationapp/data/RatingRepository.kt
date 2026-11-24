@@ -87,7 +87,7 @@ class RatingRepository(dataSource: DataSource<Rating>) : Repository<Rating>(data
             id = id,
             userId = data["userId"] as? String ?: "",
             campsiteId = data["campsiteId"] as? String ?: "",
-            score = (data["score"] as? Number)?.toInt() ?: 0,
+            score = (data["score"] as? Number)?.toFloat() ?: 0f,
         )
     }
 }

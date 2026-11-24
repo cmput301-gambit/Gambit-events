@@ -24,7 +24,7 @@ data class Rating(
     override val id: String = "",
     val userId: String = "",
     val campsiteId: String = "",
-    val score: Int = 0,
+    val score: Float = 0f,
 ) : Identifiable {
 
 /**
@@ -36,7 +36,7 @@ data class Rating(
         val errors = mutableListOf<RatingError>()
         if (campsiteId.isBlank()) errors.add(RatingError.BLANK_CAMP)
         if (userId.isBlank()) errors.add(RatingError.BLANK_USER)
-        if (score < 0 || score > 5) errors.add(RatingError.INVALID_RATING)
+        if (score < 0f || score > 5f) errors.add(RatingError.INVALID_RATING)
 
         return errors
     }
