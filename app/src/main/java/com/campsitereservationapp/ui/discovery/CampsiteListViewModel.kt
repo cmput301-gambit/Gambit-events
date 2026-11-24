@@ -8,16 +8,22 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteFilter
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.RatingRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
+import com.campsitereservationapp.model.Rating
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.util.Date
+import java.util.Dictionary
 
 /**
  * Everything the campsite list screen needs to draw itself.
@@ -28,11 +34,13 @@ import java.util.Date
  * @property campsiteFilter the instance of [CampsiteFilter] currently being applied to the
  * database.
  * @property isLoading true until the first list of campsites arrives
+ * @property campsiteRatings a map assigning an average rating to every campsite
  */
 data class CampsiteListUiState(
     val campsites: List<Campsite> = emptyList(),
     val campsiteFilter: CampsiteFilter = CampsiteFilter(),
     val isLoading: Boolean = true,
+    val campsiteRatings: Map<Campsite, Float> = emptyMap(),
 )
 
 /**
@@ -46,18 +54,20 @@ data class CampsiteListUiState(
  * subscribes to the repository's live stream, so the list updates on its own
  * whenever campsite data changes.
  *
- * **Outstanding issues:** filters by location, date and guests
- * (US 01.01.02) not yet added.
+ * **Outstanding issues:** Huge popin when loading the individual scores for each campsite.
  *
  * @property campsiteRepository The shared repository campsites come from
+ * @property campsiteScores Map joining every [Campsite] with a score gotten from the [ratingRepository].
  */
 class CampsiteListViewModel(
     private val campsiteRepository: CampsiteRepository,
+    private val ratingRepository: RatingRepository,
 ) : ViewModel() {
 
     // State that belongs to this screen only: what the user typed.
     // Private and mutable, so only this ViewModel can change it.
     private val campsiteFilter : MutableStateFlow<CampsiteFilter> = MutableStateFlow(CampsiteFilter())
+    private val campsiteScores : MutableStateFlow<Map<Campsite, Float>> = MutableStateFlow(emptyMap())
     /**
      * The current screen state. The screen collects this and redraws
      * every time it changes.
@@ -69,12 +79,14 @@ class CampsiteListViewModel(
         combine(
             campsiteRepository.observeAll(), // live campsite list from the repository
             campsiteFilter,                 // live filter from the user
-        ) { campsites, filter ->
+            campsiteScores,
+        ) { campsites, filter, ratings, ->
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteListUiState(
                 campsites = filter.apply(campsites),//.filter { it.name.contains(query, ignoreCase = true) },
                 campsiteFilter = filter,
                 isLoading = false, // data has arrived, so we're done loading
+                campsiteRatings = campsiteScores.value
             )
         }
             // stateIn() turns the stream into a StateFlow the screen can read.
@@ -140,6 +152,25 @@ class CampsiteListViewModel(
         }else null
         campsiteFilter.update { it.copy(dateRange = newRange) }
     }
+    /**
+     * Called by the screen whenever the campsite list changes. Compiles the average scores for all visible campsites and updates
+     * the map storing these values.
+     *
+     * Updating [campsiteScores] makes combine() recalculate the state,
+     * so the average scores updates automatically.
+     *
+     *
+     * @return a map assigning each campsite to a given average
+     */
+    fun getCampsiteRatings(): Unit {
+        val ret: MutableMap<Campsite, Float> = mutableMapOf()
+        viewModelScope.launch {
+            campsiteRepository.getAll().forEach {
+                ret[it] = ratingRepository.averageRatingByCampsite(it.id)
+            }
+            campsiteScores.update { ret }
+        }
+    }
 
 
     companion object {
@@ -154,7 +185,7 @@ class CampsiteListViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as CampsiteApp
-                CampsiteListViewModel(app.container.campsiteRepository)
+                CampsiteListViewModel(app.container.campsiteRepository, app.container.ratingRepository)
             }
         }
     }

@@ -37,7 +37,7 @@ data class CampsiteDetailsUiState(
     val viewedCampsite: Campsite = Campsite(),
     val viewedCampsiteScore: Float = 0f,
     val giveRatingPopupOpen: Boolean = false,
-    val hasGivenViewedCampsiteRating: Boolean = false
+    val hasGivenRating: Boolean = false
 )
 
 /**
@@ -56,6 +56,9 @@ data class CampsiteDetailsUiState(
  *
  * @property [LotteryRepository] The shared repository lotteries come from
  * @property campsiteRepository The shared repository campsites come from. Required here because the campsite can only be passed
+ * @property giveRatingPopupOpen Toggles the popup for giving a campsite a rating.
+ * @property hasGivenRating Tracks if the user is allowed to give this campsite a rating
+ * @property campsiteScore the score of the viewed campsite
  * by value between this models screen and the last screen [com.campsitereservationapp.ui.discovery.CampsiteListScreen].
  */
 class CampsiteDetailsViewModel(
@@ -78,6 +81,13 @@ class CampsiteDetailsViewModel(
         CampsiteDetailsMainButtonState.JOIN
     )
 
+    private val popupState = combine(
+        giveRatingPopupOpen,
+        hasGivenRating,
+        campsiteScore,
+    ) { ratingOpen, hasRated, score ->
+        Triple(ratingOpen, hasRated, score)
+    }
     /**
      * The current screen state. The screen collects this and redraws
      * every time it changes.
@@ -88,15 +98,19 @@ class CampsiteDetailsViewModel(
             lotteryRepository.observeAll(), // could be changed to an observeWhere() call
             mainButtonState,
             viewedCampsiteId,
-        ) { lotteries, newButtonState, campsiteId,  ->
+            popupState,
+        ) { lotteries, newButtonState, campsiteId, (rateOpen, hasRated, score)  ->
             //Log.d("CampsiteDetails", "Fetching campsite with id='$campsiteId'")
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteDetailsUiState(
                 newButtonState,
                 campsiteId,
                 viewedCampsite = if (campsiteId.isBlank()) Campsite()
-                else campsiteRepository.get(campsiteId) ?: Campsite() //Returns an empty campsite if no campsite is found.
-            )
+                else campsiteRepository.get(campsiteId) ?: Campsite(), //Returns an empty campsite if no campsite is found.
+                viewedCampsiteScore = score,
+                giveRatingPopupOpen = rateOpen,
+                hasGivenRating = hasRated
+                )
         }
             // stateIn() turns the stream into a StateFlow the screen can read.
             .stateIn(
@@ -193,11 +207,26 @@ class CampsiteDetailsViewModel(
 
     }
 
-    fun updateViewedCampsiteRatingScore(){
+    /**
+     * Called by the screen on the first load.
+     *
+     * Updating [hasGivenRating] and [campsiteScore] makes combine() recalculate the state,
+     * automatically making this screen display the correct info.
+     *
+     */
+    fun updateViewedCampsiteRating(){
         viewModelScope.launch {
             campsiteScore.update { ratingRepository.averageRatingByCampsite(viewedCampsiteId.value) }
+            hasGivenRating.update {
+                ratingRepository.getForCampByUser(viewedCampsiteId.value, currentEntrantId) != emptyList<Rating>()
+            }
         }
     }
+    /**
+     *
+     * Toggles the [giveRatingPopupOpen] variable and makes the state recalculate.
+     *
+     */
     fun toggleRatingPopup(){
         giveRatingPopupOpen.update { !giveRatingPopupOpen.value }
     }
@@ -221,6 +250,8 @@ class CampsiteDetailsViewModel(
                 )
             )
         }
+
+        hasGivenRating.update { true }
 
         toggleRatingPopup() //will always close the popup
 
