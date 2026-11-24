@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.runtime.currentCompositionErrors
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -107,7 +108,7 @@ fun OwnerLotteryCampsiteSelectionScreen(
 
         ExtendedFloatingActionButton(
             onClick = {
-                viewModel.onCampsiteIdsChange()
+                //viewModel.save()
                 navController.navigate("OwnerLotteryDetails")
             }
         ) {
@@ -116,18 +117,17 @@ fun OwnerLotteryCampsiteSelectionScreen(
     }
 }
 
-@SuppressLint("UnrememberedMutableState")
+//@SuppressLint("UnrememberedMutableState")
 @Composable
 fun CampsiteRow(campsite: Campsite, viewModel: LotteryFormViewModel, campsiteLotteryDict: Map<String, List<Boolean>>) {
     val checked = remember {  mutableStateOf(campsiteLotteryDict[campsite.id]?.get(1) ?: false)}
     LaunchedEffect(campsiteLotteryDict[campsite.id]?.get(1) != null) {
+        Log.d("CampRow", "updated checked value from ${checked.value} to ${campsiteLotteryDict[campsite.id]?.get(1) == true}")
         checked.value = campsiteLotteryDict[campsite.id]?.get(1) == true
+
     }
-//    if (campsiteLotteryDict[campsite.id]?.get(1) != null) {
-//        checked.value = campsiteLotteryDict[campsite.id]?.get(1) == true
-//    }
-    Log.d("CampRow", campsiteLotteryDict[campsite.id]?.get(1).toString())
-    Log.d("CampRow", checked.toString())
+    Log.d("CampRow", "Campsite Id: ${campsite.id}, Default Checked: ${campsiteLotteryDict[campsite.id]?.get(1)}")
+    Log.d("CampRow", "------------------------------------------------")
     val lotteryConflict = remember { mutableStateOf(false)}
     Row() {
         Checkbox(
@@ -135,7 +135,10 @@ fun CampsiteRow(campsite: Campsite, viewModel: LotteryFormViewModel, campsiteLot
             onCheckedChange = {
                 checked.value = it
                 if (!it) {
-                    viewModel.onCampsitesChangeRemove(campsite.id)
+                    Log.d("CampRow", "CampsiteIds: ${viewModel.returnCampsiteIds()}")
+                    var removed = viewModel.onCampsitesChangeRemove(campsite.id)
+                    Log.d("CampRow", "CampsiteIds: ${viewModel.returnCampsiteIds()}")
+                    Log.d("CampRow", "Removed Campsite: ${removed}")
                     lotteryConflict.value = false
                 } else {
                     // Check if campsite is already in a lottery
@@ -149,7 +152,7 @@ fun CampsiteRow(campsite: Campsite, viewModel: LotteryFormViewModel, campsiteLot
         )
 
         Text(campsite.name)
-        if (lotteryConflict.value) {
+        if (lotteryConflict.value && campsiteLotteryDict[campsite.id]?.get(1) == false) {
             Text("Cannot select campsite, campsite is already linked to a lottery.", color = MaterialTheme.colorScheme.error,)
         }
     }

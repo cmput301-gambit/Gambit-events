@@ -38,17 +38,12 @@ fun OwnerEditLotteryCampsiteSelectionScreen(
     val campsiteLotteryDict: MutableMap<String, List<Boolean>> = remember { mutableStateMapOf() }
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
-            navController.popBackStack()
+            navController.navigate("EditLottery/${lotteryId}")
+        } else {
+            campsites.addAll(viewModel.getCampsites())
         }
-        campsites.addAll(viewModel.getCampsites())
     }
-//    LaunchedEffect(campsites.isEmpty()) {
-//        temp.addAll(viewModel.getCampsites())
-//    }
-//    campsites.addAll(temp)
-
     LaunchedEffect(campsites.isNotEmpty()) {
-        Log.d("CampRow", "a")
         Log.d("hasLotteryMap", "Running forEach")
         Log.d("hasLotteryMap", campsites.toString())
         campsites.forEach { campsite ->
@@ -86,7 +81,6 @@ fun OwnerEditLotteryCampsiteSelectionScreen(
         ) {
             if (!campsites.isEmpty()) {
                 items(campsites) { campsite ->
-                    //Log.d("campy", "$campsiteLotteryDict")
                     CampsiteRow(campsite, viewModel, campsiteLotteryDict)
                 }
             }
@@ -94,9 +88,10 @@ fun OwnerEditLotteryCampsiteSelectionScreen(
 
         ExtendedFloatingActionButton(
             onClick = {
-                viewModel.onCampsiteIdsChange()
-                navController.navigate("OwnerLotteryDetails")
-                //navController.navigate("OwnerLotteryDetails/$lotteryId")
+                Log.d("viewModel", "CampsiteIds Before saving: ${viewModel.returnCampsiteIds()}")
+                viewModel.save()
+                Log.d("viewModel", "Errors: ${viewModel.returnErrors().toString()}")
+                Log.d("viewModel", "CampsiteIds after saving: ${viewModel.returnCampsiteIds()}")
             }
         ) {
             Text("NEXT")
