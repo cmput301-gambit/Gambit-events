@@ -1,4 +1,4 @@
-package com.campsitereservationapp.ui.discovery
+package com.campsitereservationapp.ui.notifications
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY

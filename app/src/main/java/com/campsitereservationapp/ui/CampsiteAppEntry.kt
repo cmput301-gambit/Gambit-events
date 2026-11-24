@@ -11,19 +11,19 @@ import com.campsitereservationapp.ui.admin.AdminBrowseCampsitesScreen
 import com.campsitereservationapp.ui.admin.AdminCampsiteListScreen
 import com.campsitereservationapp.ui.admin.AdminHomeScreen
 import com.campsitereservationapp.ui.campsite.EditCampsiteScreen
-import com.campsitereservationapp.ui.campsite.OwnerCampsiteDetailsScreen
-import com.campsitereservationapp.ui.campsite.OwnerCampsiteListScreen
-import com.campsitereservationapp.ui.campsite.OwnerHomeScreen
-import com.campsitereservationapp.ui.campsite.OwnerWaitlistScreen
+import com.campsitereservationapp.ui.owner.OwnerCampsiteDetailsScreen
+import com.campsitereservationapp.ui.owner.OwnerCampsiteListScreen
+import com.campsitereservationapp.ui.owner.OwnerHomeScreen
+import com.campsitereservationapp.ui.owner.OwnerWaitlistScreen
 import com.campsitereservationapp.ui.campsite.RegisterCampsiteScreen
-import com.campsitereservationapp.ui.discovery.CampsiteDetailsScreen
+import com.campsitereservationapp.ui.campsite.CampsiteDetailsScreen
 import com.campsitereservationapp.ui.discovery.CampsiteListScreen
-import com.campsitereservationapp.ui.discovery.EntrantHomeScreen
-import com.campsitereservationapp.ui.discovery.EntrantSettingsScreen
-import com.campsitereservationapp.ui.discovery.InboxScreen
-import com.campsitereservationapp.ui.campsite.ReservationListScreen
-import com.campsitereservationapp.ui.discovery.ReserveScreen
-import com.campsitereservationapp.ui.discovery.PolicyAndGuidelinesScreen
+import com.campsitereservationapp.ui.home.EntrantHomeScreen
+import com.campsitereservationapp.ui.profile.EntrantSettingsScreen
+import com.campsitereservationapp.ui.notifications.InboxScreen
+import com.campsitereservationapp.ui.reservations.ReservationListScreen
+import com.campsitereservationapp.ui.reservations.ReserveScreen
+import com.campsitereservationapp.ui.home.PolicyAndGuidelinesScreen
 
 /**
  * Top-level Jetpack Compose navigation entry point for the Campsite Reservation Application.

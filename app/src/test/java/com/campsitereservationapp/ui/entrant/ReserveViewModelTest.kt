@@ -11,7 +11,7 @@ import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.model.ReservationStatus
 import com.campsitereservationapp.model.WaitingList
-import com.campsitereservationapp.ui.discovery.ReserveViewModel
+import com.campsitereservationapp.ui.reservations.ReserveViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
