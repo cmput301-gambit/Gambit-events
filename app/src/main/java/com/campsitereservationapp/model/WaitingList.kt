@@ -8,6 +8,7 @@ enum class WaitingListError {
     ENTRANT_CAP_IS_ZERO,
     NO_ENTRANTS_BUT_IS_FULL,
     ENTRANT_CAP_DNE_BUT_IS_FULL,
+    ENTRANT_CAP_NEGATIVE
 }
 
 /**
@@ -60,6 +61,9 @@ data class WaitingList(
         }
         if (entrantCap == -1 && isFull) {
             errors.add(WaitingListError.ENTRANT_CAP_DNE_BUT_IS_FULL)
+        }
+        if (entrantCap < -1) {
+            errors.add(WaitingListError.ENTRANT_CAP_NEGATIVE)
         }
         return errors
     }

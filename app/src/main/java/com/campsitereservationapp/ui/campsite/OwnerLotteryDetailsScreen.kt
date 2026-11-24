@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -134,16 +135,30 @@ fun OwnerLotteryDetailsScreen(
             modifier = dateRangeModifier,
 
         )
-
-
-        // Winner Amount
-        Text("Amount of Lottery Winners", style = MaterialTheme.typography.labelLarge)
-        OutlinedTextField(
-            value = state.winnerAmount,
-            onValueChange = viewModel::onWinnerAmountChange,
-            placeholder = { Text("Enter Winner Amount") },
-            modifier = Modifier.fillMaxWidth()
-        )
+        Row ()
+        {
+            // Winner Amount
+            Column()
+            {
+                Text("Amount of Lottery Winners", style = MaterialTheme.typography.labelLarge)
+                OutlinedTextField(
+                    value = state.winnerAmount,
+                    onValueChange = viewModel::onWinnerAmountChange,
+                    placeholder = { Text("Enter Winner Amount") },
+                    modifier = Modifier.fillMaxWidth(0.5f)
+                )
+            }
+            // Waitlist Capacity
+            Column () {
+                Text("Capacity of waitlist (optional)", style = MaterialTheme.typography.labelLarge)
+                OutlinedTextField(
+                    value = state.waitlistCapacity,
+                    onValueChange = viewModel::onWaitlistCapacityChange,
+                    placeholder = { Text("Enter Waitlist Maximum") },
+                    modifier = Modifier.fillMaxWidth(0.5f)
+                )
+            }
+        }
 
         MinimalDropdownMenu(viewModel)
 

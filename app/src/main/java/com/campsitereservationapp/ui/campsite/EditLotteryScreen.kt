@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -64,6 +65,9 @@ fun EditLotteryScreen(
     viewModel: LotteryFormViewModel = viewModel(factory = LotteryFormViewModel.provideFactory(lotteryId))
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    val waitlistCapacityInitialText = remember {mutableStateOf(state.waitlistCapacity)}
+    Log.d("wc", waitlistCapacityInitialText.value)
     val pickerStateRegistration = rememberDateRangePickerState(initialSelectedStartDate = viewModel.getRegistrationRange().start,
         initialSelectedEndDate = viewModel.getRegistrationRange().finish)
     val pickerStateReservation = rememberDateRangePickerState(initialSelectedStartDate = viewModel.getReservationRange().start,
@@ -76,6 +80,10 @@ fun EditLotteryScreen(
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
             navController.popBackStack()
+            navController.popBackStack()
+        }
+        if (waitlistCapacityInitialText.value == "-1") {
+            waitlistCapacityInitialText.value = ""
         }
     }
     LaunchedEffect(registrationPeriodStart, registrationPeriodEnd) {
@@ -103,7 +111,8 @@ fun EditLotteryScreen(
 
         Text(
             text = "Back",
-            modifier = Modifier.clickable { navController.popBackStack() }
+            modifier = Modifier.clickable { navController.popBackStack()
+                navController.popBackStack() }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -120,7 +129,7 @@ fun EditLotteryScreen(
             Text("Failed to load lottery details.", color = MaterialTheme.colorScheme.error)
             Log.d("EditLotteryScreen", "Passed LotteryId: $lotteryId")
         } else {
-
+            Log.d("viewModel", "edit-screen campsiteIds: ${viewModel.returnCampsiteIds()}")
             // Registration Date Period
             val dateRangeModifier = Modifier
                 .height(400.dp)
@@ -142,14 +151,30 @@ fun EditLotteryScreen(
             )
 
 
-            // Winner Amount
-            Text("Amount of Lottery Winners", style = MaterialTheme.typography.labelLarge)
-            OutlinedTextField(
-                value = state.winnerAmount,
-                onValueChange = viewModel::onWinnerAmountChange,
-                placeholder = { Text("Enter Winner Amount") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row ()
+            {
+                // Winner Amount
+                Column()
+                {
+                    Text("Amount of Lottery Winners", style = MaterialTheme.typography.labelLarge)
+                    OutlinedTextField(
+                        value = state.winnerAmount,
+                        onValueChange = viewModel::onWinnerAmountChange,
+                        placeholder = { Text("Enter Winner Amount") },
+                        modifier = Modifier.fillMaxWidth(0.5f)
+                    )
+                }
+                // Waitlist Capacity
+                Column () {
+                    Text("Capacity of waitlist (optional)", style = MaterialTheme.typography.labelLarge)
+                    OutlinedTextField(
+                        value = viewModel.getWaitinglistCapacity(),
+                        onValueChange = viewModel::onWaitlistCapacityChange,
+                        placeholder = { Text("Enter Waitlist Maximum") },
+                        modifier = Modifier.fillMaxWidth(0.5f)
+                    )
+                }
+            }
 
             MinimalDropdownMenu(viewModel, mutableStateOf(state.lotteryStage))
 
@@ -178,7 +203,9 @@ fun EditLotteryScreen(
             }
 
             Button(
-                onClick = { viewModel.save() },
+                onClick = {
+                    Log.d("CampRow", "edit screen: ${viewModel.returnCampsiteIds()}")
+                    viewModel.save() },
                 enabled = !state.isSaving,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -204,7 +231,7 @@ private fun formatLotteryError(error: LotteryError): String {
         LotteryError.CAPACITY_NOT_A_NUMBER -> "Winner amount must be a valid number."
         LotteryError.REGISTRATION_PERIOD_IN_PAST -> "Registration period cannot be set in the past."
         LotteryError.RESERVATION_PERIOD_IN_PAST -> "Reservation period cannot be set in the past."
-        LotteryError.INVALID_WAITING_LIST -> "Waiting list must be valid."
+        LotteryError.INVALID_WAITING_LIST -> "Waitlist must be a valid number."
         LotteryError.NO_OWNER_ID -> "Owner must be identified."
     }
 }

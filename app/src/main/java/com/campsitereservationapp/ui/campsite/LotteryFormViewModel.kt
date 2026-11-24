@@ -14,6 +14,7 @@ import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryError
 import com.campsitereservationapp.model.LotteryStatus
+import com.campsitereservationapp.model.WaitingList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,6 +55,7 @@ data class LotteryFormUiState(
     val registrationPeriod: DateRange = DateRange(LocalDate.now().plusDays(1), LocalDate.now().plusDays(5)),
     val reservationPeriod: DateRange = DateRange(LocalDate.now().plusDays(6), LocalDate.now().plusDays(10)),
     val winnerAmount: String = "",
+    val waitlistCapacity: String = "",
     val lotteryStage: String = "",
     val errors: List<LotteryError> = emptyList()
 )
@@ -112,9 +114,11 @@ class LotteryFormViewModel(
                                 registrationPeriod = loaded.registrationPeriod,
                                 reservationPeriod = loaded.reservationPeriod,
                                 winnerAmount = loaded.winnerAmount.toString(),
+                                waitlistCapacity = loaded.waitingList.entrantCap.toString(),
                                 lotteryStage = loaded.stage.toString()
                             )
                         }
+                        Log.d("viewModel", "Loaded Lottery: ${loaded.toString()}")
                     } else {
                         _uiState.update { it.copy(isLoading = false, loadError = true) }
                     }
@@ -130,10 +134,6 @@ class LotteryFormViewModel(
     suspend fun getCampsites(): List<Campsite> {
         return campsiteRepository.getByOwner(currentUserId)
     }
-
-//    suspend fun getCampsitesByLottery(): List<Campsite> {
-//        return campsiteRepository.
-//    }
 
 
     /**
@@ -154,6 +154,10 @@ class LotteryFormViewModel(
         _uiState.update { it.copy(winnerAmount = winnerAmount) }
     }
 
+    fun onWaitlistCapacityChange(waitlistCapacity: String) {
+        _uiState.update { it.copy(waitlistCapacity = waitlistCapacity) }
+    }
+
     fun onStageChange(lotteryStage: String) {
         _uiState.update { it.copy(lotteryStage = lotteryStage)}
     }
@@ -167,16 +171,33 @@ class LotteryFormViewModel(
         return uiState.value.reservationPeriod
     }
 
-    fun getStage(): String {
-        return uiState.value.lotteryStage
+    fun getWaitinglistCapacity(): String {
+        if (uiState.value.waitlistCapacity=="-1" || uiState.value.waitlistCapacity=="") {
+            return ""
+        }
+        return uiState.value.waitlistCapacity
     }
 
-    fun onCampsitesChangeRemove(campsiteId: String) {
-        campsiteIds.remove(campsiteId)
+    fun returnErrors(): List<LotteryError> {
+        return uiState.value.errors
     }
 
-    fun onCampsitesChangeAdd(campsiteId: String) {
-        campsiteIds.add(campsiteId)
+    fun onCampsitesChangeRemove(campsiteId: String): Boolean {
+        val campsiteIdsCopy = uiState.value.campsiteIds.toMutableList()
+        var bool = campsiteIdsCopy.remove(campsiteId)
+        _uiState.update { it.copy(campsiteIds=campsiteIdsCopy)}
+        return bool
+    }
+
+    fun onCampsitesChangeAdd(campsiteId: String): Boolean {
+        val campsiteIdsCopy = uiState.value.campsiteIds.toMutableList()
+        var bool = campsiteIdsCopy.add(campsiteId)
+        _uiState.update { it.copy(campsiteIds=campsiteIdsCopy)}
+        return bool
+    }
+
+    fun returnCampsiteIds(): MutableList<String> {
+        return uiState.value.campsiteIds
     }
     
     /**
@@ -199,7 +220,7 @@ class LotteryFormViewModel(
 
 
     suspend fun campsiteHasLottery(campsiteId: String): Boolean {
-        val lottery: Lottery? = lotteryRepository.listLotteries(campsiteId=campsiteId).first().first()
+        val lottery: Lottery? = lotteryRepository.listLotteries(campsiteId=campsiteId).first().firstOrNull()
         return (lottery != null)
     }
 
@@ -214,10 +235,16 @@ class LotteryFormViewModel(
      * upon success, or [LotteryFormUiState.saveError] on exception.
      */
     fun save() {
+        Log.d("viewModel", "Saving Model")
         val state = _uiState.value
         if (state.isLoading || state.loadError || state.isSaving || state.isSaved) return
 
         val parsedWinnerAmount = state.winnerAmount.toIntOrNull()
+        var parsedWaitlistCapacity = state.waitlistCapacity.toIntOrNull()
+        if (state.waitlistCapacity == "") {
+            parsedWaitlistCapacity = -1
+        }
+
         val baseLottery = originalLottery ?: Lottery(
             id = newLotteryId,
             ownerId = currentUserId
@@ -227,12 +254,13 @@ class LotteryFormViewModel(
         if (state.lotteryStage == "OPEN") {
             convertedStage = LotteryStatus.OPEN
         }
-
+        Log.d("viewModel", "state.campsiteIds: ${state.campsiteIds}")
         val lottery = baseLottery.copy(
             campsiteIds = state.campsiteIds,
             registrationPeriod = state.registrationPeriod,
             reservationPeriod = state.reservationPeriod,
             winnerAmount = parsedWinnerAmount ?: 0,
+            waitingList = WaitingList(entrantCap = parsedWaitlistCapacity ?: -2),
             stage = convertedStage
         )
 
@@ -260,6 +288,7 @@ class LotteryFormViewModel(
                     }
                 }
                 _uiState.update { it.copy(isSaving = false, isSaved = true, errors = emptyList(), saveError = false) }
+                Log.d("viewModel", "campsites after update: ${uiState.value.campsiteIds}")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
