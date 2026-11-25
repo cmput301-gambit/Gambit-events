@@ -1,5 +1,9 @@
 package com.campsitereservationapp.ui.reservations
 
+import android.content.Context
+import android.net.Uri
+import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -10,15 +14,20 @@ import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.Csv
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.Reservation
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.time.LocalDate
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Everything the reserve screen needs to draw.
@@ -34,6 +43,7 @@ import java.time.LocalDate
  * @property checkOut the check-out date picked so far, or null
  * @property error a message about the last attempt, or null
  * @property confirmation the saved reservation once booking worked, or null
+ * @property sendCSV toggles whether to give a download prompt of a CSV after reservation has been confirmed.
  */
 data class ReserveUiState(
     val isLoading: Boolean = true,
@@ -46,6 +56,7 @@ data class ReserveUiState(
     val checkOut: LocalDate? = null,
     val error: String? = null,
     val confirmation: Reservation? = null,
+    val sendCSV: Boolean = false,
 ) {
     /** True when the form should be usable. */
     val canReserve: Boolean
@@ -113,6 +124,10 @@ class ReserveViewModel(
      */
     fun onDatesPicked(checkIn: LocalDate?, checkOut: LocalDate?) {
         _uiState.update { it.copy(checkIn = checkIn, checkOut = checkOut ?: checkIn, error = null) }
+    }
+
+    fun onToggleReceiveCSV(newState: Boolean){
+        _uiState.update { it.copy(sendCSV = newState) }
     }
 
     /**
@@ -234,6 +249,65 @@ class ReserveViewModel(
             _uiState.update { it.copy(confirmation = saved, error = null) }
         }
     }
+
+    /**
+     * Called when the user makes a reservation and has opted into receiving a CSV confirmation.
+     * Creates a CSV with the relevant info and prompts the user to specify a location to save the file to.
+     *
+     * @param context necessary variable to initiate
+     * @param uri address for the new CSV
+     */
+    fun sendCSV(context: Context, uri: Uri){
+        val csv = Csv(listOf(
+                "User ID",
+            "Campsite Name",
+            "Check-in Time",
+            "Check-out Time",
+        ))
+
+        csv.addRow(listOf(
+            currentUserId,
+            uiState.value.campsiteName,
+            uiState.value.checkIn.toString(),
+            uiState.value.checkOut.toString(),
+        ))
+
+        val csvString = csv.toString()
+        val appContext = context.applicationContext
+
+        //Log.d("CsvExport", "Beginning write attempt to ${uri}")
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = try {
+                val stream = appContext.contentResolver.openOutputStream(uri, "wt") //Opening stream to write to
+                    ?: throw IOException("openOutputStream returned null for $uri")
+                //Actually writing to that location
+                stream.use { out ->
+                    out.write(csvString.toByteArray(Charsets.UTF_8))
+                    out.flush()
+                }
+
+                //Log.d("CsvExport", "Wrote ${csvString.length} chars to $uri")
+
+                "Exported" //This is the result
+
+            } catch (e: CancellationException) {
+
+                throw e
+
+            } catch (e: Exception) {
+                Log.e("CsvExport", "Export failed", e)
+
+                "Export failed: ${e.message}" //This is the result with an error message.
+
+            }
+
+            withContext(Dispatchers.Main) {
+                Toast.makeText(appContext, result, Toast.LENGTH_LONG).show() //Giving user quick message with the results attached.
+            }
+        }
+    }
+
 
     private fun blocked(reason: String, campsiteName: String = "") =
         ReserveUiState(isLoading = false, campsiteName = campsiteName, blockedReason = reason)
