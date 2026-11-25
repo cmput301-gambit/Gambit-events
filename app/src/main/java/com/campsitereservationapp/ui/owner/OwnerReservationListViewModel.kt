@@ -91,6 +91,7 @@ class OwnerReservationListViewModel(
                     guestName = userNames[res.entrantId] ?: "Guest",
                 )
             }
+            .sortedBy { it.reservation.dates.start }
 
         OwnerReservationListUiState(
             items = activeOwnerItems,
