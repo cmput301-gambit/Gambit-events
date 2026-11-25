@@ -1,7 +1,6 @@
 package com.campsitereservationapp.ui.campsite
 
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,44 +16,36 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDateRangePickerState
-import androidx.compose.material3.setSelection
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.campsitereservationapp.model.Campsite
-import com.campsitereservationapp.model.CampsiteError
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.LotteryError
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-// TODO: UPDATE COMMENTS
 
 /**
- * Screen for editing an existing campsite (US 02.01.03 / #20).
+ * Screen for editing an existing lottery's details (US 02.04.07, US 02.04.03).
  *
- * **Purpose:** allows campsite owners to edit details of an existing campsite.
+ * **Purpose:** allows campsite owners to edit details of an existing lottery.
  *
- * **Design rationale:** reuses [CampsiteFormViewModel] via [CampsiteFormViewModel.provideFactory]
- * in editing mode, pre-populating existing campsite values and saving updates.
+ * **Design rationale:** reuses [LotteryFormViewModel] via [LotteryFormViewModel.provideFactory]
+ * in editing mode, pre-populating existing lottery values and saving updates.
  *
- * **Outstanding issues:** image editing is a placeholder as image uploading has not been added yet.
- * Major styling is required.
+ * **Outstanding issues:**
  *
  * @param navController navigation controller used to return on completion
- * @param campsiteId ID of the campsite being edited
+ * @param lotteryId ID of the lottery being edited
  * @param viewModel view model initialized in editing mode
  */
 @SuppressLint("UnrememberedMutableState")
@@ -67,7 +58,6 @@ fun EditLotteryScreen(
     val state by viewModel.uiState.collectAsState()
 
     val waitlistCapacityInitialText = remember {mutableStateOf(state.waitlistCapacity)}
-    Log.d("wc", waitlistCapacityInitialText.value)
     val pickerStateRegistration = rememberDateRangePickerState(initialSelectedStartDate = viewModel.getRegistrationRange().start,
         initialSelectedEndDate = viewModel.getRegistrationRange().finish)
     val pickerStateReservation = rememberDateRangePickerState(initialSelectedStartDate = viewModel.getReservationRange().start,
@@ -82,13 +72,13 @@ fun EditLotteryScreen(
             navController.popBackStack()
             navController.popBackStack()
         }
+        // Hides default "no waitlist cap" option.
         if (waitlistCapacityInitialText.value == "-1") {
             waitlistCapacityInitialText.value = ""
         }
     }
     LaunchedEffect(registrationPeriodStart, registrationPeriodEnd) {
         if (registrationPeriodStart != null && registrationPeriodEnd != null) {
-
             viewModel.onRegistrationPeriodChange(DateRange(registrationPeriodStart.toLocalDate(),
                 registrationPeriodEnd.toLocalDate()))
         }
@@ -127,9 +117,7 @@ fun EditLotteryScreen(
             Text("Loading campsite details...")
         } else if (state.loadError) {
             Text("Failed to load lottery details.", color = MaterialTheme.colorScheme.error)
-            Log.d("EditLotteryScreen", "Passed LotteryId: $lotteryId")
         } else {
-            Log.d("viewModel", "edit-screen campsiteIds: ${viewModel.returnCampsiteIds()}")
             // Registration Date Period
             val dateRangeModifier = Modifier
                 .height(400.dp)
@@ -204,7 +192,6 @@ fun EditLotteryScreen(
 
             Button(
                 onClick = {
-                    Log.d("CampRow", "edit screen: ${viewModel.returnCampsiteIds()}")
                     viewModel.save() },
                 enabled = !state.isSaving,
                 modifier = Modifier.fillMaxWidth()
@@ -218,7 +205,7 @@ fun EditLotteryScreen(
 
 
     /**
- * Converts a [CampsiteError] validation enum value into a user-friendly error message string.
+ * Converts a [LotteryError] validation enum value into a user-friendly error message string.
  *
  * @param error the validation error encountered
  * @return human-readable description of the validation rule violation

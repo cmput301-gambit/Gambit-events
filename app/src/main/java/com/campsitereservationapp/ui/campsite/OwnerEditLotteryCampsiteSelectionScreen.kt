@@ -1,6 +1,5 @@
 package com.campsitereservationapp.ui.campsite
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +25,24 @@ import androidx.navigation.NavController
 import com.campsitereservationapp.model.Campsite
 
 
+/**
+ * Screen for editing a lottery's campsites selection (US 02.04.02).
+ *
+ * **Purpose:** allows campsite owners to see which campsites are currently selected for a lottery
+ * and allows them to add or remove campsites (minimum of 1 campsite, campsites cannot have more than
+ * one lottery but one lottery may have more than one campsite.)
+ *
+ * **Design rationale:** collects state from [LotteryFormViewModel], renders
+ * text input fields, displays field validation errors inline, and automatically
+ * navigates back once the campsite is successfully saved to the repository.
+ *
+ * **Outstanding issues:** The campsite checkboxes are somewhat inconsistent on whether they should
+ * start already checked or not. Internally it is handled correctly, but it's primarily a
+ * visual bug.
+ *
+ * @param navController navigation controller used to return to the previous screen on completion
+ * @param viewModel view model managing form UI state and save logic
+ */
 @Composable
 fun OwnerEditLotteryCampsiteSelectionScreen(
     navController: NavController,
@@ -44,13 +61,12 @@ fun OwnerEditLotteryCampsiteSelectionScreen(
         }
     }
     LaunchedEffect(campsites.isNotEmpty()) {
-        Log.d("hasLotteryMap", "Running forEach")
-        Log.d("hasLotteryMap", campsites.toString())
         campsites.forEach { campsite ->
-            // For each campsite it is going to put into a map [hasLottery, is in currentLottery]
-            campsiteLotteryDict[campsite.id] = listOf(viewModel.campsiteHasLottery(campsite.id), campsite.id in state.campsiteIds)
-            Log.d("bool", "${campsite.id}, ${campsites}, ${campsite.id in state.campsiteIds}")
-            Log.d("hasLotteryMap", "Campsite Id: ${campsite.id}, hasLottery: ${campsiteLotteryDict[campsite.id]}")
+            // Creates a map when the campsites are loaded with the campsite's id as the key it creates
+            // a bool list which contains whether the campsite has a lottery (to prevent overriding)
+            // and whether the campsite id is in the current lottery provided to the viewModel.
+            campsiteLotteryDict[campsite.id] = listOf(viewModel.campsiteHasLottery(campsite.id),
+                campsite.id in viewModel.returnCampsiteIds())
         }
     }
 
@@ -58,8 +74,6 @@ fun OwnerEditLotteryCampsiteSelectionScreen(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-
-        //.verticalScroll(rememberScrollState())
     ) {
 
         Spacer(modifier = Modifier.height(30.dp))
@@ -88,10 +102,7 @@ fun OwnerEditLotteryCampsiteSelectionScreen(
 
         ExtendedFloatingActionButton(
             onClick = {
-                Log.d("viewModel", "CampsiteIds Before saving: ${viewModel.returnCampsiteIds()}")
                 viewModel.save()
-                Log.d("viewModel", "Errors: ${viewModel.returnErrors().toString()}")
-                Log.d("viewModel", "CampsiteIds after saving: ${viewModel.returnCampsiteIds()}")
             }
         ) {
             Text("NEXT")

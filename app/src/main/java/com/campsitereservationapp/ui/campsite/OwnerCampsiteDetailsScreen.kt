@@ -1,6 +1,5 @@
 package com.campsitereservationapp.ui.campsite
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,14 +18,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.ui.discovery.CampsiteDetailsViewModel
 
 /**
@@ -56,9 +53,7 @@ fun OwnerCampsiteDetailsScreen(
 
     LaunchedEffect(campsiteId) {
         viewModel.updateViewedCampSiteId(campsiteId)
-        Log.d("viewedCampsiteId", campsiteId)
         lotteryId.value = viewModel.getLotteryIdByCampsiteId(campsiteId)
-        Log.d("Lottery-id", lotteryId.value)
     }
 
     Column(
@@ -128,7 +123,6 @@ fun OwnerCampsiteDetailsScreen(
         ) {
             OutlinedButton(
                 onClick = {
-                    Log.d("EditLotteryScreen", "OwnerCampsiteDetailsScreen: ${lotteryId.value}")
                     navController.navigate("EditLottery/${lotteryId.value}") },
                 modifier = Modifier.weight(1f)
             ) {

@@ -1,6 +1,5 @@
 package com.campsitereservationapp.ui.campsite
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,15 +50,30 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-// TODO: UPDATE COMMENTS
 
+/**
+ * Screen for setting the details of new lotteries. (US 02.04.07, US 02.04.03)
+ *
+ * **Purpose:** allows campsite owners to enter the details of the lottery they would like to create.
+ * This includes the registration date, reservation date, amount of winners, optional waitlist cap, and
+ * whether it's status is OPEN or DRAFT.
+ *
+ * **Design rationale:** collects state from [LotteryFormViewModel], renders
+ * text input fields, displays field validation errors inline, and automatically
+ * navigates back once the lottery is successfully saved to the repository.
+ *
+ * **Outstanding issues:**
+ *
+ * @param navController navigation controller used to return to the previous screen on completion
+ * @param viewModel view model managing form UI state and save logic
+ */
 @Composable
 fun OwnerLotteryDetailsScreen(
     navController: NavController,
     viewModel: LotteryFormViewModel = viewModel(factory = LotteryFormViewModel.Factory)
 ) {
-
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     val campsites = remember { mutableStateListOf<Campsite>()}
     val pickerStateRegistration = rememberDateRangePickerState()
     val pickerStateReservation = rememberDateRangePickerState()
@@ -76,7 +90,6 @@ fun OwnerLotteryDetailsScreen(
 
     LaunchedEffect(registrationPeriodStart, registrationPeriodEnd) {
         if (registrationPeriodStart != null && registrationPeriodEnd != null) {
-
             viewModel.onRegistrationPeriodChange(DateRange(registrationPeriodStart.toLocalDate(),
                 registrationPeriodEnd.toLocalDate()))
         }
@@ -111,15 +124,15 @@ fun OwnerLotteryDetailsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Registration Date Period
+        // dateRangeModifier for both registration and reservation periods.
         val dateRangeModifier = Modifier
             .height(400.dp)
             .fillMaxWidth(0.5f)
             .align(Alignment.CenterHorizontally)
+
+        // Registration Date Period
         Text("Registration  Date Range", style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
-
         Spacer(modifier = Modifier.height(16.dp))
-
         DateRangePicker(
             state = pickerStateRegistration,
             modifier = dateRangeModifier,
@@ -256,7 +269,7 @@ fun MinimalDropdownMenu(viewModel: LotteryFormViewModel, lotteryStage: MutableSt
 
 
 /**
- * Converts a [CampsiteError] validation enum value into a user-friendly error message string.
+ * Converts a [LotteryError] validation enum value into a user-friendly error message string.
  *
  * @param error the validation error encountered
  * @return human-readable description of the validation rule violation
