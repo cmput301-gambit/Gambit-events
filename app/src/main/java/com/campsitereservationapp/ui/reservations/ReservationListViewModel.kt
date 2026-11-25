@@ -9,6 +9,7 @@ import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.model.Reservation
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -32,10 +33,12 @@ data class ReservationListItem(
  * What the reservation list screen shows.
  *
  * @property reservations the entrant's active, upcoming reservations
+ * @property showPast true when the list shows past reservations instead of active ones
  * @property isLoading true until the first data arrives
  */
 data class ReservationListUiState(
     val reservations: List<ReservationListItem> = emptyList(),
+    val showPast: Boolean = false,
     val isLoading: Boolean = true,
 )
 
@@ -67,13 +70,24 @@ class ReservationListViewModel(
     today: LocalDate = LocalDate.now(),
 ) : ViewModel() {
 
+    private val showPast = MutableStateFlow(false)
+
     /** The current screen state, updated whenever reservations or campsites change. */
     val uiState: StateFlow<ReservationListUiState> =
         combine(
             reservationRepository.observeForEntrant(entrantId),
             campsiteRepository.observeAll(),
-        ) { reservations, campsites ->
+            showPast,
+        ) { reservations, campsites, past ->
             val namesById = campsites.associate { it.id to it.name }
+            val shown = reservations
+                .filter {
+                    it.isActive &&
+                            if (past) it.dates.finish.isBefore(today) else !it.dates.finish.isBefore(today)
+                }
+                .let { list ->
+                    if (past) list.sortedByDescending { it.dates.start } else list
+                }
             ReservationListUiState(
                 reservations = reservations
                     .filter { it.isActive && !it.dates.finish.isBefore(today) }
@@ -85,6 +99,10 @@ class ReservationListViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = ReservationListUiState(),
         )
+
+    /**
+     *
+     */
 
     /**
      * Cancels one of the entrant's reservations (US 01.07.01).
