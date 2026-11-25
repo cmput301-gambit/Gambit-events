@@ -69,6 +69,7 @@ class LotteryRepository(
         entrantInWinners: Boolean? = null,
         entrantInDeclined: Boolean? = null,
         hasSentNotifications: Boolean? = null,
+        lotteryId: String? = null,
     ): Flow<List<Lottery>> =
         observeAll().map { lotteries ->
             lotteries.filter { lottery ->
@@ -82,7 +83,8 @@ class LotteryRepository(
                                         (entrantInWinners == null || (userId in waitingList.entrantWinners) == entrantInWinners) &&
                                         (entrantInLosers == null || (userId in waitingList.entrantLosers) == entrantInLosers) &&
                                         (entrantInDeclined == null || (userId in waitingList.entrantsDeclined) == entrantInDeclined)
-                                ))
+                                )) &&
+                        (lotteryId == null || lottery.id == lotteryId)
             }
         }
 

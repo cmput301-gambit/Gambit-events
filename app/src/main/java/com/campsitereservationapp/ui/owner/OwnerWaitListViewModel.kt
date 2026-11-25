@@ -9,11 +9,16 @@ import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.UserRepository
+import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.ui.campsite.CampsiteFormUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -67,9 +72,9 @@ data class OwnerWaitlistUiState(
  */
 class OwnerWaitlistViewModel(
     val lotteryRepository: LotteryRepository,
-    campsiteRepository: CampsiteRepository,
+    val campsiteRepository: CampsiteRepository,
     userRepository: UserRepository,
-    currentOwnerId: String,
+    val currentOwnerId: String,
 ) : ViewModel() {
 
     // The lottery the admin tapped Remove on, until they confirm or cancel.
@@ -82,6 +87,10 @@ class OwnerWaitlistViewModel(
      */
     fun removeLottery(lotteryId: String) {
         viewModelScope.launch {
+            val campsiteIds = lotteryRepository.listLotteries(lotteryId=lotteryId).first().first().campsiteIds
+            campsiteIds.forEach { campsiteId ->
+                updateCampsite(campsiteId, ::removeAvailability)
+            }
             lotteryRepository.delete(lotteryId)
         }
     }
@@ -111,6 +120,83 @@ class OwnerWaitlistViewModel(
         val lottery = pendingRemovalId.value ?: return
         pendingRemovalId.value = null
         removeLottery(lottery)
+    }
+
+
+    /**
+     * Removes availability by sending an update to the state flow of the [CampsiteFormUiState].
+     *
+     * @param _uiStateC is the `MutableStateFlow<CampsiteFormUiState>` which will run '.update {}'
+     * */
+    private fun removeAvailability(_uiStateC: MutableStateFlow<CampsiteFormUiState>?=null) {
+        _uiStateC?.update { it.copy(availability = null)}
+    }
+
+    /**
+     * Updates a campsite based on the passed campsite's id. This is a general update function and will
+     *  execute any specific update function passed as long as it takes a `MutableStateFlow<CampsiteFormUiState>`
+     *  to accommodate the _uiState which will be passed into it.
+     *
+     *  @param campsiteId The id of the campsite to be updated
+     *  @param update The update function to be executed by [updateCampsite]. Update function requires
+     *  taking `MutableStateFlow<CampsiteFormUiState>` as an argument so _uiState may be supplied by [updateCampsite]
+     *
+     * */
+    suspend fun updateCampsite(campsiteId: String, update: (MutableStateFlow<CampsiteFormUiState>?)-> Unit) {
+        val _uiStateC = MutableStateFlow(CampsiteFormUiState(isLoading = true))
+        val uiStateC: StateFlow<CampsiteFormUiState> = _uiStateC.asStateFlow()
+        val loaded = campsiteRepository.get(campsiteId)
+        var originalCampsite: Campsite? = null
+        originalCampsite = loaded
+        // Load in original campsite
+        if (loaded != null) {
+            _uiStateC.update {
+                it.copy(
+                    isLoading = false,
+                    loadError = false,
+                    name = loaded.name,
+                    description = loaded.description,
+                    location = loaded.location,
+                    capacity = loaded.capacity.toString(),
+                    tags = loaded.tags,
+                    latitude = loaded.latitude,
+                    longitude = loaded.longitude,
+                    availability = loaded.availability
+                )
+            }
+        }
+        val stateC = _uiStateC.value
+
+        // Update campsite
+        update(_uiStateC)
+
+        val baseCampsite = originalCampsite ?: Campsite(
+            id = campsiteId,
+            ownerId = currentOwnerId
+        )
+
+        val campsite = baseCampsite.copy(
+            name = stateC.name.trim(),
+            description = stateC.description.trim(),
+            location = stateC.location.trim(),
+            capacity = stateC.capacity.toInt(),
+            tags = stateC.tags.map { it.trim() }.filter { it.isNotEmpty() }.distinct(),
+            latitude = stateC.latitude,
+            longitude = stateC.longitude,
+            availability = uiStateC.value.availability,
+        )
+        _uiStateC.update { it.copy(isSaving = true, saveError = false) }
+        viewModelScope.launch {
+            campsiteRepository.update(campsite)
+            _uiStateC.update {
+                it.copy(
+                    isSaving = false,
+                    isSaved = true,
+                    errors = emptyList(),
+                    saveError = false
+                )
+            }
+        }
     }
 
     /**
