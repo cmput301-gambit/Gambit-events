@@ -1,6 +1,7 @@
 package com.campsitereservationapp.ui.owner
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
@@ -71,5 +72,17 @@ class OwnerReservationListViewModel(
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = OwnerReservationListUiState(),
             )
+    companion object {
+        val Factory = viewModelFactory {
+            initializer {
+                val app = this[APPLICATION_KEY] as CampsiteApp
+                OwnerReservationListViewModel(
+                    app.container.reservationRepository,
+                    app.container.campsiteRepository,
+                    app.container.currentUserId,
+                )
+            }
+        }
+    }
 
 }
