@@ -53,6 +53,14 @@ data class User(
     fun withOwnerRole(): User = if (isOwner) this else copy(owner = CampsiteOwner(id))
 
     /**
+     * Returns a copy of this user without the campsite owner role, used when
+     * an admin removes an owner who broke the rules (US 03.07.01).
+     *
+     * @return the updated user, or null if they weren't an owner
+     */
+    fun withoutOwnerRole(): User? = if (isOwner) copy(owner = null) else null
+
+    /**
      * Returns a copy of this user with updated profile information.
      *
      * @param name the new display name

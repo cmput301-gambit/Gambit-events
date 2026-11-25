@@ -51,6 +51,25 @@ class RatingRepository(dataSource: DataSource<Rating>) : Repository<Rating>(data
             .takeIf { it.isNotEmpty() }
             ?.average()?.toFloat() ?: 0f
 
+    /**
+     * Deletes every rating a user left, used when their profile is deleted
+     * (US 01.08.01, 03.02.01).
+     *
+     * @param userId the ID of the deleted user
+     */
+    suspend fun deleteByUser(userId: String) {
+        getAll().filter { it.userId == userId }.forEach { delete(it.id) }
+    }
+
+    /**
+     * Deletes every rating for a campsite, used when the campsite is deleted.
+     *
+     * @param campId the ID of the deleted campsite
+     */
+    suspend fun deleteByCampsite(campId: String) {
+        getAll().filter { it.campsiteId == campId }.forEach { delete(it.id) }
+    }
+
     companion object {
         /**
          * The ID for one user's rating of one campsite. Every user gets the

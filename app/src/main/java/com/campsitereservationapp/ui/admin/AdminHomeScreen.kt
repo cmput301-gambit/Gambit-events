@@ -22,7 +22,7 @@ import androidx.navigation.NavController
  *
  * **Design rationale:** barebones Material 3 layout offering simple navigation buttons for admin tasks.
  *
- * **Outstanding issues:** "Browse Users" and "Browse All Photos" screens are placeholders for future stories, also there has been no styling applied.
+ * **Outstanding issues:** "Browse All Photos" is a placeholder for a future story, also there has been no styling applied.
  *
  * @param navController navigation controller used for screen transitions
  */
@@ -60,11 +60,20 @@ fun AdminHomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        OutlinedButton(
-            onClick = { /* Placeholder for future Browse Users story */ },
+        Button(
+            onClick = { navController.navigate("AdminProfileList") },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Browse Users")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = { navController.navigate("AdminRatingList") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Browse Ratings")
         }
 
         Spacer(modifier = Modifier.height(12.dp))

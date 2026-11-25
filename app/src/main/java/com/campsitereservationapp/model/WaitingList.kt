@@ -111,4 +111,25 @@ data class WaitingList(
             entrantsDeclined = entrantsDeclined + entrantId,
         )
     }
+
+    /**
+     * Returns a copy of this waiting list with a user removed from every list
+     * (waiting, winners, losers and declined), at any stage. Used when their
+     * profile is deleted (US 01.08.01, 03.02.01).
+     *
+     * @param userId the user to remove
+     * @return the updated waiting list, or null if they aren't on any list
+     */
+    fun withoutUser(userId: String): WaitingList? {
+        val lists = listOf(entrantList, entrantLosers, entrantWinners, entrantsDeclined)
+        if (lists.none { userId in it }) return null
+        return copy(
+            entrantList = entrantList.filterNot { it == userId },
+            entrantLosers = entrantLosers.filterNot { it == userId },
+            entrantWinners = entrantWinners.filterNot { it == userId },
+            entrantsDeclined = entrantsDeclined.filterNot { it == userId },
+            // A spot opened up, so a capped list is no longer full.
+            isFull = if (userId in entrantList) false else isFull,
+        )
+    }
 }

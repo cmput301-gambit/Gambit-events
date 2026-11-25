@@ -57,6 +57,16 @@ class UserRepository(dataSource: DataSource<User>) : Repository<User>(dataSource
     fun observe(id: String): Flow<User?> =
         observeAll().map { users -> users.find { it.id == id } }
 
+    /**
+     * Takes away a user's campsite owner role (US 03.07.01). Their campsites
+     * are not touched here; [CascadeDeleter] deletes those first.
+     *
+     * @param id the user's unique ID
+     * @return the updated user, or null if they don't exist or weren't an owner
+     */
+    suspend fun removeOwnerRole(id: String): User? =
+        modify(id) { it.withoutOwnerRole() }
+
     companion object {
         /**
          * Creates the Firestore data source for users, used by [AppContainer].

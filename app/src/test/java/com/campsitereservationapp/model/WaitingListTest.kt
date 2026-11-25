@@ -62,6 +62,49 @@ class WaitingListTest {
         assertFalse("entrant-priya" in updated.entrantWinners)
     }
 
+    // ---- withoutUser (US 01.08.01, 03.02.01) ----
 
+    @Test
+    fun withoutUser_removesThemFromEveryList() {
+        val drawn = WaitingList(
+            entrantList = listOf("entrant-priya", "entrant-noah", "entrant-ali"),
+            entrantWinners = listOf("entrant-noah"),
+            entrantLosers = listOf("entrant-priya", "entrant-ali"),
+        )
 
+        val updated = drawn.withoutUser("entrant-priya")!!
+
+        assertEquals(listOf("entrant-noah", "entrant-ali"), updated.entrantList)
+        assertEquals(listOf("entrant-ali"), updated.entrantLosers)
+        assertEquals(listOf("entrant-noah"), updated.entrantWinners)
+    }
+
+    @Test
+    fun withoutUser_removesADeclinedWinner() {
+        val declined = WaitingList(
+            entrantList = listOf("entrant-priya"),
+            entrantsDeclined = listOf("entrant-priya"),
+        )
+
+        val updated = declined.withoutUser("entrant-priya")!!
+
+        assertTrue(updated.entrantList.isEmpty())
+        assertTrue(updated.entrantsDeclined.isEmpty())
+    }
+
+    @Test
+    fun withoutUser_opensUpAFullList() {
+        val full = WaitingList(
+            entrantList = listOf("entrant-priya", "entrant-noah"), entrantCap = 2, isFull = true,
+        )
+
+        assertFalse(full.withoutUser("entrant-priya")!!.isFull)
+    }
+
+    @Test
+    fun withoutUser_notOnAnyList_returnsNull() {
+        val waitingList = WaitingList(entrantList = listOf("entrant-noah"))
+
+        assertNull(waitingList.withoutUser("entrant-priya"))
+    }
 }

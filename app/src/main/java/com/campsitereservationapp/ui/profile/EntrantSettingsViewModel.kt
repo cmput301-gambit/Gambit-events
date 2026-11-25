@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui.profile
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.User
+import com.campsitereservationapp.service.CascadeDeleter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,11 +23,18 @@ import kotlinx.coroutines.launch
  *
  * The screen reads only this class. It never talks to a repository directly.
  *
- * @property entrantName determines the text displayed in the "Welcome back, " textbox.
+ * @property currentUser the user whose settings are shown
+ * @property isUpdateUserOpen true while the edit profile popup is showing
+ * @property isDeleteConfirmOpen true while the "Delete your account?" popup is showing
+ * @property accountDeleted true once the profile has been deleted, so the screen can leave
+ * @property deleteError shown when deleting the profile failed, for example with no network
  */
 data class EntrantSettingsState(
     val currentUser: User = User(),
-    val isUpdateUserOpen: Boolean = false
+    val isUpdateUserOpen: Boolean = false,
+    val isDeleteConfirmOpen: Boolean = false,
+    val accountDeleted: Boolean = false,
+    val deleteError: String? = null,
 )
 
 /**
@@ -38,15 +47,22 @@ data class EntrantSettingsState(
  * [com.campsitereservationapp.data.AppContainer] through [Factory], and
  * subscribes to the repository's live stream, so the screen adapts correctly to the current user.
  *
+ * Deleting the account (US 01.08.01) asks for confirmation first, then hands
+ * the cleanup to [CascadeDeleter], the same code admins use (US 03.02.01).
+ *
  * **Outstanding issues:** Currently the default screen, when it should be determined by the
- * current users roles.
+ * current users roles. Because a profile is tied to the device ID, opening the
+ * app again after deleting starts a fresh, empty profile.
  *
  * @property userRepository The shared repository users come from
  * @property currentUserId The id of the current user as a string
+ * @property cascadeDeleter deletes the profile and everything that belongs to it;
+ * null in tests that don't delete, in which case Delete Account does nothing
  */
 class EntrantSettingsViewModel(
     private val userRepository: UserRepository,
     private val currentUserId: String,
+    private val cascadeDeleter: CascadeDeleter? = null,
 ) : ViewModel() {
 
     //Name to be displayed on screen
@@ -57,6 +73,11 @@ class EntrantSettingsViewModel(
     private val isUpdateUserOpen : MutableStateFlow<Boolean> = MutableStateFlow(
         false
     )
+
+    // Account deletion steps (US 01.08.01).
+    private val isDeleteConfirmOpen = MutableStateFlow(false)
+    private val accountDeleted = MutableStateFlow(false)
+    private val deleteError = MutableStateFlow<String?>(null)
     //Updating the user based on values from the userRepository. When the first time launch screen
     //is done, this should always return a real name instead of a blank or the device ID.
     init {
@@ -75,10 +96,16 @@ class EntrantSettingsViewModel(
         combine(
             userRepository.observe(currentUserId),
             isUpdateUserOpen,
-        ) { newUser, updateOpen ->
+            isDeleteConfirmOpen,
+            accountDeleted,
+            deleteError,
+        ) { newUser, updateOpen, deleteOpen, deleted, error ->
             EntrantSettingsState(
                 currentUser = newUser ?: User(),
                 isUpdateUserOpen = updateOpen,
+                isDeleteConfirmOpen = deleteOpen,
+                accountDeleted = deleted,
+                deleteError = error,
             )
         }
             .stateIn(
@@ -124,6 +151,45 @@ class EntrantSettingsViewModel(
         isUpdateUserOpen.update { !it }
     }
 
+    /**
+     * Called when the user taps Delete Account. Opens the confirmation popup
+     * instead of deleting straight away (US 01.08.01).
+     */
+    fun requestDeleteAccount() {
+        deleteError.value = null
+        isDeleteConfirmOpen.value = true
+    }
+
+    /** Called when the user taps Cancel or closes the popup. Nothing is deleted. */
+    fun cancelDeleteAccount() {
+        isDeleteConfirmOpen.value = false
+    }
+
+    /** Hides the "couldn't delete" message. */
+    fun dismissDeleteError() {
+        deleteError.value = null
+    }
+
+    /**
+     * Called when the user confirms. Deletes their profile along with their
+     * waiting list spots, reservations, messages, notifications and ratings
+     * (and any campsites they own), then marks the account as deleted so the
+     * screen can leave.
+     */
+    fun confirmDeleteAccount() {
+        val deleter = cascadeDeleter ?: return
+        isDeleteConfirmOpen.value = false
+        viewModelScope.launch {
+            try {
+                deleter.deleteProfile(currentUserId)
+                accountDeleted.value = true
+            } catch (e: Exception) {
+                Log.e("EntrantSettings", "Failed to delete profile $currentUserId", e)
+                deleteError.value = "Couldn't delete your account. Check your connection and try again."
+            }
+        }
+    }
+
 
     companion object {
         /**
@@ -139,7 +205,8 @@ class EntrantSettingsViewModel(
                 val app = this[APPLICATION_KEY] as CampsiteApp
                 EntrantSettingsViewModel(
                     app.container.userRepository,
-                    app.container.currentUserId
+                    app.container.currentUserId,
+                    app.container.cascadeDeleter,
                 )
             }
         }
