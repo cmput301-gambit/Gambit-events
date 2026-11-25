@@ -265,13 +265,14 @@ class ReserveViewModel(
         //return early if there was an error saving.
         if(uiState.value.error != null || uiState.value.confirmation == null) return
 
-        val csvString = createCSVString()
+
         val appContext = context.applicationContext
 
         //Log.d("CsvExport", "Beginning write attempt to ${uri}")
 
         viewModelScope.launch(Dispatchers.IO) {
             val result = try {
+                val csvString = createCSVString()
                 val stream = appContext.contentResolver.openOutputStream(uri, "wt") //Opening stream to write to
                     ?: throw IOException("openOutputStream returned null for $uri")
                 //Actually writing to that location
