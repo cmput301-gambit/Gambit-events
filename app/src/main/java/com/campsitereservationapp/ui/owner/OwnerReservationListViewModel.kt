@@ -1,7 +1,6 @@
 package com.campsitereservationapp.ui.owner
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
@@ -9,23 +8,21 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.ReservationRepository
+import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Reservation
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 
 /**
- * Owners reservation list row
- * @property reservation (reservation booking)
- * @property campsiteName (name of campsite)
- * @property guestName (name thats shown for the entrant)
+ * Owner reservation list item representation.
+ *
+ * @property reservation the reservation entity
+ * @property campsiteName resolved display name of the campsite
+ * @property guestName resolved display name of the entrant/guest
  */
-
 data class OwnerReservationItem(
     val reservation: Reservation,
     val campsiteName: String,
@@ -33,69 +30,92 @@ data class OwnerReservationItem(
 )
 
 /**
- * UI property state for reservation list screen
- * @property items (reservations showing)
- * @property query (current search)
- * @property isLoading (true until data loads)
+ * UI state for owner reservation list screen.
  *
- *
+ * @property items filtered list of owner reservation items
+ * @property isLoading true while loading data
  */
-
 data class OwnerReservationListUiState(
     val items: List<OwnerReservationItem> = emptyList(),
-    val query: String = "",
     val isLoading: Boolean = true,
 )
 
 /**
- * Owner Reservation List: Owner is able to see a dropdown menu of different reservations
+ * ViewModel for the campsite owner reservation list (US 02.07.01).
  *
- * Purpose: Shows the reservations made at current owners campsite
- * Design Rationale: Similar to the different view model. Watches the stream so the list
- * updates on its own.
- * Outstanding Issues: Gotta implement lookups and searching. Show's all owners not just current
+ * **Purpose:** displays active upcoming reservations for campsites owned specifically
+ * by the logged-in owner, resolving campsite and guest names cleanly.
  *
- * @param ReservationRepository
- * @param CampsiteRepository
- * @param currentUserId
- * @param today
+ * **Design rationale:** MVVM. Combines live streams from [ReservationRepository],
+ * [CampsiteRepository], and [UserRepository] to filter reservations by owner campsite IDs
+ * and resolve human-readable display names instead of raw Firestore IDs.
+ *
+ * **Outstanding issues:** none.
+ *
+ * @property reservationRepository shared repository providing reservation records
+ * @property campsiteRepository shared repository providing campsite records
+ * @property userRepository shared repository providing user profile records
+ * @property currentUserId ID of the currently logged-in campsite owner
+ * @property today reference date for filtering active upcoming reservations
  */
-
 class OwnerReservationListViewModel(
-    reservationRepository: ReservationRepository,
-    campsiteRepository: CampsiteRepository,
-    currentUserId: String,
-    today: LocalDate = LocalDate.now(),
-    ): ViewModel() {
+    private val reservationRepository: ReservationRepository,
+    private val campsiteRepository: CampsiteRepository,
+    private val userRepository: UserRepository,
+    private val currentUserId: String,
+    private val today: LocalDate = LocalDate.now(),
+) : ViewModel() {
 
-    private val query = MutableStateFlow("")
+    /**
+     * Observable state stream emitting owner reservations matching current owner.
+     */
+    val uiState: StateFlow<OwnerReservationListUiState> = combine(
+        reservationRepository.observeAll(),
+        campsiteRepository.observeAll(),
+        userRepository.observeAll(),
+    ) { reservations, campsites, users ->
+        val campsiteNames = campsites.associate { it.id to (if (it.name.isNotBlank()) it.name else "Campsite") }
+        val userNames = users.associate { it.id to (if (it.name.isNotBlank()) it.name else "Guest") }
+        val ownerCampsiteIds = campsites.filter { it.ownerId == currentUserId }.map { it.id }.toSet()
 
-    val uiState: StateFlow<OwnerReservationListUiState> =
-        reservationRepository.observeAll()
-            .map { reservations ->
-                OwnerReservationListUiState(
-                    items = reservations
-                        .filter { it.isActive && !it.dates.finish.isBefore(today) }
-                        .map { OwnerReservationItem(it, it.campsiteId, it.entrantId) },
-                    isLoading = false,
+        val activeOwnerItems = reservations
+            .filter { res ->
+                res.isActive &&
+                !res.dates.finish.isBefore(today) &&
+                res.campsiteId in ownerCampsiteIds
+            }
+            .map { res ->
+                OwnerReservationItem(
+                    reservation = res,
+                    campsiteName = campsiteNames[res.campsiteId] ?: "Campsite",
+                    guestName = userNames[res.entrantId] ?: "Guest",
                 )
             }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = OwnerReservationListUiState(),
-            )
+
+        OwnerReservationListUiState(
+            items = activeOwnerItems,
+            isLoading = false,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = OwnerReservationListUiState(),
+    )
+
     companion object {
+        /**
+         * Factory building [OwnerReservationListViewModel] with dependencies from [CampsiteApp.container].
+         */
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as CampsiteApp
                 OwnerReservationListViewModel(
                     app.container.reservationRepository,
                     app.container.campsiteRepository,
+                    app.container.userRepository,
                     app.container.currentUserId,
                 )
             }
         }
     }
-
 }
