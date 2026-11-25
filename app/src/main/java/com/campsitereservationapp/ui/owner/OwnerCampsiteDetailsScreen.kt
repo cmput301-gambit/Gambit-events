@@ -133,5 +133,15 @@ fun OwnerCampsiteDetailsScreen(
                 Text("View Reservations")
             }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Lets the owner message entrants who reserved this campsite (US 02.12.01).
+        OutlinedButton(
+            onClick = { navController.navigate("OwnerGuests/$campsiteId") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Message Guests")
+        }
     }
 }
