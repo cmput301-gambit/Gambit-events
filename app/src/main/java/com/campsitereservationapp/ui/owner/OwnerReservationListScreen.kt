@@ -38,7 +38,7 @@ import androidx.compose.ui.Alignment
 
 
 /**
- * Screen displaying reservations for campsites owned by the currently logged-in owner (US 02.07.01).
+ * Screen displaying reservations for campsites owned by the currently logged-in owner (US 02.07.01-US 02.07.03).
  *
  * @param navController navigation controller used for back navigation
  * @param viewModel view model providing owner reservation list state
