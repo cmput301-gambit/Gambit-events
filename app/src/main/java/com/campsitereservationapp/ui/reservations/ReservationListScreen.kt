@@ -48,6 +48,7 @@ import com.campsitereservationapp.ui.campsite.ReservationListUiState
 import com.campsitereservationapp.ui.campsite.ReservationListViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import androidx.compose.material3.FilterChip
 
 /**
  * Reservation List Screen (US 01.06.01, 01.07.01)
@@ -75,6 +76,7 @@ fun ReservationListScreen(
     ReservationListContent(
         state = state,
         onBack = { navController.popBackStack() },
+        onShowPastChange = viewModel::onShowPastChange,
         onCancel = viewModel::cancel,
     )
 }
@@ -91,6 +93,7 @@ fun ReservationListScreen(
 fun ReservationListContent(
     state: ReservationListUiState,
     onBack: () -> Unit,
+    onShowPastChange: (Boolean) -> Unit,
     onCancel: (reservationId: String) -> Unit,
 ) {
     // The reservation the entrant tapped Cancel on, waiting for confirmation.
@@ -114,6 +117,22 @@ fun ReservationListContent(
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
+        Row (
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = !state.showPast,
+                onClick = {onShowPastChange(false)},
+                label = {Text("Active")}
+            )
+            FilterChip(
+                selected = state.showPast,
+                onClick = {onShowPastChange(true)},
+                label = {Text("Past")}
+            )
+        }
+
         Spacer(Modifier.height(16.dp))
 
         when {
@@ -172,14 +191,16 @@ fun ReservationListContent(
                                         color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 }
-                                Button(
-                                    onClick = { toCancel = item },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.tertiary,
-                                        contentColor = MaterialTheme.colorScheme.onTertiary
-                                    )
-                                ) {
-                                    Text("Cancel")
+                                if(!state.showPast) {
+                                    Button(
+                                        onClick = { toCancel = item },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiary,
+                                            contentColor = MaterialTheme.colorScheme.onTertiary
+                                        )
+                                    ) {
+                                        Text("Cancel")
+                                    }
                                 }
                             }
                         }
@@ -235,6 +256,7 @@ fun ReservationsListScreenPreview() {
                 ),
             ),
             onBack = {},
+            onShowPastChange = {},
             onCancel = {},
         )
     }

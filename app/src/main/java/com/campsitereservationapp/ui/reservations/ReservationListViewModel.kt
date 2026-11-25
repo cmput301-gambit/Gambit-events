@@ -103,7 +103,7 @@ class ReservationListViewModel(
     /**
      * @param past true to show reservations that have already ended
      */
-    fun onShowPostChange(past: Boolean) {
+    fun onShowPastChange(past: Boolean) {
         showPast.value = past
     }
 
