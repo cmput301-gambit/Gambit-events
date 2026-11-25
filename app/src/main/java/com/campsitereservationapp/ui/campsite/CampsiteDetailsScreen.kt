@@ -1,6 +1,5 @@
 package com.campsitereservationapp.ui.campsite
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,13 +11,21 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 
@@ -54,10 +61,12 @@ fun CampsiteDetailsScreen(
     viewModel: CampsiteDetailsViewModel = viewModel(factory = CampsiteDetailsViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
-    Log.d("CampsiteDetailsScreen", "Starting details screen with viewedCampsiteId='$viewedCampsiteId'")
+
     LaunchedEffect(viewedCampsiteId) {
         viewModel.updateViewedCampSiteId(viewedCampsiteId)
     }
+
+    var givenScore by remember { mutableFloatStateOf(0f) }
 
     Column(
         Modifier
@@ -98,6 +107,7 @@ fun CampsiteDetailsScreen(
 
         // Capacity / Max Occupancy
         Text("Capacity: ${state.viewedCampsite.capacity}")
+        Text("Rating: ${state.viewedCampsiteScore}")
 
         // Description / Amenities
         if (state.viewedCampsite.description.isNotBlank()) {
@@ -127,6 +137,35 @@ fun CampsiteDetailsScreen(
         }
 
         Spacer(modifier = Modifier.padding(vertical = 8.dp))
+
+        if (!state.hasGivenRating) {
+            Button(
+                onClick = viewModel::toggleRatingPopup
+            ){
+                Text("Rate")
+            }
+        }
+
+        if (state.giveRatingPopupOpen){
+            Popup(alignment = Alignment.Center) {
+                Slider(
+                    value = givenScore,
+                    onValueChange = { givenScore = it },
+                    valueRange = 0f..5f,
+                )
+
+                Spacer(modifier = Modifier.padding(vertical = 18.dp))
+
+                Text(givenScore.toString())
+                Spacer(modifier = Modifier.padding(vertical = 18.dp))
+                Button( onClick = {
+                        viewModel.onCreateRating(givenScore)
+                    }
+                ){
+                    Text("Confirm Score")
+                }
+            }
+        }
 
         // Join / Leave Waitlist Button (Entrants) or Remove Campsite Button (Admin)
         if (isAdmin) {

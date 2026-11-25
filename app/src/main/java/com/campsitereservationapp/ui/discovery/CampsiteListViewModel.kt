@@ -8,16 +8,22 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteFilter
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.RatingRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
+import com.campsitereservationapp.model.Rating
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.util.Date
+import java.util.Dictionary
 
 /**
  * Everything the campsite list screen needs to draw itself.
@@ -28,11 +34,13 @@ import java.util.Date
  * @property campsiteFilter the instance of [CampsiteFilter] currently being applied to the
  * database.
  * @property isLoading true until the first list of campsites arrives
+ * @property campsiteRatings average rating for each campsite, by campsite ID; campsites with no ratings are missing
  */
 data class CampsiteListUiState(
     val campsites: List<Campsite> = emptyList(),
     val campsiteFilter: CampsiteFilter = CampsiteFilter(),
     val isLoading: Boolean = true,
+    val campsiteRatings: Map<String, Float> = emptyMap(),
 )
 
 /**
@@ -46,18 +54,19 @@ data class CampsiteListUiState(
  * subscribes to the repository's live stream, so the list updates on its own
  * whenever campsite data changes.
  *
- * **Outstanding issues:** filters by location, date and guests
- * (US 01.01.02) not yet added.
+ * **Outstanding issues:** Huge popin when loading the individual scores for each campsite.
  *
  * @property campsiteRepository The shared repository campsites come from
  */
 class CampsiteListViewModel(
     private val campsiteRepository: CampsiteRepository,
+    private val ratingRepository: RatingRepository,
 ) : ViewModel() {
 
     // State that belongs to this screen only: what the user typed.
     // Private and mutable, so only this ViewModel can change it.
     private val campsiteFilter : MutableStateFlow<CampsiteFilter> = MutableStateFlow(CampsiteFilter())
+
     /**
      * The current screen state. The screen collects this and redraws
      * every time it changes.
@@ -69,12 +78,16 @@ class CampsiteListViewModel(
         combine(
             campsiteRepository.observeAll(), // live campsite list from the repository
             campsiteFilter,                 // live filter from the user
-        ) { campsites, filter ->
+            ratingRepository.observeAll(),  // live ratings, so averages stay current
+        ) { campsites, filter, ratings ->
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteListUiState(
                 campsites = filter.apply(campsites),//.filter { it.name.contains(query, ignoreCase = true) },
                 campsiteFilter = filter,
                 isLoading = false, // data has arrived, so we're done loading
+                // One download of all ratings, averaged per campsite on the device.
+                campsiteRatings = ratings.groupBy { it.campsiteId }
+                    .mapValues { (_, forCampsite) -> forCampsite.map { it.score }.average().toFloat() },
             )
         }
             // stateIn() turns the stream into a StateFlow the screen can read.
@@ -142,6 +155,7 @@ class CampsiteListViewModel(
     }
 
 
+
     companion object {
         /**
          * Builds this ViewModel with the shared repository from the AppContainer.
@@ -154,7 +168,7 @@ class CampsiteListViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as CampsiteApp
-                CampsiteListViewModel(app.container.campsiteRepository)
+                CampsiteListViewModel(app.container.campsiteRepository, app.container.ratingRepository)
             }
         }
     }

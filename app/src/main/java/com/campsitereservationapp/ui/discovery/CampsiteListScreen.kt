@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DatePickerDialog
@@ -22,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -36,6 +39,7 @@ import androidx.navigation.NavController
 import java.time.LocalDate
 import com.campsitereservationapp.data.SampleData
 import com.campsitereservationapp.model.Campsite
+import kotlinx.coroutines.launch
 import java.time.DateTimeException
 import java.time.Instant
 import java.time.ZoneOffset
@@ -49,6 +53,8 @@ fun CampsiteListScreen(
     navController: NavController,
     viewModel: CampsiteListViewModel = viewModel(factory = CampsiteListViewModel.Factory),
 ) {
+
+
     val state by viewModel.uiState.collectAsState()
     var displayFilters by remember { mutableStateOf(false) }
 
@@ -126,19 +132,26 @@ fun CampsiteListScreen(
                 )
             }
         }
-        //Create all the campsite cards
-        state.campsites.forEach { CampsiteSummaryCard(
-            it,
-            {
-                navController.navigate("EntrantCampsiteDetails/" + it.id)
+
+        LazyColumn {
+            items(state.campsites, key = { it.id }) { campsite ->
+                CampsiteSummaryCard(
+                    campsite = campsite,
+                    rating = state.campsiteRatings[campsite.id],
+                    onClickDetails = {
+                        navController.navigate("EntrantCampsiteDetails/${campsite.id}")
+                    },
+                )
             }
-        ) }
+        }
+
     }
 }
 
 @Composable
 fun CampsiteSummaryCard(
     campsite: Campsite,
+    rating: Float?,
     onClickDetails: () -> Unit
 ) {
     val name: String = campsite.name
@@ -152,6 +165,7 @@ fun CampsiteSummaryCard(
                 //Image of stars
                 Text(location)
                 Text("Capacity: $capacity")
+                if (rating != null) Text(rating.toString()) //Rating goes here
             }
             Button(
                 onClick = onClickDetails

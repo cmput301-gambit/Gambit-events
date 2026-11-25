@@ -25,7 +25,7 @@ import java.time.LocalDate
  * can't be ordered.
  *
  * @param dataSource where notifications are kept, such as [firestoreDataSource]
- * or an [InMemoryDataSource] in tests
+ * or a [MockDataSource] in tests
  */
 class NotificationRepository(dataSource: DataSource<Notification>) :
     Repository<Notification>(dataSource) {
