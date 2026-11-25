@@ -10,7 +10,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DatePickerDialog
@@ -57,14 +61,18 @@ fun CampsiteListScreen(
     val searchFieldInteraction = remember { MutableInteractionSource() }
     val searchBarHovered by searchBarInteraction.collectIsHoveredAsState()
     val searchFieldFocused by searchFieldInteraction.collectIsFocusedAsState()
-    var showDatePicker by remember {mutableStateOf(false)}
+    var showDatePicker by remember { mutableStateOf(false) }
 
     val showFiltersButton = searchBarHovered || searchFieldFocused || displayFilters
-    Column(
-        Modifier.padding(16.dp)
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
     ) {
-        Spacer(modifier = Modifier.padding(vertical = 16.dp))
-        /* Search Bar and Filters */
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
+            /* Search Bar and Filters */
             //Temporary back button
             Text("Back",
                 modifier = Modifier
@@ -82,7 +90,7 @@ fun CampsiteListScreen(
                 interactionSource = searchFieldInteraction
             )
             /* Filters Enable Button */
-            if(showFiltersButton){
+            if (showFiltersButton) {
                 TextButton(
                     onClick = {
                         displayFilters = !displayFilters
@@ -90,49 +98,52 @@ fun CampsiteListScreen(
                 ) {
                     Text("Filters")
                 }
+            }
+
+            /*Filters menu*/
+            if (displayFilters) {
+                /*Guest Capacity Field*/
+                Row {
+                    Text("Guest Capacity")
+                    Text(state.campsiteFilter.occupancyText)
+                    Slider(
+                        value = state.campsiteFilter.occupancy.toFloat(),
+                        onValueChange = { viewModel.onFilterOccupancy(it.roundToInt().toString()) },
+                        valueRange = 0f..20f,
+                        steps = 19
+                    )
+                }
+                /*Location Field*/
+                Row {
+                    Text("Location")
+                    TextField(
+                        value = state.campsiteFilter.location,
+                        onValueChange = viewModel::onFilterLocation
+                    )
+                }
+                TextButton(onClick = { showDatePicker = true }) {
+                    Text(state.campsiteFilter.dateRange?.let { "${it.start} to ${it.finish}" } ?: "Any Dates")
+                }
+                /*Available Dates*/
+                if (showDatePicker) {
+                    DateFilterMenu(
+                        onConfirm = viewModel::onFilterDateRange,
+                        onDismiss = { showDatePicker = false }
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
-
-
-        /*Filters menu*/
-        if(displayFilters){
-            /*Guest Capacity Field*/
-            Row(){
-                Text("Guest Capacity")
-                Text(state.campsiteFilter.occupancyText)
-                Slider(
-                    value = state.campsiteFilter.occupancy.toFloat(),
-                    onValueChange = { viewModel.onFilterOccupancy(it.roundToInt().toString()) },
-                    valueRange = 0f..20f, //TODO: Confirm the upper bound of this field somehow.
-                    steps = 19 //TODO: Step count also relies on valueRange - 1, thus same problem as above.
-                )
-            }
-            /*Location Field*/
-            Row(){
-                Text("Location")
-                TextField(
-                    value = state.campsiteFilter.location,
-                    onValueChange = viewModel::onFilterLocation
-                )
-            }
-            TextButton( onClick = { showDatePicker = true} ){
-                Text(state.campsiteFilter.dateRange?.let { "${it.start} to ${it.finish}" } ?: "Any Dates")
-            }
-            /*Available Dates*/
-            if(showDatePicker){
-                DateFilterMenu(
-                    onConfirm = viewModel::onFilterDateRange,
-                    onDismiss = { showDatePicker = false }
-                )
-            }
+        // Create all campsite cards using LazyColumn items
+        items(state.campsites, key = { it.id }) { campsite ->
+            CampsiteSummaryCard(
+                campsite = campsite,
+                onClickDetails = {
+                    navController.navigate("EntrantCampsiteDetails/" + campsite.id)
+                }
+            )
         }
-        //Create all the campsite cards
-        state.campsites.forEach { CampsiteSummaryCard(
-            it,
-            {
-                navController.navigate("EntrantCampsiteDetails/" + it.id)
-            }
-        ) }
     }
 }
 
