@@ -10,11 +10,23 @@ import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Reservation
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
+
+/**
+ * @property label text shown in dropdown
+ *
+ */
+
+enum class ReservationFilter(val label: String) {
+    ACTIVE("Active"),
+    PAST("Past"),
+    CANCELLED("Cancelled"),
+}
 
 /**
  * Owner reservation list item representation.
@@ -37,6 +49,7 @@ data class OwnerReservationItem(
  */
 data class OwnerReservationListUiState(
     val items: List<OwnerReservationItem> = emptyList(),
+    val filter: ReservationFilter = ReservationFilter.ACTIVE,
     val isLoading: Boolean = true,
 )
 
@@ -66,6 +79,8 @@ class OwnerReservationListViewModel(
     private val today: LocalDate = LocalDate.now(),
 ) : ViewModel() {
 
+    private val filter = MutableStateFlow(ReservationFilter.ACTIVE)
+
     /**
      * Observable state stream emitting owner reservations matching current owner.
      */
@@ -73,16 +88,20 @@ class OwnerReservationListViewModel(
         reservationRepository.observeAll(),
         campsiteRepository.observeAll(),
         userRepository.observeAll(),
-    ) { reservations, campsites, users ->
+        filter,
+    ) { reservations, campsites, users, f ->
         val campsiteNames = campsites.associate { it.id to (if (it.name.isNotBlank()) it.name else "Campsite") }
         val userNames = users.associate { it.id to (if (it.name.isNotBlank()) it.name else "Guest") }
         val ownerCampsiteIds = campsites.filter { it.ownerId == currentUserId }.map { it.id }.toSet()
 
         val activeOwnerItems = reservations
             .filter { res ->
-                res.isActive &&
-                !res.dates.finish.isBefore(today) &&
-                res.campsiteId in ownerCampsiteIds
+                res.campsiteId in ownerCampsiteIds &&
+                        when(f) {
+                            ReservationFilter.ACTIVE -> res.isActive && !res.dates.finish.isBefore(today)
+                            ReservationFilter.PAST -> res.isActive && res.dates.finish.isBefore(today)
+                            ReservationFilter.CANCELLED -> !res.isActive
+                        }
             }
             .map { res ->
                 OwnerReservationItem(
@@ -95,6 +114,7 @@ class OwnerReservationListViewModel(
 
         OwnerReservationListUiState(
             items = activeOwnerItems,
+            filter = f,
             isLoading = false,
         )
     }.stateIn(
@@ -102,6 +122,16 @@ class OwnerReservationListViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = OwnerReservationListUiState(),
     )
+
+    /**
+     * Switches between the different filters
+     *
+     * @param f filter owner picks
+     */
+
+    fun onFilterChange(f: ReservationFilter) {
+        filter.value = f
+    }
 
     companion object {
         /**
