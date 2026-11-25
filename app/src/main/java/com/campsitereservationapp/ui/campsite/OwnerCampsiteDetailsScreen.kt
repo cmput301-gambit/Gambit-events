@@ -49,7 +49,7 @@ fun OwnerCampsiteDetailsScreen(
     viewModel: CampsiteDetailsViewModel = viewModel(factory = CampsiteDetailsViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsState()
-    val lotteryId = remember { mutableStateOf("")}
+    val lotteryId = remember { mutableStateOf<String?>("")}
 
     LaunchedEffect(campsiteId) {
         viewModel.updateViewedCampSiteId(campsiteId)
@@ -123,7 +123,10 @@ fun OwnerCampsiteDetailsScreen(
         ) {
             OutlinedButton(
                 onClick = {
-                    navController.navigate("EditLottery/${lotteryId.value}") },
+                    if (lotteryId.value != "null") {
+                        navController.navigate("EditLottery/${lotteryId.value}")
+                    }
+                },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Edit Lottery")

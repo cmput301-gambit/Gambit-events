@@ -152,7 +152,7 @@ class CampsiteDetailsViewModel(
 
     suspend fun getLotteryIdByCampsiteId(campsiteId: String): String {
         Log.d("campsitew", campsiteId)
-        val lotteryId: String = lotteryRepository.getLotteryFromCampsiteId(campsiteId=campsiteId).first().first().id.toString()
+        val lotteryId: String = lotteryRepository.getLotteryFromCampsiteId(campsiteId=campsiteId).first().firstOrNull()?.id.toString()
         Log.d("campsitew", lotteryId)
         return lotteryId
     }
