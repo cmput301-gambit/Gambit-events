@@ -20,7 +20,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 /**
- * Properties:
+ * Owners reservation list row
+ * @property reservation (reservation booking)
+ * @property campsiteName (name of campsite)
+ * @property guestName (name thats shown for the entrant)
  */
 
 data class OwnerReservationItem(
@@ -28,6 +31,15 @@ data class OwnerReservationItem(
     val campsiteName: String,
     val guestName: String,
 )
+
+/**
+ * UI property state for reservation list screen
+ * @property items (reservations showing)
+ * @property query (current search)
+ * @property isLoading (true until data loads)
+ *
+ *
+ */
 
 data class OwnerReservationListUiState(
     val items: List<OwnerReservationItem> = emptyList(),
@@ -39,8 +51,9 @@ data class OwnerReservationListUiState(
  * Owner Reservation List: Owner is able to see a dropdown menu of different reservations
  *
  * Purpose: Shows the reservations made at current owners campsite
- * Design Rationale:
- * Outstanding Issues
+ * Design Rationale: Similar to the different view model. Watches the stream so the list
+ * updates on its own.
+ * Outstanding Issues: Gotta implement lookups and searching. Show's all owners not just current
  *
  * @param ReservationRepository
  * @param CampsiteRepository
