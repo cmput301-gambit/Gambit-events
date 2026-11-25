@@ -28,13 +28,12 @@ import com.campsitereservationapp.ui.campsite.CampsiteDetailsViewModel
  * Screen displaying full details of an owner's campsite (US 02.01.04).
  *
  * **Purpose:** allows a campsite owner to view all details entered for their campsite,
- * offering quick navigation placeholders for lottery management and viewing reservations.
+ * offering quick navigation placeholders for lottery management and viewing booked dates.
  *
  * **Design rationale:** displays owner view badge, complete property details, and
- * owner action buttons ("Edit Lottery" and "View Reservations" placeholders).
+ * owner action buttons ("View Booked Dates", "Edit Lottery" and "View Reservations" placeholders).
  *
  * **Outstanding issues:** "Edit Lottery" and "View Reservations" actions are placeholders for lottery/reservation stories.
- * Also, there is no image display for the campsite. Major styling required as well.
  *
  * @param navController navigation controller used for screen transitions
  * @param campsiteId ID of the campsite to display
@@ -113,6 +112,15 @@ fun OwnerCampsiteDetailsScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = { navController.navigate("BookedDates/${state.viewedCampsite.id}") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("View Booked Dates")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth()

@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.campsitereservationapp.ui.admin.AdminBrowseCampsitesScreen
 import com.campsitereservationapp.ui.admin.AdminCampsiteListScreen
 import com.campsitereservationapp.ui.admin.AdminHomeScreen
+import com.campsitereservationapp.ui.campsite.BookedDatesScreen
 import com.campsitereservationapp.ui.campsite.EditCampsiteScreen
 import com.campsitereservationapp.ui.owner.OwnerCampsiteDetailsScreen
 import com.campsitereservationapp.ui.owner.OwnerCampsiteListScreen
@@ -51,6 +52,13 @@ fun CampsiteAppEntry(){
         ) { backStackEntry ->
             val campId = backStackEntry.arguments?.getString("campsiteId") ?: return@composable
             OwnerCampsiteDetailsScreen(navController, campsiteId = campId)
+        }
+        composable(
+            route = "BookedDates/{campsiteId}",
+            arguments = listOf(navArgument("campsiteId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val campId = backStackEntry.arguments?.getString("campsiteId") ?: return@composable
+            BookedDatesScreen(navController, campsiteId = campId)
         }
         composable(
             route = "EditCampsite/{campsiteId}",
