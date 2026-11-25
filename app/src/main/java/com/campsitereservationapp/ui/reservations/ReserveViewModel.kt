@@ -248,6 +248,8 @@ class ReserveViewModel(
             showError("Those dates were just taken. Pick other dates.")
         } else {
             _uiState.update { it.copy(confirmation = saved, error = null) }
+
+            if(state.sendCSV)
             csvLauncher.launch("reservation.csv")
         }
     }
