@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -134,8 +135,8 @@ class ReserveViewModel(
      * Called when the user taps Reserve. Checks the picked dates, saves the
      * reservation, and shows the confirmation, or shows what went wrong.
      */
-    fun reserve() {
-        viewModelScope.launch { reserveNow() }
+    fun reserve(csvLauncher : ManagedActivityResultLauncher<String, Uri?>) {
+        viewModelScope.launch { reserveNow(csvLauncher) }
     }
 
     private suspend fun loadNow(lotteryId: String) {
@@ -208,7 +209,7 @@ class ReserveViewModel(
         }
     }
 
-    private suspend fun reserveNow() {
+    private suspend fun reserveNow(csvLauncher : ManagedActivityResultLauncher<String, Uri?>) {
         val state = _uiState.value
         val reservingLotteryId = lotteryId ?: return
         val reservingCampsiteId = campsiteId ?: return
@@ -247,6 +248,7 @@ class ReserveViewModel(
             showError("Those dates were just taken. Pick other dates.")
         } else {
             _uiState.update { it.copy(confirmation = saved, error = null) }
+            csvLauncher.launch("reservation.csv")
         }
     }
 
@@ -258,21 +260,10 @@ class ReserveViewModel(
      * @param uri address for the new CSV
      */
     fun sendCSV(context: Context, uri: Uri){
-        val csv = Csv(listOf(
-                "User ID",
-            "Campsite Name",
-            "Check-in Time",
-            "Check-out Time",
-        ))
+        //return early if there was an error saving.
+        if(uiState.value.error != null || uiState.value.confirmation == null) return
 
-        csv.addRow(listOf(
-            currentUserId,
-            uiState.value.campsiteName,
-            uiState.value.checkIn.toString(),
-            uiState.value.checkOut.toString(),
-        ))
-
-        val csvString = csv.toString()
+        val csvString = createCSVString()
         val appContext = context.applicationContext
 
         //Log.d("CsvExport", "Beginning write attempt to ${uri}")
@@ -308,6 +299,23 @@ class ReserveViewModel(
         }
     }
 
+    private fun createCSVString(): String{
+        val csv = Csv(listOf(
+            "User ID",
+            "Campsite Name",
+            "Check-in Time",
+            "Check-out Time",
+        ))
+
+        csv.addRow(listOf(
+            currentUserId,
+            uiState.value.campsiteName,
+            uiState.value.checkIn.toString(),
+            uiState.value.checkOut.toString(),
+        ))
+
+        return csv.toString()
+    }
 
     private fun blocked(reason: String, campsiteName: String = "") =
         ReserveUiState(isLoading = false, campsiteName = campsiteName, blockedReason = reason)

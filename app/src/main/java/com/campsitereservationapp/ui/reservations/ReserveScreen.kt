@@ -105,11 +105,7 @@ fun ReserveScreen(
             else -> ReserveForm(state, viewModel,
                 onReserveClicked = {
 
-                    viewModel.reserve()
-
-                    if(state.sendCSV){ //Trying to download csv if enabled
-                        launcher.launch("reservation.csv")
-                    }
+                    viewModel.reserve(launcher)
 
                 }
             )
