@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDateRangePickerState
+import androidx.compose.material3.setSelection
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,14 +59,13 @@ fun EditLotteryScreen(
     val state by viewModel.uiState.collectAsState()
 
     val waitlistCapacityInitialText = remember {mutableStateOf(state.waitlistCapacity)}
-    val pickerStateRegistration = rememberDateRangePickerState(initialSelectedStartDate = viewModel.getRegistrationRange().start,
-        initialSelectedEndDate = viewModel.getRegistrationRange().finish)
-    val pickerStateReservation = rememberDateRangePickerState(initialSelectedStartDate = viewModel.getReservationRange().start,
-        initialSelectedEndDate = viewModel.getReservationRange().finish)
-    val registrationPeriodStart = pickerStateRegistration.selectedStartDateMillis
-    val registrationPeriodEnd = pickerStateRegistration.selectedEndDateMillis
-    val reservationPeriodStart = pickerStateReservation.selectedStartDateMillis
-    val reservationPeriodEnd = pickerStateReservation.selectedEndDateMillis
+
+    val pickerStateRegistration = rememberDateRangePickerState()
+    val pickerStateReservation = rememberDateRangePickerState()
+    var registrationPeriodStart = pickerStateRegistration.selectedStartDateMillis
+    var registrationPeriodEnd = pickerStateRegistration.selectedEndDateMillis
+    var reservationPeriodStart = pickerStateReservation.selectedStartDateMillis
+    var reservationPeriodEnd = pickerStateReservation.selectedEndDateMillis
 
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
@@ -77,17 +77,29 @@ fun EditLotteryScreen(
             waitlistCapacityInitialText.value = ""
         }
     }
-    LaunchedEffect(registrationPeriodStart, registrationPeriodEnd) {
+    LaunchedEffect(state.isLoading) {
+        if (!state.isLoading) {
+            pickerStateRegistration.setSelection(viewModel.getRegistrationRange().start, viewModel.getRegistrationRange().finish)
+            pickerStateReservation.setSelection(viewModel.getReservationRange().start, viewModel.getReservationRange().finish)
+            registrationPeriodStart = pickerStateRegistration.selectedStartDateMillis
+            registrationPeriodEnd = pickerStateRegistration.selectedEndDateMillis
+            reservationPeriodStart = pickerStateReservation.selectedStartDateMillis
+            reservationPeriodEnd = pickerStateReservation.selectedEndDateMillis
+        }
+    }
+    LaunchedEffect( registrationPeriodEnd) {
         if (registrationPeriodStart != null && registrationPeriodEnd != null) {
-            viewModel.onRegistrationPeriodChange(DateRange(registrationPeriodStart.toLocalDate(),
-                registrationPeriodEnd.toLocalDate()))
+            viewModel.onRegistrationPeriodChange(DateRange(
+                registrationPeriodStart!!.toLocalDate(),
+                registrationPeriodEnd!!.toLocalDate()))
         }
     }
 
-    LaunchedEffect(reservationPeriodStart, reservationPeriodEnd) {
+    LaunchedEffect( reservationPeriodEnd) {
         if (reservationPeriodStart != null && reservationPeriodEnd != null) {
-            viewModel.onReservationPeriodChange(DateRange(reservationPeriodStart.toLocalDate(),
-                reservationPeriodEnd.toLocalDate()))
+            viewModel.onReservationPeriodChange(DateRange(
+                reservationPeriodStart!!.toLocalDate(),
+                reservationPeriodEnd!!.toLocalDate()))
         }
     }
 

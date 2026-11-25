@@ -36,9 +36,7 @@ import com.campsitereservationapp.model.Campsite
  * text input fields, displays field validation errors inline, and automatically
  * navigates back once the campsite is successfully saved to the repository.
  *
- * **Outstanding issues:** The campsite checkboxes are somewhat inconsistent on whether they should
- * start already checked or not. Internally it is handled correctly, but it's primarily a
- * visual bug.
+ * **Outstanding issues:**
  *
  * @param navController navigation controller used to return to the previous screen on completion
  * @param viewModel view model managing form UI state and save logic
@@ -60,13 +58,17 @@ fun OwnerEditLotteryCampsiteSelectionScreen(
             campsites.addAll(viewModel.getCampsites())
         }
     }
-    LaunchedEffect(campsites.isNotEmpty()) {
-        campsites.forEach { campsite ->
-            // Creates a map when the campsites are loaded with the campsite's id as the key it creates
-            // a bool list which contains whether the campsite has a lottery (to prevent overriding)
-            // and whether the campsite id is in the current lottery provided to the viewModel.
-            campsiteLotteryDict[campsite.id] = listOf(viewModel.campsiteHasLottery(campsite.id),
-                campsite.id in viewModel.returnCampsiteIds())
+    LaunchedEffect(state.isLoading) {
+        if (!state.isLoading) {
+            campsites.forEach { campsite ->
+                // Creates a map when the campsites are loaded with the campsite's id as the key it creates
+                // a bool list which contains whether the campsite has a lottery (to prevent overriding)
+                // and whether the campsite id is in the current lottery provided to the viewModel.
+                campsiteLotteryDict[campsite.id] = listOf(
+                    viewModel.campsiteHasLottery(campsite.id),
+                    campsite.id in viewModel.returnCampsiteIds()
+                )
+            }
         }
     }
 
