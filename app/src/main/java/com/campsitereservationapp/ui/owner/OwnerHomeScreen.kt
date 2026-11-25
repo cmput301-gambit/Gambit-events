@@ -77,5 +77,13 @@ fun OwnerHomeScreen(
         ) {
             Text("View Lottery Waitlists")
         }
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = { navController.navigate("OwnerReservations") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("View Reservations")
+        }
     }
 }
