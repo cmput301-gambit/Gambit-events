@@ -104,10 +104,13 @@ fun ReserveScreen(
             blockedReason != null -> Text(blockedReason)
             else -> ReserveForm(state, viewModel,
                 onReserveClicked = {
+
                     viewModel.reserve()
+
                     if(state.sendCSV){ //Trying to download csv if enabled
-                        launcher.launch("checkin.csv")
+                        launcher.launch("reservation.csv")
                     }
+
                 }
             )
         }
