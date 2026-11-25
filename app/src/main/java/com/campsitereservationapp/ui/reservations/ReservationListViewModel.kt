@@ -101,8 +101,11 @@ class ReservationListViewModel(
         )
 
     /**
-     *
+     * @param past true to show reservations that have already ended
      */
+    fun onShowPostChange(past: Boolean) {
+        showPast.value = past
+    }
 
     /**
      * Cancels one of the entrant's reservations (US 01.07.01).
