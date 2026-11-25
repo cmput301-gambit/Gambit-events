@@ -1,6 +1,5 @@
 package com.campsitereservationapp.ui.campsite
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -24,24 +23,21 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import kotlin.coroutines.cancellation.CancellationException
 
-// TODO: UPDATE COMMENTS
 
 /**
- * UI state for the campsite registration/edit form.
+ * UI state for the lottery registration/edit form.
  *
  * @property isLoading true while loading existing campsite data for editing
  * @property loadError true if loading existing campsite data failed (null or exception)
  * @property isSaving true while the campsite is being saved to the repository
  * @property saveError true if saving to the repository failed with an exception
  * @property isSaved true if the campsite was successfully saved
- * @property name display name of the campsite
- * @property description description / amenities of the campsite
- * @property location textual location of the campsite
- * @property capacity maximum occupancy entered as a string
- * @property tags list of tags associated with the campsite
- * @property latitude optional latitude map coordinate
- * @property longitude optional longitude map coordinate
- * @property availability optional reservation availability date range
+ * @property campsiteIds list of campsiteIds associated with the lottery
+ * @property registrationPeriod DateRange of valid registration period
+ * @property reservationPeriod DateRange of valid reservation period
+ * @property winnerAmount Amount of winners to be drawn at lottery closing.
+ * @property waitlistCapacity Max amount of entrants able to join the waitlist.
+ * @property lotteryStage current stage of the lottery.
  * @property errors list of validation errors encountered during save attempts
  */
 
@@ -84,7 +80,7 @@ class LotteryFormViewModel(
     private val editingLotteryId: String? = null,
 ) : ViewModel() {
     private val campsiteIds = mutableListOf<String>()
-
+    private var startingCampsiteIds = mutableListOf<String>()
     private val _uiState = MutableStateFlow(LotteryFormUiState(isLoading = editingLotteryId != null))
 
     /**
@@ -117,7 +113,6 @@ class LotteryFormViewModel(
                                 lotteryStage = loaded.stage.toString()
                             )
                         }
-                        Log.d("viewModel", "Loaded Lottery: ${loaded.toString()}")
                     } else {
                         _uiState.update { it.copy(isLoading = false, loadError = true) }
                     }
@@ -227,6 +222,7 @@ class LotteryFormViewModel(
      * @return Returns the mutable string list of campsiteIds.
      * */
     fun returnCampsiteIds(): MutableList<String> {
+        startingCampsiteIds = uiState.value.campsiteIds.toMutableList()
         return uiState.value.campsiteIds
     }
     
@@ -260,6 +256,92 @@ class LotteryFormViewModel(
         return (lottery != null)
     }
 
+
+    /**
+     * Adds availability by sending an update to the state flow of the [CampsiteFormUiState].
+     *
+     * @param _uiStateC is the `MutableStateFlow<CampsiteFormUiState>` which will run '.update {}'
+     * */
+    private fun addAvailability(_uiStateC: MutableStateFlow<CampsiteFormUiState>?=null) {
+        _uiStateC?.update { it.copy(availability = uiState.value.reservationPeriod)}
+    }
+
+    /**
+     * Removes availability by sending an update to the state flow of the [CampsiteFormUiState].
+     *
+     * @param _uiStateC is the `MutableStateFlow<CampsiteFormUiState>` which will run '.update {}'
+     * */
+    private fun removeAvailability(_uiStateC: MutableStateFlow<CampsiteFormUiState>?=null) {
+        _uiStateC?.update { it.copy(availability = null)}
+    }
+
+    /**
+     * Updates a campsite based on the passed campsite's id. This is a general update function and will
+     *  execute any specific update function passed as long as it takes a `MutableStateFlow<CampsiteFormUiState>`
+     *  to accommodate the _uiState which will be passed into it. Completes (US 02.04.01)
+     *
+     *  @param campsiteId The id of the campsite to be updated
+     *  @param update The update function to be executed by [updateCampsite]. Update function requires
+     *  taking `MutableStateFlow<CampsiteFormUiState>` as an argument so _uiState may be supplied by [updateCampsite]
+     *
+     * */
+    suspend fun updateCampsite(campsiteId: String, update: (MutableStateFlow<CampsiteFormUiState>?)-> Unit) {
+        val _uiStateC = MutableStateFlow(CampsiteFormUiState(isLoading = true))
+        val uiStateC: StateFlow<CampsiteFormUiState> = _uiStateC.asStateFlow()
+        val loaded = campsiteRepository.get(campsiteId)
+        var originalCampsite: Campsite? = null
+        originalCampsite = loaded
+        // Load in original campsite
+        if (loaded != null) {
+            _uiStateC.update {
+                it.copy(
+                    isLoading = false,
+                    loadError = false,
+                    name = loaded.name,
+                    description = loaded.description,
+                    location = loaded.location,
+                    capacity = loaded.capacity.toString(),
+                    tags = loaded.tags,
+                    latitude = loaded.latitude,
+                    longitude = loaded.longitude,
+                    availability = loaded.availability
+                )
+            }
+        }
+        val stateC = _uiStateC.value
+
+        // Update campsite
+        update(_uiStateC)
+
+        val baseCampsite = originalCampsite ?: Campsite(
+            id = campsiteId,
+            ownerId = currentUserId
+        )
+
+        val campsite = baseCampsite.copy(
+            name = stateC.name.trim(),
+            description = stateC.description.trim(),
+            location = stateC.location.trim(),
+            capacity = stateC.capacity.toInt(),
+            tags = stateC.tags.map { it.trim() }.filter { it.isNotEmpty() }.distinct(),
+            latitude = stateC.latitude,
+            longitude = stateC.longitude,
+            availability = uiStateC.value.availability,
+        )
+        _uiStateC.update { it.copy(isSaving = true, saveError = false) }
+        viewModelScope.launch {
+            campsiteRepository.update(campsite)
+            _uiStateC.update {
+                it.copy(
+                    isSaving = false,
+                    isSaved = true,
+                    errors = emptyList(),
+                    saveError = false
+                )
+            }
+        }
+    }
+
    
 
     /**
@@ -271,7 +353,6 @@ class LotteryFormViewModel(
      * upon success, or [LotteryFormUiState.saveError] on exception.
      */
     fun save() {
-        Log.d("viewModel", "Saving Model")
         val state = _uiState.value
         if (state.isLoading || state.loadError || state.isSaving || state.isSaved) return
 
@@ -293,7 +374,6 @@ class LotteryFormViewModel(
         if (state.lotteryStage == "OPEN") {
             convertedStage = LotteryStatus.OPEN
         }
-        Log.d("viewModel", "state.campsiteIds: ${state.campsiteIds}")
         val lottery = baseLottery.copy(
             campsiteIds = state.campsiteIds,
             registrationPeriod = state.registrationPeriod,
@@ -327,7 +407,14 @@ class LotteryFormViewModel(
                     }
                 }
                 _uiState.update { it.copy(isSaving = false, isSaved = true, errors = emptyList(), saveError = false) }
-                Log.d("viewModel", "campsites after update: ${uiState.value.campsiteIds}")
+                // For each starting campsiteId remove its availability and afterward adds to the
+                // availabilities of each current campsiteId.
+                startingCampsiteIds.forEach { campsiteId ->
+                    updateCampsite(campsiteId, ::removeAvailability)
+                }
+                uiState.value.campsiteIds.forEach { campsiteId ->
+                    updateCampsite(campsiteId, ::addAvailability)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -338,7 +425,7 @@ class LotteryFormViewModel(
 
     companion object {
         /**
-         * Provides a ViewModel factory for [CampsiteFormViewModel], supporting both
+         * Provides a ViewModel factory for [LotteryFormViewModel], supporting both
          * registration mode and editing mode for an existing campsite.
          */
         fun provideFactory(editingLotteryId: String? = null) = viewModelFactory {
