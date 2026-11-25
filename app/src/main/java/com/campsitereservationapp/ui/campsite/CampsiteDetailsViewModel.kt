@@ -12,6 +12,7 @@ import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.RatingRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.Rating
+import com.campsitereservationapp.service.CascadeDeleter
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -59,6 +60,7 @@ data class CampsiteDetailsUiState(
  * @property giveRatingPopupOpen Toggles the popup for giving a campsite a rating.
  * @property hasGivenRating Tracks if the user is allowed to give this campsite a rating
  * @property campsiteScore the score of the viewed campsite
+ * @property cascadeDeleter deletes a campsite along with its lotteries, reservations and ratings
  * by value between this models screen and the last screen [com.campsitereservationapp.ui.discovery.CampsiteListScreen].
  */
 class CampsiteDetailsViewModel(
@@ -66,6 +68,7 @@ class CampsiteDetailsViewModel(
     private val campsiteRepository: CampsiteRepository,
     private val ratingRepository: RatingRepository,
     private val currentEntrantId: String,
+    private val cascadeDeleter: CascadeDeleter,
 ) : ViewModel() {
 
     //ID of the currently viewed campsite, passed from the previous screen.
@@ -257,14 +260,15 @@ class CampsiteDetailsViewModel(
     }
 
     /**
-     * Deletes a campsite from the repository (admin functionality, US 03.04.01).
+     * Deletes a campsite along with its lotteries, reservations and ratings
+     * (admin functionality, US 03.04.01).
      *
      * @param campsiteId ID of the campsite to delete
      */
     fun deleteCampsite(campsiteId: String) {
         viewModelScope.launch {
             try {
-                campsiteRepository.delete(campsiteId)
+                cascadeDeleter.deleteCampsite(campsiteId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -290,7 +294,8 @@ class CampsiteDetailsViewModel(
                     app.container.lotteryRepository,
                     app.container.campsiteRepository,
                     app.container.ratingRepository,
-                    app.container.currentUserId
+                    app.container.currentUserId,
+                    app.container.cascadeDeleter,
                )
             }
         }

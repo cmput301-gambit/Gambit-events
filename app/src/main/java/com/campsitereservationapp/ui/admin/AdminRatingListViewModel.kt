@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.RatingRepository
+import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Rating
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,16 +17,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * One rating as the admin sees it: the rating plus the name of the campsite it's for.
+ * One rating as the admin sees it: the rating plus the names of the campsite
+ * and the person who left it.
  *
  * @property rating the rating itself
  * @property campsiteName the rated campsite's name, or "Deleted campsite" if it no longer exists
+ * @property raterName the rater's name; null if they haven't set one or their profile is gone
  */
 data class AdminRatingRow(
     val rating: Rating,
     val campsiteName: String,
+    val raterName: String? = null,
 )
 
 /**
@@ -51,8 +56,10 @@ data class AdminRatingListUiState(
  * break the app's rules, after confirming in a popup.
  *
  * **Design rationale:** MVVM, following [AdminCampsiteListViewModel].
- * Combines the live ratings and campsites streams so each rating shows its
- * campsite's name and the list updates as soon as anything changes. Removing
+ * Combines the live ratings, campsites and users streams so each rating shows
+ * its campsite's name and who left it (name and user ID, so the admin can
+ * spot one person rating many campsites unfairly), and the list updates as
+ * soon as anything changes. Removing
  * a rating needs no cascade (nothing points at a rating), so it calls
  * [RatingRepository.delete] directly. Campsite averages update by themselves
  * because the campsite screens observe ratings live.
@@ -63,10 +70,12 @@ data class AdminRatingListUiState(
  *
  * @property ratingRepository the shared repository providing ratings
  * @property campsiteRepository the shared repository providing campsite names
+ * @property userRepository the shared repository providing raters' names
  */
 class AdminRatingListViewModel(
     private val ratingRepository: RatingRepository,
     private val campsiteRepository: CampsiteRepository,
+    private val userRepository: UserRepository,
 ) : ViewModel() {
 
     private val pendingRemoval = MutableStateFlow<AdminRatingRow?>(null)
@@ -77,13 +86,21 @@ class AdminRatingListViewModel(
         combine(
             ratingRepository.observeAll(),
             campsiteRepository.observeAll(),
+            userRepository.observeAll(),
             pendingRemoval,
             errorMessage,
-        ) { ratings, campsites, pending, error ->
-            val namesById = campsites.associate { it.id to it.name }
+        ) { ratings, campsites, users, pending, error ->
+            val campsiteNames = campsites.associate { it.id to it.name }
+            val userNames = users.associate { it.id to it.name.ifBlank { null } }
             AdminRatingListUiState(
                 ratings = ratings
-                    .map { AdminRatingRow(it, namesById[it.campsiteId] ?: DELETED_CAMPSITE) }
+                    .map {
+                        AdminRatingRow(
+                            rating = it,
+                            campsiteName = campsiteNames[it.campsiteId] ?: DELETED_CAMPSITE,
+                            raterName = userNames[it.userId],
+                        )
+                    }
                     .sortedWith(compareBy({ it.campsiteName.lowercase() }, { it.rating.score })),
                 isLoading = false,
                 ratingPendingRemoval = pending,
@@ -124,6 +141,8 @@ class AdminRatingListViewModel(
         viewModelScope.launch {
             try {
                 ratingRepository.delete(row.rating.id)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to remove rating ${row.rating.id}", e)
                 errorMessage.value = "Couldn't remove the rating. Check your connection and try again."
@@ -146,6 +165,7 @@ class AdminRatingListViewModel(
                 AdminRatingListViewModel(
                     app.container.ratingRepository,
                     app.container.campsiteRepository,
+                    app.container.userRepository,
                 )
             }
         }

@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * What the admin is about to remove, shown in the "Are you sure?" popup.
@@ -139,6 +140,8 @@ class AdminProfileListViewModel(
                     is ProfileRemoval.WholeProfile -> cascadeDeleter.deleteProfile(removal.user.id)
                     is ProfileRemoval.OwnerRole -> cascadeDeleter.removeOwner(removal.user.id)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to remove ${removal.user.id}", e)
                 errorMessage.value = "Couldn't finish removing ${displayName(removal.user)}. " +

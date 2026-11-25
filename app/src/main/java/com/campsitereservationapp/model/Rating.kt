@@ -8,17 +8,17 @@ enum class RatingError {
 /**
  * A data class to represent a users rating of a campsite as a value.
  *
- * **Purpose:** the data behind win and lose notifications
- * (US 01.13.01).
+ * **Purpose:** one entrant's star score for one campsite, used for the
+ * campsite averages (US 01.13.01) and removable by admins (US 03.09.01).
  *
  * **Design rationale:** plain data class with no insides.
  *
- * **Outstanding issues:**
+ * **Outstanding issues:** None.
  *
  * @property id unique ID, also used as the Firestore document ID
  * @property userId ID of the [User] who made this rating
  * @property campsiteId ID of the campsite this rating is discussing
- * @property score Integer representing the score the user gave to the campsite
+ * @property score the number of stars the user gave the campsite, from 0 to 5
  */
 data class Rating(
     override val id: String = "",

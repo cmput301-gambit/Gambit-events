@@ -3,8 +3,11 @@ package com.campsitereservationapp.ui.admin
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.data.RatingRepository
+import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.Entrant
 import com.campsitereservationapp.model.Rating
+import com.campsitereservationapp.model.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -26,7 +29,8 @@ import org.junit.Test
 /**
  * Unit tests for [AdminRatingListViewModel].
  *
- * **Purpose:** checks the admin sees every rating with its campsite's name,
+ * **Purpose:** checks the admin sees every rating with its campsite's name
+ * and the rater's name,
  * that Remove asks for confirmation first, that cancelling keeps the rating,
  * and that confirming deletes only that rating (US 03.09.01).
  *
@@ -56,7 +60,12 @@ class AdminRatingListViewModelTest {
             MockDataSource(listOf(spamRating, fairRating, aspenRating, orphanRating))
         )
         val campsiteRepository = CampsiteRepository(MockDataSource(listOf(pineRidge, aspenHollow)))
-        viewModel = AdminRatingListViewModel(ratingRepository, campsiteRepository)
+        // Noah has a name; the troll's profile has none; Priya's profile was deleted.
+        val userRepository = UserRepository(MockDataSource(listOf(
+            User("entrant-noah", name = "Noah Walters", entrant = Entrant("entrant-noah")),
+            User("entrant-troll", entrant = Entrant("entrant-troll")),
+        )))
+        viewModel = AdminRatingListViewModel(ratingRepository, campsiteRepository, userRepository)
     }
 
     @After
@@ -127,5 +136,17 @@ class AdminRatingListViewModelTest {
         assertNull(ratingRepository.get(spamRating.id))
         assertEquals(3, viewModel.uiState.value.ratings.size)
         assertEquals(4f, ratingRepository.averageRatingByCampsite("campsite-pine-ridge"), 0.001f)
+    }
+
+    @Test
+    fun eachRatingShowsWhoLeftIt() = runTest {
+        startCollecting()
+        advanceUntilIdle()
+
+        assertEquals("Noah Walters", rowFor(aspenRating).raterName)
+        // A blank name and a deleted profile both have no name to show.
+        assertNull(rowFor(spamRating).raterName)
+        assertNull(rowFor(fairRating).raterName)
+        assertEquals("entrant-troll", rowFor(spamRating).rating.userId)
     }
 }

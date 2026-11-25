@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Everything the entrant home screen needs to properly address the current user.
@@ -183,6 +184,8 @@ class EntrantSettingsViewModel(
             try {
                 deleter.deleteProfile(currentUserId)
                 accountDeleted.value = true
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("EntrantSettings", "Failed to delete profile $currentUserId", e)
                 deleteError.value = "Couldn't delete your account. Check your connection and try again."

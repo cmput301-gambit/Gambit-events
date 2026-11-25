@@ -83,7 +83,7 @@ class RatingRepository(dataSource: DataSource<Rating>) : Repository<Rating>(data
         fun idFor(userId: String, campsiteId: String): String = "${userId}_$campsiteId"
 
         /**
-         * Creates the Firestore data source for campsites, used by [AppContainer].
+         * Creates the Firestore data source for ratings, used by [AppContainer].
          *
          * @return a data source backed by the "ratings" collection
          */

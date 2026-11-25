@@ -35,8 +35,7 @@ import androidx.navigation.NavController
  * **Design rationale:** barebones card list matching [AdminCampsiteListScreen],
  * bound to [AdminRatingListViewModel].
  *
- * **Outstanding issues:** no styling has been applied yet. Ratings show who
- * left them by user ID only.
+ * **Outstanding issues:** no styling has been applied yet.
  *
  * @param navController navigation controller used for screen transitions
  * @param viewModel view model managing the live rating list and removals
@@ -145,7 +144,7 @@ private fun AdminRatingCard(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    text = "By user ${row.rating.userId}",
+                    text = "By ${row.raterName ?: "unnamed user"} (${row.rating.userId})",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
