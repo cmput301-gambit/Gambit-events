@@ -234,4 +234,5 @@ class OwnerReservationListViewModelTest {
 
         assertTrue(viewModel.uiState.value.items.isEmpty())
     }
+
 }
