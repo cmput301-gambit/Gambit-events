@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -45,6 +44,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * @property error a message about the last attempt, or null
  * @property confirmation the saved reservation once booking worked, or null
  * @property sendCSV toggles whether to give a download prompt of a CSV after reservation has been confirmed.
+ * @property csvRequested true when a CSV export has been requested by a successful reservation.
  */
 data class ReserveUiState(
     val isLoading: Boolean = true,
@@ -58,6 +58,7 @@ data class ReserveUiState(
     val error: String? = null,
     val confirmation: Reservation? = null,
     val sendCSV: Boolean = false,
+    val csvRequested: Boolean = false,
 ) {
     /** True when the form should be usable. */
     val canReserve: Boolean
@@ -135,8 +136,15 @@ class ReserveViewModel(
      * Called when the user taps Reserve. Checks the picked dates, saves the
      * reservation, and shows the confirmation, or shows what went wrong.
      */
-    fun reserve(csvLauncher : ManagedActivityResultLauncher<String, Uri?>) {
-        viewModelScope.launch { reserveNow(csvLauncher) }
+    fun reserve() {
+        viewModelScope.launch { reserveNow() }
+    }
+
+    /**
+     * Called by the UI when the CSV export launcher has been triggered.
+     */
+    fun onCsvLaunched() {
+        _uiState.update { it.copy(csvRequested = false) }
     }
 
     private suspend fun loadNow(lotteryId: String) {
@@ -209,7 +217,7 @@ class ReserveViewModel(
         }
     }
 
-    private suspend fun reserveNow(csvLauncher : ManagedActivityResultLauncher<String, Uri?>) {
+    private suspend fun reserveNow() {
         val state = _uiState.value
         val reservingLotteryId = lotteryId ?: return
         val reservingCampsiteId = campsiteId ?: return
@@ -247,10 +255,7 @@ class ReserveViewModel(
             loadNow(reservingLotteryId)
             showError("Those dates were just taken. Pick other dates.")
         } else {
-            _uiState.update { it.copy(confirmation = saved, error = null) }
-
-            if(state.sendCSV)
-                csvLauncher.launch("reservation.csv")
+            _uiState.update { it.copy(confirmation = saved, error = null, csvRequested = it.sendCSV) }
         }
     }
 
@@ -262,13 +267,9 @@ class ReserveViewModel(
      * @param uri address for the new CSV
      */
     fun sendCSV(context: Context, uri: Uri){
-        //return early if there was an error saving.
-        if(uiState.value.error != null || uiState.value.confirmation == null) return
-
+        if (uiState.value.confirmation == null) return
 
         val appContext = context.applicationContext
-
-        //Log.d("CsvExport", "Beginning write attempt to ${uri}")
 
         viewModelScope.launch(Dispatchers.IO) {
             val result = try {
@@ -280,8 +281,6 @@ class ReserveViewModel(
                     out.write(csvString.toByteArray(Charsets.UTF_8))
                     out.flush()
                 }
-
-                //Log.d("CsvExport", "Wrote ${csvString.length} chars to $uri")
 
                 "Exported" //This is the result
 
@@ -302,19 +301,20 @@ class ReserveViewModel(
         }
     }
 
-    private fun createCSVString(): String{
+    private fun createCSVString(): String {
+        val confirmation = uiState.value.confirmation ?: return ""
         val csv = Csv(listOf(
-            "User ID",
+            "Reservation ID",
             "Campsite Name",
-            "Check-in Time",
-            "Check-out Time",
+            "Check-in Date",
+            "Check-out Date",
         ))
 
         csv.addRow(listOf(
-            currentUserId,
+            confirmation.id,
             uiState.value.campsiteName,
-            uiState.value.checkIn.toString(),
-            uiState.value.checkOut.toString(),
+            confirmation.dates.start.toString(),
+            confirmation.dates.finish.toString(),
         ))
 
         return csv.toString()

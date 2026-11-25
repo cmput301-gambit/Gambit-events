@@ -1,7 +1,6 @@
 package com.campsitereservationapp.ui.reservations
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -73,7 +72,14 @@ fun ReserveScreen(
         if(uri != null){
             viewModel.sendCSV(context, uri)
         }else{
-            Log.d("Csv", "Failed to get uri.") //Comment this out
+            Log.d("Csv", "Failed to get uri.")
+        }
+    }
+
+    LaunchedEffect(state.csvRequested) {
+        if (state.csvRequested) {
+            launcher.launch("reservation.csv")
+            viewModel.onCsvLaunched()
         }
     }
 
@@ -104,9 +110,7 @@ fun ReserveScreen(
             blockedReason != null -> Text(blockedReason)
             else -> ReserveForm(state, viewModel,
                 onReserveClicked = {
-
-                    viewModel.reserve(launcher)
-
+                    viewModel.reserve()
                 }
             )
         }
@@ -119,6 +123,7 @@ fun ReserveScreen(
  *
  * @param state what to show
  * @param viewModel receives the picked dates and the Reserve tap
+ * @param onReserveClicked callback when reserve button is tapped
  */
 @Composable
 private fun ReserveForm(state: ReserveUiState, viewModel: ReserveViewModel, onReserveClicked: () -> Unit) {
@@ -155,7 +160,7 @@ private fun ReserveForm(state: ReserveUiState, viewModel: ReserveViewModel, onRe
     Row(){
         Text("I want a downloadable CSV of my reservation.")
         Checkbox(
-            onCheckedChange = { viewModel.onToggleReceiveCSV(!state.sendCSV) },
+            onCheckedChange = viewModel::onToggleReceiveCSV,
             checked = state.sendCSV
         )
     }
