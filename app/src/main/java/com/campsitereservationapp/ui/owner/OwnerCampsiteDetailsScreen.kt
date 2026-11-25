@@ -31,7 +31,7 @@ import com.campsitereservationapp.ui.campsite.CampsiteDetailsViewModel
  * offering quick navigation placeholders for lottery management and viewing booked dates.
  *
  * **Design rationale:** displays owner view badge, complete property details, and
- * owner action buttons ("View Booked Dates", "Edit Lottery" and "View Reservations" placeholders).
+ * owner action buttons ("View Booked Dates", "Edit Lottery", "View Reservations", "Message Guests").
  *
  * **Outstanding issues:** "Edit Lottery" and "View Reservations" actions are placeholders for lottery/reservation stories.
  *
@@ -140,6 +140,16 @@ fun OwnerCampsiteDetailsScreen(
             ) {
                 Text("View Reservations")
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Lets the owner message entrants who reserved this campsite (US 02.12.01).
+        OutlinedButton(
+            onClick = { navController.navigate("OwnerGuests/$campsiteId") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Message Guests")
         }
     }
 }

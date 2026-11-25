@@ -7,10 +7,10 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
-import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteError
+import com.campsitereservationapp.model.DateRange
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +31,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * @property location textual location of the campsite
  * @property capacity maximum occupancy entered as a string
  * @property tags list of tags associated with the campsite
+ * @property posterImageId optional image URI string / ID of the campsite image
  * @property latitude optional latitude map coordinate
  * @property longitude optional longitude map coordinate
  * @property availability optional reservation availability date range
@@ -47,6 +48,7 @@ data class CampsiteFormUiState(
     val location: String = "",
     val capacity: String = "",
     val tags: List<String> = emptyList(),
+    val posterImageId: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
     val availability: DateRange? = null,
@@ -65,7 +67,7 @@ data class CampsiteFormUiState(
  * unedited fields via copy, handling async load and save errors safely, and promoting users
  * to campsite owners upon registration.
  *
- * **Outstanding issues:** image upload and map picking not yet integrated.
+ * **Outstanding issues:** binary image storage upload to Firebase Storage backend is pending; local URIs are preserved.
  *
  * @property campsiteRepository the shared repository campsites are added/updated in
  * @property userRepository the shared repository users are managed in
@@ -107,6 +109,7 @@ class CampsiteFormViewModel(
                                 location = loaded.location,
                                 capacity = loaded.capacity.toString(),
                                 tags = loaded.tags,
+                                posterImageId = loaded.posterImageId,
                                 latitude = loaded.latitude,
                                 longitude = loaded.longitude,
                                 availability = loaded.availability
@@ -170,6 +173,15 @@ class CampsiteFormViewModel(
     }
 
     /**
+     * Updates the campsite poster image ID / URI.
+     *
+     * @param imageId image URI or reference ID, or null
+     */
+    fun onPosterImageIdChange(imageId: String?) {
+        _uiState.update { it.copy(posterImageId = imageId) }
+    }
+
+    /**
      * Updates the map location (latitude and longitude) of the campsite.
      *
      * @param lat latitude coordinate, or null
@@ -212,6 +224,7 @@ class CampsiteFormViewModel(
             location = state.location.trim(),
             capacity = parsedCapacity ?: 0,
             tags = state.tags.map { it.trim() }.filter { it.isNotEmpty() }.distinct(),
+            posterImageId = state.posterImageId,
             latitude = state.latitude,
             longitude = state.longitude,
             availability = state.availability,
