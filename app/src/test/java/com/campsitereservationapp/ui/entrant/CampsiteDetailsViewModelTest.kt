@@ -3,6 +3,9 @@ package com.campsitereservationapp.ui.entrant
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MockDataSource
+import com.campsitereservationapp.data.MessageRepository
+import com.campsitereservationapp.data.NotificationRepository
+import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.RatingRepository
 import com.campsitereservationapp.data.SampleData
 import com.campsitereservationapp.data.UserRepository
@@ -11,6 +14,7 @@ import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.ui.campsite.CampsiteDetailsMainButtonState
+import com.campsitereservationapp.service.CascadeDeleter
 import com.campsitereservationapp.ui.campsite.CampsiteDetailsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,7 +50,16 @@ class CampsiteDetailsViewModelTest {
         userRepository = UserRepository(MockDataSource(SampleData.users))
         ratingRepository = RatingRepository(MockDataSource())
         lotteryRepository = LotteryRepository(MockDataSource(SampleData.lotteries), repository)
-        viewModel = CampsiteDetailsViewModel(lotteryRepository, repository, ratingRepository, "entrant-user")
+        viewModel = CampsiteDetailsViewModel(lotteryRepository, repository, ratingRepository, "entrant-user",
+            CascadeDeleter(
+                UserRepository(MockDataSource()),
+                repository,
+                lotteryRepository,
+                ReservationRepository(MockDataSource()),
+                NotificationRepository(MockDataSource()),
+                ratingRepository,
+                MessageRepository(MockDataSource()),
+            ))
     }
 
     @After

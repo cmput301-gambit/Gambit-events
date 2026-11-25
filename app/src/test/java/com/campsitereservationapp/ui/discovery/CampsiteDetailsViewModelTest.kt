@@ -3,9 +3,14 @@ package com.campsitereservationapp.ui.discovery
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MockDataSource
+import com.campsitereservationapp.data.MessageRepository
+import com.campsitereservationapp.data.NotificationRepository
+import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.RatingRepository
+import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
+import com.campsitereservationapp.service.CascadeDeleter
 import com.campsitereservationapp.ui.campsite.CampsiteDetailsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -37,7 +42,16 @@ class CampsiteDetailsViewModelTest {
         campsiteRepository = CampsiteRepository(MockDataSource())
         ratingRepository = RatingRepository(MockDataSource())
         lotteryRepository = LotteryRepository(MockDataSource(), campsiteRepository)
-        viewModel = CampsiteDetailsViewModel(lotteryRepository, campsiteRepository, ratingRepository, "owner-bobby")
+        viewModel = CampsiteDetailsViewModel(lotteryRepository, campsiteRepository, ratingRepository, "owner-bobby",
+            CascadeDeleter(
+                UserRepository(MockDataSource()),
+                campsiteRepository,
+                lotteryRepository,
+                ReservationRepository(MockDataSource()),
+                NotificationRepository(MockDataSource()),
+                ratingRepository,
+                MessageRepository(MockDataSource()),
+            ))
     }
 
     @After
