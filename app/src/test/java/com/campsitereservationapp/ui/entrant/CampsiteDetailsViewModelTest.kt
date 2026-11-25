@@ -3,6 +3,7 @@ package com.campsitereservationapp.ui.entrant
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MockDataSource
+import com.campsitereservationapp.data.RatingRepository
 import com.campsitereservationapp.data.SampleData
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
@@ -33,6 +34,8 @@ class CampsiteDetailsViewModelTest {
     private lateinit var repository: CampsiteRepository
     private lateinit var userRepository: UserRepository
 
+    private lateinit var ratingRepository: RatingRepository
+
     private lateinit var lotteryRepository: LotteryRepository
     private lateinit var viewModel: CampsiteDetailsViewModel
 
@@ -41,8 +44,9 @@ class CampsiteDetailsViewModelTest {
         Dispatchers.setMain(testDispatcher)
         repository = CampsiteRepository(MockDataSource(SampleData.campsites))
         userRepository = UserRepository(MockDataSource(SampleData.users))
+        ratingRepository = RatingRepository(MockDataSource())
         lotteryRepository = LotteryRepository(MockDataSource(SampleData.lotteries), repository)
-        viewModel = CampsiteDetailsViewModel(lotteryRepository, repository, "entrant-user")
+        viewModel = CampsiteDetailsViewModel(lotteryRepository, repository, ratingRepository, "entrant-user")
     }
 
     @After

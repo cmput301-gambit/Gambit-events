@@ -7,6 +7,7 @@ import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Entrant
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
+import com.campsitereservationapp.model.Rating
 import com.campsitereservationapp.model.User
 import com.campsitereservationapp.model.WaitingList
 import java.time.LocalDate
@@ -92,5 +93,9 @@ object SampleData {
             stage = LotteryStatus.OPEN,
             waitingList = WaitingList(mutableListOf("entrant-user"))
         )
+    )
+
+    val ratings = listOf(
+        Rating("rating-a", "entrant-a", "campsite-lakeside-loop")
     )
 }

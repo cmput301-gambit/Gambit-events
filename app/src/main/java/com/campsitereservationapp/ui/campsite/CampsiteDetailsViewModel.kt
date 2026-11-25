@@ -9,7 +9,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
+import com.campsitereservationapp.data.RatingRepository
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.Rating
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,7 +34,10 @@ import kotlin.coroutines.cancellation.CancellationException
 data class CampsiteDetailsUiState(
     val mainButtonState: CampsiteDetailsMainButtonState = CampsiteDetailsMainButtonState.JOIN,
     val viewedCampsiteId: String = "",
-    val viewedCampsite: Campsite = Campsite()
+    val viewedCampsite: Campsite = Campsite(),
+    val viewedCampsiteScore: Float = 0f,
+    val giveRatingPopupOpen: Boolean = false,
+    val hasGivenRating: Boolean = false
 )
 
 /**
@@ -51,22 +56,44 @@ data class CampsiteDetailsUiState(
  *
  * @property [LotteryRepository] The shared repository lotteries come from
  * @property campsiteRepository The shared repository campsites come from. Required here because the campsite can only be passed
+ * @property giveRatingPopupOpen Toggles the popup for giving a campsite a rating.
+ * @property hasGivenRating Tracks if the user is allowed to give this campsite a rating
+ * @property campsiteScore the score of the viewed campsite
  * by value between this models screen and the last screen [com.campsitereservationapp.ui.discovery.CampsiteListScreen].
  */
 class CampsiteDetailsViewModel(
     private val lotteryRepository: LotteryRepository,
     private val campsiteRepository: CampsiteRepository,
+    private val ratingRepository: RatingRepository,
     private val currentEntrantId: String,
 ) : ViewModel() {
 
     //ID of the currently viewed campsite, passed from the previous screen.
     private val viewedCampsiteId: MutableStateFlow<String> = MutableStateFlow("")
 
+    private val giveRatingPopupOpen: MutableStateFlow<Boolean> = MutableStateFlow(false)
+
+
     //Enum of the main button of this screen.
     private val mainButtonState : MutableStateFlow<CampsiteDetailsMainButtonState> = MutableStateFlow(
         CampsiteDetailsMainButtonState.JOIN
     )
 
+    // Live rating info for the viewed campsite: whether the popup is open,
+    // whether this user already rated it, and its average score. Built from
+    // the live ratings, so it updates as soon as anyone (including this user) rates.
+    private val popupState = combine(
+        giveRatingPopupOpen,
+        ratingRepository.observeAll(),
+        viewedCampsiteId,
+    ) { ratingOpen, ratings, campsiteId ->
+        val forCampsite = ratings.filter { it.campsiteId == campsiteId }
+        Triple(
+            ratingOpen,
+            forCampsite.any { it.userId == currentEntrantId },
+            forCampsite.map { it.score }.average().toFloat().takeUnless { it.isNaN() } ?: 0f,
+        )
+    }
     /**
      * The current screen state. The screen collects this and redraws
      * every time it changes.
@@ -77,15 +104,19 @@ class CampsiteDetailsViewModel(
             lotteryRepository.observeAll(), // could be changed to an observeWhere() call
             mainButtonState,
             viewedCampsiteId,
-        ) { lotteries, newButtonState, campsiteId,  ->
+            popupState,
+        ) { lotteries, newButtonState, campsiteId, (rateOpen, hasRated, score)  ->
             //Log.d("CampsiteDetails", "Fetching campsite with id='$campsiteId'")
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteDetailsUiState(
                 newButtonState,
                 campsiteId,
                 viewedCampsite = if (campsiteId.isBlank()) Campsite()
-                else campsiteRepository.get(campsiteId) ?: Campsite() //Returns an empty campsite if no campsite is found.
-            )
+                else campsiteRepository.get(campsiteId) ?: Campsite(), //Returns an empty campsite if no campsite is found.
+                viewedCampsiteScore = score,
+                giveRatingPopupOpen = rateOpen,
+                hasGivenRating = hasRated
+                )
         }
             // stateIn() turns the stream into a StateFlow the screen can read.
             .stateIn(
@@ -182,9 +213,17 @@ class CampsiteDetailsViewModel(
 
     }
 
+
     /**
-     * THIS IS WIP, not final as the rating screen has no mockup presently.
-     * Called by the screen whenever the user submits a rating.
+     *
+     * Toggles the [giveRatingPopupOpen] variable and makes the state recalculate.
+     *
+     */
+    fun toggleRatingPopup(){
+        giveRatingPopupOpen.update { !giveRatingPopupOpen.value }
+    }
+
+    /**
      *
      * Updating [newRating] makes combine() recalculate the state,
      * automatically hiding the rating popup after making a rating, and loading the rating to the
@@ -193,7 +232,28 @@ class CampsiteDetailsViewModel(
      * @param newRating the rating given by the user
      */
     fun onCreateRating(newRating: Float){
-        //adds a rating to the campsite
+        giveRatingPopupOpen.update { false } //will always close the popup
+        val campsiteId = viewedCampsiteId.value
+        viewModelScope.launch {
+            try {
+                ratingRepository.add(
+                    Rating(
+                        // Same ID every time for this user and campsite, so a
+                        // second rating is refused instead of duplicated.
+                        id = RatingRepository.idFor(currentEntrantId, campsiteId),
+                        userId = currentEntrantId,
+                        campsiteId = campsiteId,
+                        score = newRating
+                    )
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Already rated, or no connection. Nothing was saved, so the
+                // Rate button stays (unless they already rated) and they can retry.
+                Log.w("CampsiteDetails", "Rating not saved", e)
+            }
+        }
     }
 
     /**
@@ -229,6 +289,7 @@ class CampsiteDetailsViewModel(
                 CampsiteDetailsViewModel(
                     app.container.lotteryRepository,
                     app.container.campsiteRepository,
+                    app.container.ratingRepository,
                     app.container.currentUserId
                )
             }

@@ -47,6 +47,11 @@ class AppContainer(context: Context) {
         ReservationRepository(ReservationRepository.firestoreDataSource())
     }
 
+    /** Shared repository for ratings*/
+    val ratingRepository by lazy {
+        RatingRepository(RatingRepository.firestoreDataSource())
+    }
+
     /** Shared repository for owner and entrant messages about reservations. */
     val messageRepository by lazy {
         MessageRepository(MessageRepository.firestoreDataSource())
