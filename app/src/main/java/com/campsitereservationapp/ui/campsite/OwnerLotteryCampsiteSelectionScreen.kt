@@ -34,7 +34,7 @@ import com.campsitereservationapp.model.Campsite
  *
  * **Purpose:** allows campsite owners to enter which campsites to set up a lottery for - allowing
  * them to proceed to a screen which would allow them to create the registration, reservation,
- * winner amounts, start stage, and waitlist capacity..
+ * winner amounts, start stage, and waitlist capacity.
  *
  * **Design rationale:** collects state from [LotteryFormViewModel], renders
  * text input fields, displays field validation errors inline, and automatically
@@ -61,17 +61,16 @@ fun OwnerLotteryCampsiteSelectionScreen(
         campsites.addAll(viewModel.getCampsites())
     }
 
-    LaunchedEffect(state.isLoading) {
-        if (!state.isLoading) {
-            // Creates a map when fully loaded with the campsite's id as the key it creates
-            // a bool list which contains whether the campsite has a lottery (to prevent overriding)
-            // and whether the campsite id is in the current lottery provided to the viewModel
-            campsites.forEach { campsite ->
-                campsiteLotteryDict[campsite.id] = listOf(
-                    viewModel.campsiteHasLottery(campsite.id),
-                    false
-                )
-            }
+
+    LaunchedEffect(campsites.isNotEmpty()) {
+        // Creates a map when the campsites are loaded with the campsite's id as the key it creates
+        // a bool list which contains whether the campsite has a lottery (to prevent overriding)
+        // and whether the campsite id is in the current lottery provided to the viewModel
+        campsites.forEach { campsite ->
+            campsiteLotteryDict[campsite.id] = listOf(
+                viewModel.campsiteHasLottery(campsite.id),
+                false
+            )
         }
     }
 

@@ -43,7 +43,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.model.Campsite
-import com.campsitereservationapp.model.CampsiteError
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.LotteryError
 import java.time.Instant
@@ -88,14 +87,14 @@ fun OwnerLotteryDetailsScreen(
         campsites.addAll(viewModel.getCampsites())
     }
 
-    LaunchedEffect(registrationPeriodStart, registrationPeriodEnd) {
+    LaunchedEffect( registrationPeriodEnd) {
         if (registrationPeriodStart != null && registrationPeriodEnd != null) {
             viewModel.onRegistrationPeriodChange(DateRange(registrationPeriodStart.toLocalDate(),
                 registrationPeriodEnd.toLocalDate()))
         }
     }
 
-    LaunchedEffect(reservationPeriodStart, reservationPeriodEnd) {
+    LaunchedEffect( reservationPeriodEnd) {
         if (reservationPeriodStart != null && reservationPeriodEnd != null) {
             viewModel.onReservationPeriodChange(DateRange(reservationPeriodStart.toLocalDate(),
                 reservationPeriodEnd.toLocalDate()))
