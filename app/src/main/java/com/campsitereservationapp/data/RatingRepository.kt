@@ -53,6 +53,17 @@ class RatingRepository(dataSource: DataSource<Rating>) : Repository<Rating>(data
 
     companion object {
         /**
+         * The ID for one user's rating of one campsite. Every user gets the
+         * same ID for the same campsite, so [add] refuses a second rating
+         * (US 01.13.01: each user rates a campsite once).
+         *
+         * @param userId the user giving the rating
+         * @param campsiteId the campsite being rated
+         * @return the rating's ID
+         */
+        fun idFor(userId: String, campsiteId: String): String = "${userId}_$campsiteId"
+
+        /**
          * Creates the Firestore data source for campsites, used by [AppContainer].
          *
          * @return a data source backed by the "ratings" collection

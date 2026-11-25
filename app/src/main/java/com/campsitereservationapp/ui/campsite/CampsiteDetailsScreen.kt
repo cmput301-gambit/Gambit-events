@@ -64,7 +64,6 @@ fun CampsiteDetailsScreen(
 
     LaunchedEffect(viewedCampsiteId) {
         viewModel.updateViewedCampSiteId(viewedCampsiteId)
-        viewModel.updateViewedCampsiteRating()
     }
 
     var givenScore by remember { mutableFloatStateOf(0f) }

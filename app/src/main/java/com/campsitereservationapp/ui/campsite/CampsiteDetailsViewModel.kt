@@ -73,20 +73,26 @@ class CampsiteDetailsViewModel(
 
     private val giveRatingPopupOpen: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
-    private val hasGivenRating: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
-    private val campsiteScore: MutableStateFlow<Float> = MutableStateFlow(0f)
     //Enum of the main button of this screen.
     private val mainButtonState : MutableStateFlow<CampsiteDetailsMainButtonState> = MutableStateFlow(
         CampsiteDetailsMainButtonState.JOIN
     )
 
+    // Live rating info for the viewed campsite: whether the popup is open,
+    // whether this user already rated it, and its average score. Built from
+    // the live ratings, so it updates as soon as anyone (including this user) rates.
     private val popupState = combine(
         giveRatingPopupOpen,
-        hasGivenRating,
-        campsiteScore,
-    ) { ratingOpen, hasRated, score ->
-        Triple(ratingOpen, hasRated, score)
+        ratingRepository.observeAll(),
+        viewedCampsiteId,
+    ) { ratingOpen, ratings, campsiteId ->
+        val forCampsite = ratings.filter { it.campsiteId == campsiteId }
+        Triple(
+            ratingOpen,
+            forCampsite.any { it.userId == currentEntrantId },
+            forCampsite.map { it.score }.average().toFloat().takeUnless { it.isNaN() } ?: 0f,
+        )
     }
     /**
      * The current screen state. The screen collects this and redraws
@@ -207,21 +213,7 @@ class CampsiteDetailsViewModel(
 
     }
 
-    /**
-     * Called by the screen on the first load.
-     *
-     * Updating [hasGivenRating] and [campsiteScore] makes combine() recalculate the state,
-     * automatically making this screen display the correct info.
-     *
-     */
-    fun updateViewedCampsiteRating(){
-        viewModelScope.launch {
-            campsiteScore.update { ratingRepository.averageRatingByCampsite(viewedCampsiteId.value) }
-            hasGivenRating.update {
-                ratingRepository.getForCampByUser(viewedCampsiteId.value, currentEntrantId) != emptyList<Rating>()
-            }
-        }
-    }
+
     /**
      *
      * Toggles the [giveRatingPopupOpen] variable and makes the state recalculate.
@@ -240,21 +232,28 @@ class CampsiteDetailsViewModel(
      * @param newRating the rating given by the user
      */
     fun onCreateRating(newRating: Float){
+        giveRatingPopupOpen.update { false } //will always close the popup
+        val campsiteId = viewedCampsiteId.value
         viewModelScope.launch {
-            ratingRepository.add(
-                Rating(
-                    id = ratingRepository.newId(),
-                    userId = currentEntrantId,
-                    campsiteId = viewedCampsiteId.value,
-                    score = newRating
+            try {
+                ratingRepository.add(
+                    Rating(
+                        // Same ID every time for this user and campsite, so a
+                        // second rating is refused instead of duplicated.
+                        id = RatingRepository.idFor(currentEntrantId, campsiteId),
+                        userId = currentEntrantId,
+                        campsiteId = campsiteId,
+                        score = newRating
+                    )
                 )
-            )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Already rated, or no connection. Nothing was saved, so the
+                // Rate button stays (unless they already rated) and they can retry.
+                Log.w("CampsiteDetails", "Rating not saved", e)
+            }
         }
-
-        hasGivenRating.update { true }
-
-        toggleRatingPopup() //will always close the popup
-
     }
 
     /**

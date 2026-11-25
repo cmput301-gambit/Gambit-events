@@ -53,9 +53,7 @@ fun CampsiteListScreen(
     navController: NavController,
     viewModel: CampsiteListViewModel = viewModel(factory = CampsiteListViewModel.Factory),
 ) {
-    LaunchedEffect(""){
-        viewModel.getCampsiteRatings()
-    }
+
 
     val state by viewModel.uiState.collectAsState()
     var displayFilters by remember { mutableStateOf(false) }
@@ -139,7 +137,7 @@ fun CampsiteListScreen(
             items(state.campsites, key = { it.id }) { campsite ->
                 CampsiteSummaryCard(
                     campsite = campsite,
-                    campsiteRatings = state.campsiteRatings,
+                    rating = state.campsiteRatings[campsite.id],
                     onClickDetails = {
                         navController.navigate("EntrantCampsiteDetails/${campsite.id}")
                     },
@@ -153,7 +151,7 @@ fun CampsiteListScreen(
 @Composable
 fun CampsiteSummaryCard(
     campsite: Campsite,
-    campsiteRatings: Map<Campsite, Float>,
+    rating: Float?,
     onClickDetails: () -> Unit
 ) {
     val name: String = campsite.name
@@ -167,8 +165,7 @@ fun CampsiteSummaryCard(
                 //Image of stars
                 Text(location)
                 Text("Capacity: $capacity")
-                if(campsiteRatings[campsite] != null)
-                Text(campsiteRatings[campsite].toString()) //Rating goes here
+                if (rating != null) Text(rating.toString()) //Rating goes here
             }
             Button(
                 onClick = onClickDetails
