@@ -250,7 +250,7 @@ class ReserveViewModel(
             _uiState.update { it.copy(confirmation = saved, error = null) }
 
             if(state.sendCSV)
-            csvLauncher.launch("reservation.csv")
+                csvLauncher.launch("reservation.csv")
         }
     }
 
