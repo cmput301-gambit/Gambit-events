@@ -24,6 +24,7 @@ import com.campsitereservationapp.ui.notifications.InboxScreen
 import com.campsitereservationapp.ui.reservations.ReservationListScreen
 import com.campsitereservationapp.ui.reservations.ReserveScreen
 import com.campsitereservationapp.ui.home.PolicyAndGuidelinesScreen
+import com.campsitereservationapp.ui.owner.OwnerReservationListScreen
 
 /**
  * Top-level Jetpack Compose navigation entry point for the Campsite Reservation Application.
@@ -89,5 +90,6 @@ fun CampsiteAppEntry(){
             ReserveScreen(navController, lotteryId = lotteryId)
         }
         composable("PolicyAndGuidelines") { PolicyAndGuidelinesScreen(navController) }
+        composable("OwnerReservations") { OwnerReservationListScreen(navController) }
     }
 }

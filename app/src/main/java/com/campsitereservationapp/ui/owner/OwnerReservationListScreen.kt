@@ -1,6 +1,7 @@
 package com.campsitereservationapp.ui.owner
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.ui.components.ReservationCard
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavController
 import com.campsitereservationapp.model.DateRange
 import com.google.apps.card.v1.OnClick
 import java.time.LocalDate
@@ -38,17 +40,23 @@ import java.time.LocalDate
 
 @Composable
 fun OwnerReservationListScreen(
+    navController: NavController,
     viewModel: OwnerReservationListViewModel = viewModel(factory = OwnerReservationListViewModel.Factory),
     onReservationClick: (Reservation) -> Unit = {},
     onChatClick: (Reservation) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
-    OwnerReservationListContent(state.items, onReservationClick, onChatClick)
+    OwnerReservationListContent(
+        items = state.items,
+        onBack = { navController.popBackStack()},
+        onReservationClick= onReservationClick,
+        onChatClick = onChatClick,)
 }
 
 @Composable
 fun OwnerReservationListContent(
     items: List<OwnerReservationItem>,
+    onBack: () -> Unit,
     onReservationClick: (Reservation) -> Unit,
     onChatClick: (Reservation) -> Unit,
 ) {
@@ -58,6 +66,8 @@ fun OwnerReservationListContent(
             .background(Color(0xFFEDE6DA))
             .padding(24.dp)
     ) {
+        Spacer(Modifier.height(30.dp))
+        Text("Back", modifier = Modifier.clickable {onBack()})
         Text("All Reservations", fontSize = 36.sp, modifier = Modifier.padding(vertical = 24.dp))
         Text("Active", fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
