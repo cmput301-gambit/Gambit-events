@@ -293,6 +293,7 @@ class ReserveViewModelTest {
         advanceUntilIdle()
 
         viewModel.onToggleReceiveCSV(true)
+        assertTrue(viewModel.uiState.value.csvRequested)
         viewModel.onDatesPicked(day(2), day(4))
         viewModel.reserve()
         advanceUntilIdle()

@@ -9,6 +9,7 @@ import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.model.ReservationStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -19,6 +20,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -59,7 +61,10 @@ class ReservationListViewModelTest {
         reservation("r3", "entrant-priya", LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 3))
     private val alisUpcoming =
         reservation("r4", "entrant-ali", LocalDate.of(2026, 12, 15), LocalDate.of(2026, 12, 16))
-
+    private val priyasUpcomingCancellation =
+        reservation("r5", "entrant-priya", LocalDate.of(2027, 1, 1), LocalDate.of(2027, 1, 12))
+    private val priyasUpcomingCancellationNoCSV =
+        reservation("r6", "entrant-priya", LocalDate.of(2027, 1, 13), LocalDate.of(2027, 1, 15))
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
@@ -114,5 +119,52 @@ class ReservationListViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Removed campsite", viewModel.uiState.value.reservations.single().campsiteName)
+    }
+
+    @Test
+    fun successfulCancel_withSendCsvOn_setsCsvRequestedTrue() = runTest {
+        val viewModel = priyasViewModel()
+
+        startCollecting(viewModel)
+
+        reservationRepository.reserve(priyasUpcomingCancellation)
+
+        advanceUntilIdle()
+
+        viewModel.onToggleReceiveCSV(true)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.sendCSV)
+        viewModel.cancel(priyasUpcomingCancellation.id)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.csvRequested)
+
+        viewModel.onCsvLaunched()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.csvRequested)
+    }
+
+    @Test
+    fun successfulReserve_withSendCsvOff_setsCsvRequestedFalse() = runTest {
+        val viewModel = priyasViewModel()
+
+        startCollecting(viewModel)
+
+        reservationRepository.reserve(priyasUpcomingCancellationNoCSV)
+
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.sendCSV)
+        viewModel.cancel(priyasUpcomingCancellationNoCSV.id)
+
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.csvRequested)
+
+        viewModel.onCsvLaunched()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.csvRequested)
     }
 }

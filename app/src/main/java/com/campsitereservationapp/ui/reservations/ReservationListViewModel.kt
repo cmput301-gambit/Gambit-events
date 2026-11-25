@@ -1,5 +1,9 @@
 package com.campsitereservationapp.ui.campsite
 
+import android.content.Context
+import android.net.Uri
+import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -8,12 +12,18 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.ReservationRepository
+import com.campsitereservationapp.model.Csv
 import com.campsitereservationapp.model.Reservation
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.time.LocalDate
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -37,6 +47,8 @@ data class ReservationListItem(
 data class ReservationListUiState(
     val reservations: List<ReservationListItem> = emptyList(),
     val isLoading: Boolean = true,
+    val sendCSV: Boolean = false,
+    val csvRequested: Boolean = false,
 )
 
 /**
@@ -67,18 +79,25 @@ class ReservationListViewModel(
     today: LocalDate = LocalDate.now(),
 ) : ViewModel() {
 
+    //Checkbox state
+    private val isSendCSV = MutableStateFlow(false)
+    private val csvRequested = MutableStateFlow(false)
     /** The current screen state, updated whenever reservations or campsites change. */
     val uiState: StateFlow<ReservationListUiState> =
         combine(
             reservationRepository.observeForEntrant(entrantId),
             campsiteRepository.observeAll(),
-        ) { reservations, campsites ->
+            isSendCSV,
+            csvRequested,
+        ) { reservations, campsites, csv, csvReq ->
             val namesById = campsites.associate { it.id to it.name }
             ReservationListUiState(
                 reservations = reservations
                     .filter { it.isActive && !it.dates.finish.isBefore(today) }
                     .map { ReservationListItem(it, namesById[it.campsiteId] ?: "Removed campsite") },
                 isLoading = false,
+                sendCSV = csv,
+                csvRequested = csvReq,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -95,6 +114,7 @@ class ReservationListViewModel(
         viewModelScope.launch {
             try {
                 reservationRepository.cancel(reservationId)
+                csvRequested.update { isSendCSV.value }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -102,6 +122,76 @@ class ReservationListViewModel(
                 // stays in the list, which is the truth.
             }
         }
+    }
+
+    fun onCsvLaunched() {
+        csvRequested.update { false }
+    }
+    fun onToggleReceiveCSV(newState: Boolean){
+        isSendCSV.update { newState }
+    }
+
+    /**
+     * Called when the user makes a reservation and has opted into receiving a CSV confirmation.
+     * Creates a CSV with the relevant info and prompts the user to specify a location to save the file to.
+     *
+     * @param context necessary variable to initiate
+     * @param uri address for the new CSV
+     */
+    fun sendCSV(context: Context, uri: Uri, reservation: ReservationListItem?){
+
+        if(reservation == null) return
+
+        val appContext = context.applicationContext
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = try {
+                val csvString = createCSVString(reservation)
+                val stream = appContext.contentResolver.openOutputStream(uri, "wt") //Opening stream to write to
+                    ?: throw IOException("openOutputStream returned null for $uri")
+                //Actually writing to that location
+                stream.use { out ->
+                    out.write(csvString.toByteArray(Charsets.UTF_8))
+                    out.flush()
+                }
+
+                "Exported" //This is the result
+
+            } catch (e: CancellationException) {
+
+                throw e
+
+            } catch (e: Exception) {
+                Log.e("CsvExport", "Export failed", e)
+
+                "Export failed: ${e.message}" //This is the result with an error message.
+
+            }
+
+            withContext(Dispatchers.Main) {
+                Toast.makeText(appContext, result, Toast.LENGTH_LONG).show() //Giving user quick message with the results attached.
+            }
+        }
+    }
+
+    private fun createCSVString(reservation: ReservationListItem?): String {
+        if(reservation == null) return ""
+
+        val csv = Csv(listOf(
+            "Reservation ID",
+            "Campsite Name",
+            "Check-in Date",
+            "Check-out Date",
+        ))
+
+        csv.addRow(listOf(
+            reservation.reservation.id,
+            reservation.campsiteName,
+            reservation.reservation.dates.start.toString(),
+            reservation.reservation.dates.finish.toString(),
+        ))
+
+        return csv.toString()
     }
 
     companion object {

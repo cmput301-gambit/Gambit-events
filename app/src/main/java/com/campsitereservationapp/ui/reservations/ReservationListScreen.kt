@@ -1,5 +1,10 @@
 package com.campsitereservationapp.ui.reservations
 
+import android.content.Context
+import android.net.Uri
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,8 +43,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Reservation
@@ -76,6 +84,9 @@ fun ReservationListScreen(
         state = state,
         onBack = { navController.popBackStack() },
         onCancel = viewModel::cancel,
+        onCheckedChanged = viewModel::onToggleReceiveCSV,
+        onCsvLaunched = viewModel::onCsvLaunched,
+        onSendCsv = viewModel::sendCSV
     )
 }
 
@@ -86,15 +97,46 @@ fun ReservationListScreen(
  * @param state the reservations to show
  * @param onBack called when the back button is tapped
  * @param onCancel called with a reservation's ID once the entrant confirms cancelling
+ * @param onCheckedChanged called when the send CSV checkbox is toggled
+ * @param onCsvLaunched called when the CSV launcher starts, to ensure it isn't called multiple times
+ * @param onSendCsv called inside the launcher to attempt a csv download
  */
 @Composable
 fun ReservationListContent(
     state: ReservationListUiState,
     onBack: () -> Unit,
     onCancel: (reservationId: String) -> Unit,
+    onCheckedChanged: (Boolean) -> Unit,
+    onCsvLaunched: () -> Unit,
+    onSendCsv: (Context, Uri, ReservationListItem?) -> Unit,
 ) {
     // The reservation the entrant tapped Cancel on, waiting for confirmation.
     var toCancel by remember { mutableStateOf<ReservationListItem?>(null) }
+    // Used to provide the csv with the reservation info as its called after toCancel is cleared
+    var toLogCSV by remember { mutableStateOf<ReservationListItem?>(null) }
+
+    //Sending CSV code
+    val context = LocalContext.current //context for writing CSV
+
+    //Creating launcher for making csv
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri: Uri? ->
+        if(uri != null) {
+            onSendCsv(context, uri, toLogCSV)
+            toLogCSV = null
+        }
+        else{
+            Log.d("Csv", "Failed to get uri.") //Should comment this out
+        }
+    }
+
+    LaunchedEffect(state.csvRequested) {
+        if (state.csvRequested) {
+            launcher.launch("cancellation.csv")
+            onCsvLaunched()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -191,13 +233,33 @@ fun ReservationListContent(
 
     // Confirmation box, so a stray tap can't cancel a trip.
     toCancel?.let { item ->
+
         AlertDialog(
             onDismissRequest = { toCancel = null },
             title = { Text("Cancel reservation?") },
-            text = { Text("Cancel your stay at ${item.campsiteName}?") },
+            text = {
+                Column(modifier = Modifier) {
+                    Text("Cancel your stay at ${item.campsiteName}?")
+                    Spacer(Modifier.height(12.dp))
+                    //CSV Toggle
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ){
+                        Checkbox(
+                            onCheckedChange = onCheckedChanged,
+                            checked = state.sendCSV
+                        )
+                        Text("I want a downloadable CSV of my cancellation.",
+                            modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                },
             confirmButton = {
                 TextButton(onClick = {
                     onCancel(item.reservation.id)
+                    toLogCSV = toCancel
                     toCancel = null
                 }) { Text("Yes, cancel") }
             },
@@ -236,6 +298,9 @@ fun ReservationsListScreenPreview() {
             ),
             onBack = {},
             onCancel = {},
+            onCheckedChanged = {},
+            onSendCsv = { _, _, _ -> },
+            onCsvLaunched = {}
         )
     }
 }
