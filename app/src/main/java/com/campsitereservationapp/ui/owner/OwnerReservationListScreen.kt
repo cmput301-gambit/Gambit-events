@@ -30,3 +30,49 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.ui.components.ReservationCard
+import androidx.compose.ui.tooling.preview.Preview
+import com.campsitereservationapp.model.DateRange
+import com.google.apps.card.v1.OnClick
+import java.time.LocalDate
+
+
+@Composable
+fun OwnerReservationListScreen(
+    viewModel: OwnerReservationListViewModel = viewModel(factory = OwnerReservationListViewModel.Factory),
+    onReservationClick: (Reservation) -> Unit = {},
+    onChatClick: (Reservation) -> Unit = {},
+) {
+    val state by viewModel.uiState.collectAsState()
+    OwnerReservationListContent(state.items, onReservationClick, onChatClick)
+}
+
+@Composable
+fun OwnerReservationListContent(
+    items: List<OwnerReservationItem>,
+    onReservationClick: (Reservation) -> Unit,
+    onChatClick: (Reservation) -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xFFEDE6DA))
+            .padding(24.dp)
+    ) {
+        Text("All Reservations", fontSize = 36.sp, modifier = Modifier.padding(vertical = 24.dp))
+        Text("Active", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(16.dp))
+
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            items(items, key = {it.reservation.id}) {item ->
+                ReservationCard(
+                    name = item.guestName,
+                    partySize = null,
+                    unreadCount = 0,
+                    onClick = {onReservationClick(item.reservation)},
+                    onChatClick = {onChatClick(item.reservation)},
+                )
+            }
+        }
+    }
+
+}
