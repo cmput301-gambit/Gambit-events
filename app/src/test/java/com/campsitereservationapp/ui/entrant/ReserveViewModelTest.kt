@@ -11,7 +11,7 @@ import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.model.ReservationStatus
 import com.campsitereservationapp.model.WaitingList
-import com.campsitereservationapp.ui.discovery.ReserveViewModel
+import com.campsitereservationapp.ui.reservations.ReserveViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -284,5 +284,36 @@ class ReserveViewModelTest {
 
         assertEquals(december(2, 4), second.uiState.value.confirmation?.dates)
         assertFalse(second.uiState.value.canReserve)
+    }
+
+    @Test
+    fun successfulReserve_withSendCsvOn_setsCsvRequestedTrue() = runTest {
+        val viewModel = viewModelFor("entrant-priya")
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        viewModel.onToggleReceiveCSV(true)
+        viewModel.onDatesPicked(day(2), day(4))
+        viewModel.reserve()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.csvRequested)
+
+        viewModel.onCsvLaunched()
+        assertFalse(viewModel.uiState.value.csvRequested)
+    }
+
+    @Test
+    fun successfulReserve_withSendCsvOff_setsCsvRequestedFalse() = runTest {
+        val viewModel = viewModelFor("entrant-priya")
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        viewModel.onToggleReceiveCSV(false)
+        viewModel.onDatesPicked(day(2), day(4))
+        viewModel.reserve()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.csvRequested)
     }
 }

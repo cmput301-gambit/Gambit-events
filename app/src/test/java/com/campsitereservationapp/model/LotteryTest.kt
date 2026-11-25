@@ -138,4 +138,29 @@ class LotteryTest {
 
         assertNull(draft.readyToDraw(dayAfter))
     }
+
+    // ---- withoutUser (US 01.08.01, 03.02.01) ----
+
+    @Test
+    fun withoutUser_worksEvenAfterTheDraw() {
+        val closed = openLottery(
+            WaitingList(
+                entrantList = listOf(entrantId, "entrant-noah"),
+                entrantWinners = listOf(entrantId),
+                entrantLosers = listOf("entrant-noah"),
+            )
+        ).copy(stage = LotteryStatus.CLOSED)
+
+        // Leaving normally isn't allowed once the lottery is closed...
+        assertNull(closed.withoutEntrant(entrantId))
+        // ...but a deleted profile is still removed.
+        val updated = closed.withoutUser(entrantId)!!
+        assertEquals(listOf("entrant-noah"), updated.waitingList.entrantList)
+        assertTrue(updated.waitingList.entrantWinners.isEmpty())
+    }
+
+    @Test
+    fun withoutUser_notInLottery_returnsNull() {
+        assertNull(openLottery().withoutUser(entrantId))
+    }
 }

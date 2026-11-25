@@ -35,7 +35,8 @@ import com.campsitereservationapp.model.Campsite
  *
  * **Design rationale:** barebones card list displaying campsite summaries with "View More"
  * and "Remove" buttons bound to [AdminCampsiteListViewModel]. Removing asks for
- * confirmation first, since it also deletes the campsite's lotteries and can't be undone.
+ * confirmation first, since it also deletes the campsite's lotteries, reservations
+ * and ratings, and can't be undone.
  *
  * **Outstanding issues:** none.
  *
@@ -99,7 +100,7 @@ fun AdminCampsiteListScreen(
             onDismissRequest = viewModel::cancelRemoval,
             title = { Text("Remove campsite?") },
             text = {
-                Text("This will permanently delete ${campsite.name} and its lotteries. This can't be undone.")
+                Text("This will permanently delete ${campsite.name} along with its lotteries, reservations and ratings. This can't be undone.")
             },
             confirmButton = {
                 TextButton(onClick = viewModel::confirmRemoval) {

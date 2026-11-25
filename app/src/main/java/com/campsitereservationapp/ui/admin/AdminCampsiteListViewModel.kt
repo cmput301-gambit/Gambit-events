@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui.admin
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -7,14 +8,15 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
-import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.service.CascadeDeleter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * UI state for the admin campsite list screen.
@@ -34,23 +36,24 @@ data class AdminCampsiteListUiState(
  * ViewModel for the admin campsite list screen (US 03.04.01, 03.01.01).
  *
  * **Purpose:** allows administrators to observe all campsites in the repository
- * and delete rule-breaking campsites along with their associated lotteries,
- * after confirming in a popup.
+ * and delete rule-breaking campsites along with their lotteries, reservations
+ * and ratings, after confirming in a popup.
  *
  * **Design rationale:** MVVM. Connects directly to [CampsiteRepository.observeAll]
  * so the list updates live whenever a campsite is added, updated, or removed.
  * The campsite waiting for confirmation is kept here rather than in the screen,
- * so the confirm and cancel steps can be unit tested.
+ * so the confirm and cancel steps can be unit tested. The cleanup is done by
+ * [CascadeDeleter.deleteCampsite], shared with the campsite details screen.
  *
  * **Outstanding issues:** the admin screens don't yet check that the current
  * user is actually an admin.
  *
  * @property campsiteRepository the shared repository providing campsite data
- * @property lotteryRepository the shared repository providing lottery data
+ * @property cascadeDeleter deletes a campsite and everything that depends on it
  */
 class AdminCampsiteListViewModel(
     private val campsiteRepository: CampsiteRepository,
-    private val lotteryRepository: LotteryRepository
+    private val cascadeDeleter: CascadeDeleter,
 ) : ViewModel() {
 
     // The campsite the admin tapped Remove on, until they confirm or cancel.
@@ -101,14 +104,19 @@ class AdminCampsiteListViewModel(
     }
 
     /**
-     * Removes a campsite and its associated lotteries from the repository by its ID.
+     * Removes a campsite along with its lotteries, reservations and ratings.
      *
      * @param campsiteId ID of the campsite to delete
      */
     fun removeCampsite(campsiteId: String) {
         viewModelScope.launch {
-            campsiteRepository.delete(campsiteId)
-            lotteryRepository.deleteByCampsite(campsiteId)
+            try {
+                cascadeDeleter.deleteCampsite(campsiteId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("AdminCampsiteList", "Failed to delete campsite $campsiteId", e)
+            }
         }
     }
 
@@ -121,7 +129,7 @@ class AdminCampsiteListViewModel(
                 val app = this[APPLICATION_KEY] as CampsiteApp
                 AdminCampsiteListViewModel(
                     app.container.campsiteRepository,
-                    app.container.lotteryRepository
+                    app.container.cascadeDeleter,
                 )
             }
         }

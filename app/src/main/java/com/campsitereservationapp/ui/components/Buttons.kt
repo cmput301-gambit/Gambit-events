@@ -1,6 +1,9 @@
 package com.campsitereservationapp.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -10,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.campsitereservationapp.ui.theme.CampHover
 import com.campsitereservationapp.ui.theme.CampsiteReservationAppTheme
 
@@ -75,5 +79,21 @@ fun OutlineButton(
         modifier = modifier.fillMaxWidth()
     ) {
         Text(text, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ButtonsPreview() {
+    CampsiteReservationAppTheme {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            PrimaryButton(text = "Reserve", onClick = {})
+            PrimaryButton(text = "Disabled", onClick = {}, enabled = false)
+            SecondaryButton(text = "View details", onClick = {})
+            OutlineButton(text = "Cancel", onClick = {})
+        }
     }
 }

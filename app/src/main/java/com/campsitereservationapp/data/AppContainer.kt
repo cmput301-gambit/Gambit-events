@@ -1,6 +1,7 @@
 package com.campsitereservationapp.data
 
 import android.content.Context
+import com.campsitereservationapp.service.CascadeDeleter
 import com.campsitereservationapp.service.DeviceIdProvider
 import com.campsitereservationapp.service.NotificationHandler
 
@@ -45,6 +46,32 @@ class AppContainer(context: Context) {
     /** Shared repository for reservations. */
     val reservationRepository by lazy {
         ReservationRepository(ReservationRepository.firestoreDataSource())
+    }
+
+    /** Shared repository for ratings*/
+    val ratingRepository by lazy {
+        RatingRepository(RatingRepository.firestoreDataSource())
+    }
+
+    /** Shared repository for owner and entrant messages about reservations. */
+    val messageRepository by lazy {
+        MessageRepository(MessageRepository.firestoreDataSource())
+    }
+
+    /**
+     * Deletes profiles, owners and campsites together with everything that
+     * depends on them (US 01.08.01, 03.02.01, 03.07.01).
+     */
+    val cascadeDeleter by lazy {
+        CascadeDeleter(
+            userRepository,
+            campsiteRepository,
+            lotteryRepository,
+            reservationRepository,
+            notificationRepository,
+            ratingRepository,
+            messageRepository,
+        )
     }
 
     /** The current user's ID, which is this device's ID (US 01.09.01). */

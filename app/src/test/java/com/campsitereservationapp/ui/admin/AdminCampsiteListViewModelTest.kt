@@ -3,9 +3,16 @@ package com.campsitereservationapp.ui.admin
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MockDataSource
+import com.campsitereservationapp.data.MessageRepository
+import com.campsitereservationapp.data.NotificationRepository
+import com.campsitereservationapp.data.ReservationRepository
+import com.campsitereservationapp.data.RatingRepository
+import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
+import com.campsitereservationapp.model.Rating
+import com.campsitereservationapp.service.CascadeDeleter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -43,6 +50,7 @@ class AdminCampsiteListViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var campsiteRepository: CampsiteRepository
     private lateinit var lotteryRepository: LotteryRepository
+    private lateinit var ratingRepository: RatingRepository
     private lateinit var viewModel: AdminCampsiteListViewModel
 
     private val pineRidge = Campsite("campsite-pine-ridge", ownerId = "owner-bobby", name = "Pine Ridge")
@@ -73,7 +81,20 @@ class AdminCampsiteListViewModelTest {
         campsiteRepository = CampsiteRepository(MockDataSource(listOf(pineRidge, aspenHollow)))
         lotteryRepository = LotteryRepository(
             MockDataSource(listOf(pineRidgeLottery, sharedLottery)), campsiteRepository)
-        viewModel = AdminCampsiteListViewModel(campsiteRepository, lotteryRepository)
+        ratingRepository = RatingRepository(MockDataSource(listOf(
+            Rating("entrant-priya_campsite-pine-ridge", "entrant-priya", "campsite-pine-ridge", 4f),
+            Rating("entrant-priya_campsite-aspen-hollow", "entrant-priya", "campsite-aspen-hollow", 5f),
+        )))
+        val deleter = CascadeDeleter(
+            UserRepository(MockDataSource()),
+            campsiteRepository,
+            lotteryRepository,
+            ReservationRepository(MockDataSource()),
+            NotificationRepository(MockDataSource()),
+            ratingRepository,
+            MessageRepository(MockDataSource()),
+        )
+        viewModel = AdminCampsiteListViewModel(campsiteRepository, deleter)
     }
 
     @After
@@ -167,5 +188,21 @@ class AdminCampsiteListViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, viewModel.uiState.value.campsites.size)
+    }
+
+    @Test
+    fun confirming_cleansUpItsRatings() = runTest {
+        startCollecting()
+        advanceUntilIdle()
+
+        viewModel.requestRemoval(pineRidge)
+        viewModel.confirmRemoval()
+        advanceUntilIdle()
+
+        // Pine Ridge's rating is gone; Aspen Hollow's is untouched.
+        assertEquals(
+            listOf("campsite-aspen-hollow"),
+            ratingRepository.getAll().map { it.campsiteId },
+        )
     }
 }

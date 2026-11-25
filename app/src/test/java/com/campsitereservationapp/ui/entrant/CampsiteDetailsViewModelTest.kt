@@ -1,18 +1,21 @@
 package com.campsitereservationapp.ui.entrant
 
-import android.util.Log
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MockDataSource
+import com.campsitereservationapp.data.MessageRepository
+import com.campsitereservationapp.data.NotificationRepository
+import com.campsitereservationapp.data.ReservationRepository
+import com.campsitereservationapp.data.RatingRepository
 import com.campsitereservationapp.data.SampleData
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
-import com.campsitereservationapp.ui.campsite.CampsiteFormViewModel
-import com.campsitereservationapp.ui.discovery.CampsiteDetailsMainButtonState
-import com.campsitereservationapp.ui.discovery.CampsiteDetailsViewModel
+import com.campsitereservationapp.ui.campsite.CampsiteDetailsMainButtonState
+import com.campsitereservationapp.service.CascadeDeleter
+import com.campsitereservationapp.ui.campsite.CampsiteDetailsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -25,7 +28,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
@@ -36,6 +38,8 @@ class CampsiteDetailsViewModelTest {
     private lateinit var repository: CampsiteRepository
     private lateinit var userRepository: UserRepository
 
+    private lateinit var ratingRepository: RatingRepository
+
     private lateinit var lotteryRepository: LotteryRepository
     private lateinit var viewModel: CampsiteDetailsViewModel
 
@@ -44,8 +48,18 @@ class CampsiteDetailsViewModelTest {
         Dispatchers.setMain(testDispatcher)
         repository = CampsiteRepository(MockDataSource(SampleData.campsites))
         userRepository = UserRepository(MockDataSource(SampleData.users))
+        ratingRepository = RatingRepository(MockDataSource())
         lotteryRepository = LotteryRepository(MockDataSource(SampleData.lotteries), repository)
-        viewModel = CampsiteDetailsViewModel(lotteryRepository, repository, "entrant-user")
+        viewModel = CampsiteDetailsViewModel(lotteryRepository, repository, ratingRepository, "entrant-user",
+            CascadeDeleter(
+                UserRepository(MockDataSource()),
+                repository,
+                lotteryRepository,
+                ReservationRepository(MockDataSource()),
+                NotificationRepository(MockDataSource()),
+                ratingRepository,
+                MessageRepository(MockDataSource()),
+            ))
     }
 
     @After

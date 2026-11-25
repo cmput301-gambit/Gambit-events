@@ -25,7 +25,7 @@ import java.time.LocalDate
  * can't be ordered.
  *
  * @param dataSource where notifications are kept, such as [firestoreDataSource]
- * or an [InMemoryDataSource] in tests
+ * or a [MockDataSource] in tests
  */
 class NotificationRepository(dataSource: DataSource<Notification>) :
     Repository<Notification>(dataSource) {
@@ -59,6 +59,16 @@ class NotificationRepository(dataSource: DataSource<Notification>) :
      */
     suspend fun markRead(notification: Notification): Notification =
         if (notification.read) notification else update(notification.markRead())
+
+    /**
+     * Deletes every notification sent to a user, used when their profile is
+     * deleted (US 01.08.01, 03.02.01).
+     *
+     * @param userId the ID of the deleted user
+     */
+    suspend fun deleteForUser(userId: String) {
+        getAll().filter { it.recipientId == userId }.forEach { delete(it.id) }
+    }
 
     companion object {
         /**

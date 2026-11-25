@@ -193,4 +193,16 @@ data class Lottery(
      */
     fun markNotified(): Lottery? =
         if (stage == LotteryStatus.CLOSED && !sentNotifications) copy(sentNotifications = true) else null
+
+    /**
+     * Returns a copy of this lottery with a deleted user removed from its
+     * waiting list and results. Unlike [withoutEntrant], this works at any
+     * stage, because a deleted profile must not stay in any lottery
+     * (US 01.08.01, 03.02.01).
+     *
+     * @param userId the user to remove
+     * @return the updated lottery, or null if they weren't in it
+     */
+    fun withoutUser(userId: String): Lottery? =
+        waitingList.withoutUser(userId)?.let { copy(waitingList = it) }
 }

@@ -76,6 +76,25 @@ class ReservationRepository(dataSource: DataSource<Reservation>) :
     suspend fun cancel(reservationId: String): Reservation? =
         modify(reservationId) { it.cancelled() }
 
+    /**
+     * Deletes every reservation an entrant made, used when their profile is
+     * deleted (US 01.08.01, 03.02.01). This frees up the booked dates.
+     *
+     * @param entrantId the ID of the deleted entrant
+     * @return the reservations that were deleted, so their messages can be cleaned up
+     */
+    suspend fun deleteByEntrant(entrantId: String): List<Reservation> =
+        getAll().filter { it.entrantId == entrantId }.onEach { delete(it.id) }
+
+    /**
+     * Deletes every reservation for a campsite, used when the campsite is deleted.
+     *
+     * @param campsiteId the ID of the deleted campsite
+     * @return the reservations that were deleted, so their messages can be cleaned up
+     */
+    suspend fun deleteByCampsite(campsiteId: String): List<Reservation> =
+        getAll().filter { it.campsiteId == campsiteId }.onEach { delete(it.id) }
+
     companion object {
         /**
          * Creates the Firestore data source for reservations, used by [AppContainer].

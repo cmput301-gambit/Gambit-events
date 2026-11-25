@@ -195,6 +195,31 @@ class LotteryRepository(
         }
     }
 
+    /**
+     * Removes a deleted user from every lottery's waiting list and results,
+     * whatever stage the lottery is at (US 01.08.01, 03.02.01).
+     *
+     * @param userId the ID of the deleted user
+     */
+    suspend fun removeUserFromAll(userId: String) {
+        for (lottery in getAll()) {
+            // Only start a transaction for lotteries the user is actually in.
+            if (lottery.withoutUser(userId) != null) {
+                modify(lottery.id) { it.withoutUser(userId) }
+            }
+        }
+    }
+
+    /**
+     * Deletes every lottery an owner created, used when the owner is removed
+     * (US 03.07.01) or deletes their profile.
+     *
+     * @param ownerId the ID of the owner whose lotteries are deleted
+     */
+    suspend fun deleteByOwner(ownerId: String) {
+        getAll().filter { it.ownerId == ownerId }.forEach { delete(it.id) }
+    }
+
     companion object {
         /**
          * Creates the Firestore data source for lotteries, used by [AppContainer].
