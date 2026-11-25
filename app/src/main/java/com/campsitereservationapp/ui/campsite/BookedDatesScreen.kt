@@ -18,9 +18,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,15 +35,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import java.time.LocalDate
 
 /**
  * Screen displaying currently booked dates for a campsite (US 02.06.01).
  *
- * **Purpose:** allows campsite owners to view taken calendar dates and active
- * reservations for their campsite.
+ * **Purpose:** allows campsite owners to view taken calendar dates and active upcoming
+ * reservations for their campsite with month navigation controls.
  *
- * **Design rationale:** displays a calendar grid highlighting booked days of the month,
+ * **Design rationale:** displays a calendar grid with weekday offsets, highlighting booked days of the month,
  * followed by cards listing entrant names and booked date ranges.
  *
  * **Outstanding issues:** none.
@@ -90,10 +89,14 @@ fun BookedDatesScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Calendar Card
+        // Calendar Card with month navigation
         MonthCalendarCard(
             monthName = if (state.monthName.isNotBlank()) state.monthName else "Month",
-            bookedDays = state.bookedDaysOfMonth
+            bookedDays = state.bookedDaysOfMonth,
+            blanksBeforeFirstDay = state.blanksBeforeFirstDay,
+            daysInMonth = state.daysInMonth,
+            onPreviousMonth = viewModel::onPreviousMonth,
+            onNextMonth = viewModel::onNextMonth
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -101,7 +104,7 @@ fun BookedDatesScreen(
         // Booked Entries List
         if (state.bookedDatesList.isEmpty() && !state.isLoading) {
             Text(
-                text = "No active bookings for this campsite.",
+                text = "No active upcoming bookings for this campsite.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -111,28 +114,27 @@ fun BookedDatesScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = { navController.popBackStack() },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Back")
-        }
     }
 }
 
 /**
- * Calendar visual displaying days of the month with booked days highlighted.
+ * Calendar visual displaying days of the month with weekday alignment and booked days highlighted.
  *
  * @param monthName display name of the month
  * @param bookedDays set of day-of-month integers that are booked
+ * @param blanksBeforeFirstDay weekday offset before day 1 (Sunday = 0, Monday = 1, ...)
+ * @param daysInMonth total days in the active month
+ * @param onPreviousMonth callback when previous month arrow is clicked
+ * @param onNextMonth callback when next month arrow is clicked
  */
 @Composable
 private fun MonthCalendarCard(
     monthName: String,
-    bookedDays: Set<Int>
+    bookedDays: Set<Int>,
+    blanksBeforeFirstDay: Int,
+    daysInMonth: Int,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -143,11 +145,26 @@ private fun MonthCalendarCard(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = monthName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            // Month Header with Prev/Next Navigation
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onPreviousMonth) {
+                    Text("<", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Text(
+                    text = monthName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                IconButton(onClick = onNextMonth) {
+                    Text(">", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -171,41 +188,42 @@ private fun MonthCalendarCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Grid of days 1..28 (or current month length)
-            val today = LocalDate.now()
-            val daysInMonth = today.lengthOfMonth()
-            val daysList = (1..daysInMonth).toList()
+            // Weekday aligned grid cells: blanks before day 1 + days 1..daysInMonth
+            val cells: List<Int?> = List(blanksBeforeFirstDay) { null } + (1..daysInMonth)
+            val rows = cells.chunked(7)
 
-            val rows = daysList.chunked(7)
-            rows.forEach { rowDays ->
+            rows.forEach { rowCells ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    rowDays.forEach { day ->
-                        val isBooked = day in bookedDays
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    if (isBooked) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = day.toString(),
-                                fontSize = 13.sp,
-                                color = if (isBooked) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = if (isBooked) FontWeight.Bold else FontWeight.Normal
-                            )
+                    rowCells.forEach { dayOrNull ->
+                        if (dayOrNull != null) {
+                            val isBooked = dayOrNull in bookedDays
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (isBooked) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceVariant
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = dayOrNull.toString(),
+                                    fontSize = 13.sp,
+                                    color = if (isBooked) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = if (isBooked) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.size(32.dp))
                         }
                     }
-                    // Fill remaining slots in last row if fewer than 7
-                    if (rowDays.size < 7) {
-                        repeat(7 - rowDays.size) {
+                    if (rowCells.size < 7) {
+                        repeat(7 - rowCells.size) {
                             Spacer(modifier = Modifier.size(32.dp))
                         }
                     }

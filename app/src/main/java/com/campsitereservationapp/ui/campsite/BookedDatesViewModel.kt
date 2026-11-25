@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.Filter
 import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,17 +19,20 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
 /**
  * Item representing one booked date entry for a campsite.
  *
  * @property reservationId unique ID of the reservation
  * @property entrantName display name of the entrant who booked the dates
- * @property dateRangeText formatted date range text (e.g., "July 1st–3rd" or "Jul 1–Jul 3")
+ * @property dateRangeText formatted date range text (e.g., "Dec 3–5" or "Dec 30 – Jan 2")
  * @property startDate start date of the booking
  * @property endDate finish date of the booking
- * @property daysOfMonth list of day-of-month integers covered by this booking
+ * @property daysOfMonth list of day-of-month integers covered by this booking in the active month
  */
 data class BookedDateItem(
     val reservationId: String,
@@ -44,9 +48,12 @@ data class BookedDateItem(
  *
  * @property campsiteId ID of the viewed campsite
  * @property campsiteName display name of the viewed campsite
- * @property bookedDatesList list of active bookings with entrant names and date ranges
- * @property bookedDaysOfMonth set of day-of-month numbers currently booked in the active month
- * @property monthName display name of the month (e.g., "July 2026")
+ * @property bookedDatesList list of active upcoming bookings with entrant names and date ranges
+ * @property bookedDaysOfMonth set of day-of-month numbers currently booked in the displayed month
+ * @property displayedYearMonth current year and month being displayed on the calendar
+ * @property monthName formatted display text for the month (e.g., "December 2026")
+ * @property blanksBeforeFirstDay number of empty weekday cells before day 1 (Sunday = 0, Monday = 1, ...)
+ * @property daysInMonth total number of days in the displayed month
  * @property isLoading true while data is loading
  */
 data class BookedDatesUiState(
@@ -54,19 +61,23 @@ data class BookedDatesUiState(
     val campsiteName: String = "",
     val bookedDatesList: List<BookedDateItem> = emptyList(),
     val bookedDaysOfMonth: Set<Int> = emptySet(),
+    val displayedYearMonth: YearMonth = YearMonth.now(),
     val monthName: String = "",
+    val blanksBeforeFirstDay: Int = 0,
+    val daysInMonth: Int = 31,
     val isLoading: Boolean = true
 )
 
 /**
  * ViewModel for viewing currently booked dates for a campsite (US 02.06.01).
  *
- * **Purpose:** allows campsite owners to view all active bookings and taken date ranges
- * for a specific campsite.
+ * **Purpose:** allows campsite owners to view all active upcoming bookings and taken date ranges
+ * for a specific campsite, with previous/next month calendar navigation.
  *
- * **Design rationale:** MVVM. Combines live streams from [ReservationRepository],
- * [UserRepository], and [CampsiteRepository] to map reservations to entrant names and
- * calculate booked calendar days dynamically.
+ * **Design rationale:** MVVM. Filters reservations on the server/repository layer using
+ * `observeWhere(Filter("campsiteId", ...))` to fetch only reservations for the target campsite.
+ * Defaults the active calendar month to the earliest upcoming booking (or current month if none),
+ * and calculates grid weekday offsets (`blanks`) so calendar days sit under the correct weekday column.
  *
  * **Outstanding issues:** none.
  *
@@ -74,37 +85,47 @@ data class BookedDatesUiState(
  * @property userRepository shared repository for resolving entrant names
  * @property campsiteRepository shared repository for resolving campsite names
  * @property campsiteId ID of the campsite whose booked dates are being viewed
+ * @property today reference date for filtering past bookings (defaults to [LocalDate.now])
  */
 class BookedDatesViewModel(
     private val reservationRepository: ReservationRepository,
     private val userRepository: UserRepository,
     private val campsiteRepository: CampsiteRepository,
-    private val campsiteId: String
+    private val campsiteId: String,
+    private val today: LocalDate = LocalDate.now()
 ) : ViewModel() {
 
-    private val viewedCampsiteId = MutableStateFlow(campsiteId)
+    private val selectedYearMonth = MutableStateFlow<YearMonth?>(null)
 
     /**
      * Observable stream emitting the current booked dates UI state.
      */
     val uiState: StateFlow<BookedDatesUiState> = combine(
-        reservationRepository.observeAll(),
+        reservationRepository.observeWhere(Filter("campsiteId", campsiteId) { it.campsiteId == campsiteId }),
         userRepository.observeAll(),
         campsiteRepository.observeAll(),
-        viewedCampsiteId
-    ) { reservations, users, campsites, currentCampId ->
-        val campsite = campsites.find { it.id == currentCampId }
-        val activeReservations = reservations.filter { it.campsiteId == currentCampId && it.isActive }
-        val userNames = users.associate { it.id to (if (it.name.isNotBlank()) it.name else "Entrant") }
+        selectedYearMonth
+    ) { reservations, users, campsites, userSelectedMonth ->
+        val campsite = campsites.find { it.id == campsiteId }
+        val upcomingReservations = reservations.filter { it.isActive && !it.dates.finish.isBefore(today) }
 
-        val today = LocalDate.now()
-        val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
-        val monthNameText = today.format(monthFormatter)
+        // Default to month of earliest upcoming booking, or current month if none
+        val activeYearMonth = userSelectedMonth ?: upcomingReservations
+            .map { YearMonth.from(it.dates.start) }
+            .minOrNull() ?: YearMonth.from(today)
 
-        val bookedItems = activeReservations.map { res ->
+        val entrantIds = upcomingReservations.map { it.entrantId }.toSet()
+        val userNames = users
+            .filter { it.id in entrantIds }
+            .associate { it.id to (if (it.name.isNotBlank()) it.name else "Entrant") }
+
+        val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+        val monthNameText = activeYearMonth.format(monthFormatter)
+
+        val bookedItems = upcomingReservations.map { res ->
             val entrantName = userNames[res.entrantId] ?: "Entrant"
             val formattedDates = formatBookedDates(res.dates.start, res.dates.finish)
-            val daysList = calculateDaysInMonth(res.dates.start, res.dates.finish, today.monthValue, today.year)
+            val daysList = calculateDaysInYearMonth(res.dates.start, res.dates.finish, activeYearMonth)
             BookedDateItem(
                 reservationId = res.id,
                 entrantName = entrantName,
@@ -117,12 +138,19 @@ class BookedDatesViewModel(
 
         val allBookedDays = bookedItems.flatMap { it.daysOfMonth }.toSet()
 
+        // Weekday grid alignment: Sunday = 0, Monday = 1, ... Saturday = 6
+        val firstOfMonth = activeYearMonth.atDay(1)
+        val blanks = firstOfMonth.dayOfWeek.value % 7
+
         BookedDatesUiState(
-            campsiteId = currentCampId,
+            campsiteId = campsiteId,
             campsiteName = campsite?.name ?: "Campsite",
             bookedDatesList = bookedItems,
             bookedDaysOfMonth = allBookedDays,
+            displayedYearMonth = activeYearMonth,
             monthName = monthNameText,
+            blanksBeforeFirstDay = blanks,
+            daysInMonth = activeYearMonth.lengthOfMonth(),
             isLoading = false
         )
     }.stateIn(
@@ -132,12 +160,19 @@ class BookedDatesViewModel(
     )
 
     /**
-     * Updates the viewed campsite ID if changed dynamically.
-     *
-     * @param newCampsiteId new campsite ID to load
+     * Navigates the calendar view to the previous month.
      */
-    fun setCampsiteId(newCampsiteId: String) {
-        viewedCampsiteId.update { newCampsiteId }
+    fun onPreviousMonth() {
+        val current = uiState.value.displayedYearMonth
+        selectedYearMonth.update { current.minusMonths(1) }
+    }
+
+    /**
+     * Navigates the calendar view to the next month.
+     */
+    fun onNextMonth() {
+        val current = uiState.value.displayedYearMonth
+        selectedYearMonth.update { current.plusMonths(1) }
     }
 
     companion object {
@@ -161,41 +196,29 @@ class BookedDatesViewModel(
 }
 
 /**
- * Formats start and finish dates into a readable date range string.
+ * Formats start and finish dates into a readable date range string (e.g. "Dec 3–5" or "Dec 30 – Jan 2").
  */
 private fun formatBookedDates(start: LocalDate, finish: LocalDate): String {
-    val monthName = start.month.name.lowercase().replaceFirstChar { it.uppercase() }
-    val startDay = start.dayOfMonth
-    val finishDay = finish.dayOfMonth
+    val startMonth = start.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
+    val finishMonth = finish.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
 
     return if (start.month == finish.month && start.year == finish.year) {
-        "$monthName ${startDay}${ordinalSuffix(startDay)}–${finishDay}${ordinalSuffix(finishDay)}"
+        "$startMonth ${start.dayOfMonth}–${finish.dayOfMonth}"
+    } else if (start.year == finish.year) {
+        "$startMonth ${start.dayOfMonth} – $finishMonth ${finish.dayOfMonth}"
     } else {
-        "${start.month.name.substring(0, 3)} $startDay – ${finish.month.name.substring(0, 3)} $finishDay"
+        "$startMonth ${start.dayOfMonth}, ${start.year} – $finishMonth ${finish.dayOfMonth}, ${finish.year}"
     }
 }
 
 /**
- * Returns ordinal suffix for a day of month (e.g. 1st, 2nd, 3rd, 4th).
+ * Calculates days of the given [YearMonth] that overlap with the date range.
  */
-private fun ordinalSuffix(day: Int): String {
-    if (day in 11..13) return "th"
-    return when (day % 10) {
-        1 -> "st"
-        2 -> "nd"
-        3 -> "rd"
-        else -> "th"
-    }
-}
-
-/**
- * Calculates days of the given month/year that overlap with the date range.
- */
-private fun calculateDaysInMonth(start: LocalDate, finish: LocalDate, month: Int, year: Int): List<Int> {
+private fun calculateDaysInYearMonth(start: LocalDate, finish: LocalDate, yearMonth: YearMonth): List<Int> {
     val days = mutableListOf<Int>()
     var current = start
     while (!current.isAfter(finish)) {
-        if (current.monthValue == month && current.year == year) {
+        if (YearMonth.from(current) == yearMonth) {
             days.add(current.dayOfMonth)
         }
         current = current.plusDays(1)

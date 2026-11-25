@@ -23,6 +23,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
+import java.time.YearMonth
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BookedDatesViewModelTest {
@@ -32,6 +33,7 @@ class BookedDatesViewModelTest {
     private lateinit var reservationRepository: ReservationRepository
     private lateinit var userRepository: UserRepository
     private lateinit var viewModel: BookedDatesViewModel
+    private val fixedToday = LocalDate.of(2026, 11, 1)
 
     @Before
     fun setUp() {
@@ -44,7 +46,8 @@ class BookedDatesViewModelTest {
             reservationRepository = reservationRepository,
             userRepository = userRepository,
             campsiteRepository = campsiteRepository,
-            campsiteId = "camp-pine-1"
+            campsiteId = "camp-pine-1",
+            today = fixedToday
         )
     }
 
@@ -69,7 +72,7 @@ class BookedDatesViewModelTest {
             id = "res-101",
             entrantId = "user-noah",
             campsiteId = "camp-pine-1",
-            dates = DateRange(LocalDate.now(), LocalDate.now().plusDays(2)),
+            dates = DateRange(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)),
             status = ReservationStatus.CONFIRMED
         )
         reservationRepository.add(reservation)
@@ -80,34 +83,78 @@ class BookedDatesViewModelTest {
         assertEquals("Pine Ridge", state.campsiteName)
         assertEquals(1, state.bookedDatesList.size)
         assertEquals("Noah W", state.bookedDatesList[0].entrantName)
+        assertEquals(setOf(2, 3, 4, 5), state.bookedDaysOfMonth)
     }
 
     @Test
-    fun viewModel_ignoresCancelledAndOtherCampsiteReservations() = runTest {
+    fun viewModel_defaultsToEarliestUpcomingBookingMonth() = runTest {
         backgroundScope.launch(testDispatcher) {
             viewModel.uiState.collect {}
         }
 
+        val decBooking = Reservation(
+            id = "res-december",
+            entrantId = "user-karl",
+            campsiteId = "camp-pine-1",
+            dates = DateRange(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 3)),
+            status = ReservationStatus.CONFIRMED
+        )
+        reservationRepository.add(decBooking)
+
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(YearMonth.of(2026, 12), state.displayedYearMonth)
+        assertEquals(setOf(1, 2, 3), state.bookedDaysOfMonth)
+
+        // Dec 1, 2026 is a Tuesday -> dayOfWeek = TUESDAY (2) -> blanks = 2 % 7 = 2
+        assertEquals(2, state.blanksBeforeFirstDay)
+    }
+
+    @Test
+    fun viewModel_ignoresPastBookingsAndCancelledBookings() = runTest {
+        backgroundScope.launch(testDispatcher) {
+            viewModel.uiState.collect {}
+        }
+
+        val pastRes = Reservation(
+            id = "res-past",
+            entrantId = "user-old",
+            campsiteId = "camp-pine-1",
+            dates = DateRange(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 10)),
+            status = ReservationStatus.CONFIRMED
+        )
         val cancelledRes = Reservation(
             id = "res-cancelled",
             entrantId = "user-karl",
             campsiteId = "camp-pine-1",
-            dates = DateRange(LocalDate.now(), LocalDate.now().plusDays(2)),
+            dates = DateRange(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)),
             status = ReservationStatus.CANCELLED
         )
-        val otherCampRes = Reservation(
-            id = "res-other",
-            entrantId = "user-vince",
-            campsiteId = "camp-lakeside-2",
-            dates = DateRange(LocalDate.now(), LocalDate.now().plusDays(2)),
-            status = ReservationStatus.CONFIRMED
-        )
+        reservationRepository.add(pastRes)
         reservationRepository.add(cancelledRes)
-        reservationRepository.add(otherCampRes)
 
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertTrue(state.bookedDatesList.isEmpty())
+    }
+
+    @Test
+    fun viewModel_handlesMonthNavigation() = runTest {
+        backgroundScope.launch(testDispatcher) {
+            viewModel.uiState.collect {}
+        }
+        testScheduler.advanceUntilIdle()
+
+        val initialMonth = viewModel.uiState.value.displayedYearMonth
+
+        viewModel.onNextMonth()
+        testScheduler.advanceUntilIdle()
+        assertEquals(initialMonth.plusMonths(1), viewModel.uiState.value.displayedYearMonth)
+
+        viewModel.onPreviousMonth()
+        testScheduler.advanceUntilIdle()
+        assertEquals(initialMonth, viewModel.uiState.value.displayedYearMonth)
     }
 }
