@@ -235,29 +235,3 @@ private val dayFormat = DateTimeFormatter.ofPattern("MMM d")
 private fun formatDates(reservation: Reservation): String =
     "${reservation.dates.start.format(dayFormat)} - ${reservation.dates.finish.format(dayFormat)}"
 
-@Preview(showBackground = true)
-@Composable
-fun ReservationsListScreenPreview() {
-    CampsiteReservationAppTheme {
-        ReservationListContent(
-            state = ReservationListUiState(
-                isLoading = false,
-                reservations = listOf(
-                    ReservationListItem(
-                        Reservation(
-                            id = "reservation-1",
-                            entrantId = "entrant-priya",
-                            campsiteId = "campsite-pine-ridge",
-                            lotteryId = "lottery-a",
-                            dates = DateRange(LocalDate.of(2027, 7, 2), LocalDate.of(2027, 7, 18)),
-                        ),
-                        "Pine Ridge",
-                    ),
-                ),
-            ),
-            onBack = {},
-            onShowPastChange = {},
-            onCancel = {},
-        )
-    }
-}
