@@ -52,6 +52,11 @@ class AppContainer(context: Context) {
         RatingRepository(RatingRepository.firestoreDataSource())
     }
 
+    /** Shared repository for owner and entrant messages about reservations. */
+    val messageRepository by lazy {
+        MessageRepository(MessageRepository.firestoreDataSource())
+    }
+
     /** The current user's ID, which is this device's ID (US 01.09.01). */
     val currentUserId: String by lazy { DeviceIdProvider(context).getDeviceId() }
 }
