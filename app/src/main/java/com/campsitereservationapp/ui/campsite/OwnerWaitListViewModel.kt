@@ -9,10 +9,12 @@ import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.UserRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
  * One of the owner's lotteries and who has joined it.
@@ -31,12 +33,16 @@ data class LotteryWaitlist(
  * Everything the owner waitlist screen needs to draw.
  *
  * @property lotteries the current owner's lotteries and their waitlists
- * @property isLoading true until the first data arrives, so the screen
- * doesn't wrongly say there are no lotteries while loading
+ * @property isLoading true until the first data arrives, so the screen doesn't
+ *   wrongly say there are no lotteries while loading
+ * @property lotteryPendingRemoval the lottery the owner tapped Remove on, waiting
+ *  for them to confirm; null when no confirmation popup is showing
+ *
  */
 data class OwnerWaitlistUiState(
     val lotteries: List<LotteryWaitlist> = emptyList(),
     val isLoading: Boolean = true,
+    val lotteryPendingRemoval: String? = null,
 )
 
 /**
@@ -60,11 +66,52 @@ data class OwnerWaitlistUiState(
  * @param currentOwnerId ID of the owner viewing the screen
  */
 class OwnerWaitlistViewModel(
-    lotteryRepository: LotteryRepository,
+    val lotteryRepository: LotteryRepository,
     campsiteRepository: CampsiteRepository,
     userRepository: UserRepository,
     currentOwnerId: String,
 ) : ViewModel() {
+
+    // The lottery the admin tapped Remove on, until they confirm or cancel.
+    private val pendingRemovalId = MutableStateFlow<String?>(null)
+
+    /**
+     * Removes a lottery from the repository by its ID.
+     *
+     * @param lotteryId ID of the lottery to delete
+     */
+    fun removeLottery(lotteryId: String) {
+        viewModelScope.launch {
+            lotteryRepository.delete(lotteryId)
+        }
+    }
+
+    /**
+     * Called when the owner taps Remove. Opens the confirmation popup
+     * instead of deleting straight away.
+     *
+     * @param lotteryId the id of the lottery the owner wants to remove.
+     */
+    fun requestRemoval(lotteryId: String) {
+        pendingRemovalId.value = lotteryId
+    }
+
+    /**
+     * Called when the owner taps Cancel or closes the popup. Nothing is deleted.
+     */
+    fun cancelRemoval() {
+        pendingRemovalId.value = null
+    }
+
+    /**
+     * Called when the owner confirms. Deletes the lottery waiting for
+     * confirmation and closes the popup. Does nothing if no removal is pending.
+     */
+    fun confirmRemoval() {
+        val lottery = pendingRemovalId.value ?: return
+        pendingRemovalId.value = null
+        removeLottery(lottery)
+    }
 
     /**
      * The current screen state. The screen collects this and redraws
@@ -75,7 +122,8 @@ class OwnerWaitlistViewModel(
             lotteryRepository.listLotteries(ownerId = currentOwnerId),
             campsiteRepository.observeAll(),
             userRepository.observeAll(),
-        ) { lotteries, campsites, users ->
+            pendingRemovalId,
+        ) { lotteries, campsites, users, pending ->
             val namesById = users.associate { it.id to it.name }
             OwnerWaitlistUiState(
                 lotteries = lotteries.map { lottery ->
@@ -88,15 +136,20 @@ class OwnerWaitlistViewModel(
                         entrantNames = lottery.waitingList.entrantList.map { id ->
                             namesById[id].takeUnless { it.isNullOrBlank() } ?: id
                         },
+
                     )
                 },
                 isLoading = false,
+                lotteryPendingRemoval = pending
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = OwnerWaitlistUiState(),
         )
+
+
+
 
     companion object {
         /**
