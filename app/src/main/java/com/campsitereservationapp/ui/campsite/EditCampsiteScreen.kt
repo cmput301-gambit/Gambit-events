@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui.campsite
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -78,10 +80,20 @@ fun EditCampsiteScreen(
         mutableStateOf(state.posterImageId?.let { Uri.parse(it) })
     }
     val imageBitmap = rememberBitmapFromUri(selectedImageUri)
+    val context = LocalContext.current
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: Exception) {
+                // Ignore if URI doesn't support persistent permissions
+            }
+        }
         selectedImageUri = uri
         viewModel.onPosterImageIdChange(uri?.toString())
     }

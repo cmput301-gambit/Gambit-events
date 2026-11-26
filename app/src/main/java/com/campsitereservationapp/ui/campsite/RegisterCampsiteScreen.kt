@@ -1,5 +1,6 @@
 package com.campsitereservationapp.ui.campsite
 
+import android.content.Intent
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
@@ -48,7 +49,8 @@ import androidx.navigation.NavController
 import com.campsitereservationapp.model.CampsiteError
 
 /**
- * Decodes a local image [Uri] into a Compose [ImageBitmap] safely across Android API levels.
+ * Decodes a local image [Uri] into a Compose [ImageBitmap] safely across Android API levels,
+ * downscaling larger images to 512px max dimension to prevent main-thread OOM issues.
  *
  * @param uri local media URI selected by the photo picker
  * @return decoded [ImageBitmap] or null if error or null URI
@@ -60,7 +62,15 @@ fun rememberBitmapFromUri(uri: Uri?): ImageBitmap? {
         if (uri == null) return@remember null
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)).asImageBitmap()
+                ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { decoder, info, _ ->
+                    val scale = 512f / maxOf(info.size.width, info.size.height)
+                    if (scale < 1f) {
+                        decoder.setTargetSize(
+                            (info.size.width * scale).toInt(),
+                            (info.size.height * scale).toInt()
+                        )
+                    }
+                }.asImageBitmap()
             } else {
                 @Suppress("DEPRECATION")
                 MediaStore.Images.Media.getBitmap(context.contentResolver, uri).asImageBitmap()
@@ -108,10 +118,20 @@ fun RegisterCampsiteScreen(
         mutableStateOf(state.posterImageId?.let { Uri.parse(it) })
     }
     val imageBitmap = rememberBitmapFromUri(selectedImageUri)
+    val context = LocalContext.current
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: Exception) {
+                // Ignore if URI doesn't support persistent permissions
+            }
+        }
         selectedImageUri = uri
         viewModel.onPosterImageIdChange(uri?.toString())
     }
