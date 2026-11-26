@@ -167,4 +167,66 @@ class ReservationListViewModelTest {
 
         assertFalse(viewModel.uiState.value.csvRequested)
     }
+
+    @Test
+    fun pastFilter_showsEndedReservationsNewestFirst() = runTest {
+        // Ended Nov 22, newer than r3 (ended Nov 3)
+        reservationRepository.add(
+            reservation("r7", "entrant-priya", LocalDate.of(2026, 11, 20), LocalDate.of(2026, 11, 22))
+        )
+        val viewModel = priyasViewModel()
+        startCollecting(viewModel)
+        advanceUntilIdle()
+
+        viewModel.onShowPastChange(true)
+        advanceUntilIdle()
+
+        assertEquals(listOf("r7", "r3"), viewModel.uiState.value.reservations.map { it.reservation.id })
+    }
+
+    @Test
+    fun pastFilter_excludesReservationEndingToday() = runTest {
+        // Ends exactly on `today`, so it is still active, not past
+        reservationRepository.add(
+            reservation("r8", "entrant-priya", LocalDate.of(2026, 11, 28), today)
+        )
+        val viewModel = priyasViewModel()
+        startCollecting(viewModel)
+        advanceUntilIdle()
+
+        viewModel.onShowPastChange(true)
+        advanceUntilIdle()
+
+        val ids = viewModel.uiState.value.reservations.map { it.reservation.id }
+        assertFalse("r8" in ids)
+        assertEquals(listOf("r3"), ids)
+    }
+
+    @Test
+    fun activeFilter_keepsPastReservationsHidden() = runTest {
+        val viewModel = priyasViewModel()
+        startCollecting(viewModel)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.showPast)
+        assertEquals(listOf("r1"), state.reservations.map { it.reservation.id })
+    }
+
+    @Test
+    fun switchingBetweenPastAndActive_updatesShowPastAndReservations() = runTest {
+        val viewModel = priyasViewModel()
+        startCollecting(viewModel)
+        advanceUntilIdle()
+
+        viewModel.onShowPastChange(true)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.showPast)
+        assertEquals(listOf("r3"), viewModel.uiState.value.reservations.map { it.reservation.id })
+
+        viewModel.onShowPastChange(false)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.showPast)
+        assertEquals(listOf("r1"), viewModel.uiState.value.reservations.map { it.reservation.id })
+    }
 }
