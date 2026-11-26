@@ -78,6 +78,25 @@ class MessageRepository(dataSource: DataSource<Message>) : Repository<Message>(d
     suspend fun markRead(message: Message): Message =
         if (message.read) message else update(message.markRead())
 
+    /**
+     * Deletes every message about a reservation, used when the reservation is deleted.
+     *
+     * @param reservationId the ID of the deleted reservation
+     */
+    suspend fun deleteByReservation(reservationId: String) {
+        getAll().filter { it.reservationId == reservationId }.forEach { delete(it.id) }
+    }
+
+    /**
+     * Deletes every message a user sent or received, used when their profile
+     * is deleted (US 01.08.01, 03.02.01).
+     *
+     * @param userId the ID of the deleted user
+     */
+    suspend fun deleteInvolving(userId: String) {
+        getAll().filter { it.senderId == userId || it.recipientId == userId }.forEach { delete(it.id) }
+    }
+
     companion object {
         /**
          * Creates the Firestore data source for messages, used by [AppContainer].

@@ -3,6 +3,7 @@ package com.campsitereservationapp.model
 import com.campsitereservationapp.data.SampleData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -63,5 +64,28 @@ class UserTest {
         assertEquals("Priya Shah", user.name)
         assertEquals("priya@example.com", user.email)
         assertEquals("780-555-0199", user.phone)
+    }
+
+    // ---- withoutOwnerRole (US 03.07.01) ----
+
+    @Test
+    fun withoutOwnerRole_keepsTheOtherRoles() {
+        val bobby = User(
+            "owner-bobby", name = "Bobby Smith",
+            entrant = Entrant("owner-bobby"), owner = CampsiteOwner("owner-bobby"),
+        )
+
+        val updated = bobby.withoutOwnerRole()!!
+
+        assertFalse(updated.isOwner)
+        assertTrue(updated.isEntrant)
+        assertEquals("Bobby Smith", updated.name)
+    }
+
+    @Test
+    fun withoutOwnerRole_ofNonOwner_returnsNull() {
+        val priya = User("entrant-priya", entrant = Entrant("entrant-priya"))
+
+        assertNull(priya.withoutOwnerRole())
     }
 }

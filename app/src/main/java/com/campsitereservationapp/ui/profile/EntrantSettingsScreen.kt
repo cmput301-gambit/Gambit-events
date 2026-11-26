@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -21,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,8 +73,52 @@ fun EntrantSettingsScreen(
         },
         onToggleNotifications = viewModel::toggleReceiveNotifications,
         onPolicyClick = { navController.navigate("PolicyAndGuidelines") },
-        onDeleteAccount = { /* TODO */ },
+        onDeleteAccount = viewModel::requestDeleteAccount,
     )
+
+    // "Are you sure?" popup for deleting the account (US 01.08.01).
+    if (state.isDeleteConfirmOpen) {
+        AlertDialog(
+            onDismissRequest = viewModel::cancelDeleteAccount,
+            title = { Text("Delete your account?") },
+            text = {
+                Text(
+                    "This will permanently delete your profile and take you off every " +
+                        "waiting list. Your reservations, messages, notifications and ratings " +
+                        "will be deleted too. This can't be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmDeleteAccount) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::cancelDeleteAccount) { Text("Cancel") }
+            },
+        )
+    }
+
+    state.deleteError?.let { message ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDeleteError,
+            title = { Text("Something went wrong") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissDeleteError) { Text("OK") }
+            },
+        )
+    }
+
+    // Once the profile is gone, leave settings and clear the back stack so
+    // Back can't return to a deleted profile.
+    LaunchedEffect(state.accountDeleted) {
+        if (state.accountDeleted) {
+            navController.navigate("EntrantHome") {
+                popUpTo(navController.graph.id) { inclusive = true }
+            }
+        }
+    }
 }
 
 @Composable
