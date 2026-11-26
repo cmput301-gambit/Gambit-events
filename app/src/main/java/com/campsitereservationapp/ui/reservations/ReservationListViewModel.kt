@@ -126,6 +126,7 @@ class ReservationListViewModel(
 
     fun onCsvLaunched() {
         csvRequested.update { false }
+        onToggleReceiveCSV(false)
     }
     fun onToggleReceiveCSV(newState: Boolean){
         isSendCSV.update { newState }
