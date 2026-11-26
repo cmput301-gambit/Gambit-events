@@ -50,10 +50,11 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
- * Reservation List Screen (US 01.06.01, 01.07.01)
+ * Reservation List Screen (US 01.06.01, 01.07.01, 01.14.01)
  *
  * Purpose: Show's the reservations where they're able to cancel and confirm cancellation.
- * Back button will return to home screen.
+ * Back button will return to home screen. Each reservation also has a Message owner
+ * button that opens the conversation with the campsite owner.
  *
  * Design Rationale: Reliant on components from the theme that's reused so screen matches the
  * Figma.
@@ -76,6 +77,7 @@ fun ReservationListScreen(
         state = state,
         onBack = { navController.popBackStack() },
         onCancel = viewModel::cancel,
+        onMessage = { navController.navigate("Conversation/$it") },
     )
 }
 
@@ -86,12 +88,14 @@ fun ReservationListScreen(
  * @param state the reservations to show
  * @param onBack called when the back button is tapped
  * @param onCancel called with a reservation's ID once the entrant confirms cancelling
+ * @param onMessage called with a reservation's ID when the entrant taps Message owner
  */
 @Composable
 fun ReservationListContent(
     state: ReservationListUiState,
     onBack: () -> Unit,
     onCancel: (reservationId: String) -> Unit,
+    onMessage: (reservationId: String) -> Unit = {},
 ) {
     // The reservation the entrant tapped Cancel on, waiting for confirmation.
     var toCancel by remember { mutableStateOf<ReservationListItem?>(null) }
@@ -171,6 +175,9 @@ fun ReservationListContent(
                                         formatDates(item.reservation),
                                         color = MaterialTheme.colorScheme.onPrimary
                                     )
+                                    TextButton(onClick = { onMessage(item.reservation.id) }) {
+                                        Text("Message owner", color = MaterialTheme.colorScheme.onPrimary)
+                                    }
                                 }
                                 Button(
                                     onClick = { toCancel = item },
