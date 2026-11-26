@@ -43,6 +43,8 @@ data class ReservationListItem(
  *
  * @property reservations the entrant's active, upcoming reservations
  * @property isLoading true until the first data arrives
+ * @property sendCSV true if the user checked the CSV export box
+ * @property csvRequested true when a CSV export has been requested by a successful cancellation
  */
 data class ReservationListUiState(
     val reservations: List<ReservationListItem> = emptyList(),
@@ -82,6 +84,7 @@ class ReservationListViewModel(
     //Checkbox state
     private val isSendCSV = MutableStateFlow(false)
     private val csvRequested = MutableStateFlow(false)
+
     /** The current screen state, updated whenever reservations or campsites change. */
     val uiState: StateFlow<ReservationListUiState> =
         combine(
@@ -120,6 +123,8 @@ class ReservationListViewModel(
             } catch (e: Exception) {
                 // Couldn't save (for example, no network). The reservation
                 // stays in the list, which is the truth.
+            } finally {
+                isSendCSV.update { false }
             }
         }
     }
@@ -128,6 +133,7 @@ class ReservationListViewModel(
         csvRequested.update { false }
         onToggleReceiveCSV(false)
     }
+
     fun onToggleReceiveCSV(newState: Boolean){
         isSendCSV.update { newState }
     }
@@ -138,45 +144,38 @@ class ReservationListViewModel(
      *
      * @param context necessary variable to initiate
      * @param uri address for the new CSV
+     * @param reservation the reservation being exported
      */
     fun sendCSV(context: Context, uri: Uri, reservation: ReservationListItem?){
-
-        if(reservation == null) return
+        if (reservation == null) return
 
         val appContext = context.applicationContext
 
         viewModelScope.launch(Dispatchers.IO) {
             val result = try {
                 val csvString = createCSVString(reservation)
-                val stream = appContext.contentResolver.openOutputStream(uri, "wt") //Opening stream to write to
+                val stream = appContext.contentResolver.openOutputStream(uri, "wt")
                     ?: throw IOException("openOutputStream returned null for $uri")
-                //Actually writing to that location
                 stream.use { out ->
                     out.write(csvString.toByteArray(Charsets.UTF_8))
                     out.flush()
                 }
-
-                "Exported" //This is the result
-
+                "Exported"
             } catch (e: CancellationException) {
-
                 throw e
-
             } catch (e: Exception) {
                 Log.e("CsvExport", "Export failed", e)
-
-                "Export failed: ${e.message}" //This is the result with an error message.
-
+                "Export failed: ${e.message}"
             }
 
             withContext(Dispatchers.Main) {
-                Toast.makeText(appContext, result, Toast.LENGTH_LONG).show() //Giving user quick message with the results attached.
+                Toast.makeText(appContext, result, Toast.LENGTH_LONG).show()
             }
         }
     }
 
     private fun createCSVString(reservation: ReservationListItem?): String {
-        if(reservation == null) return ""
+        if (reservation == null) return ""
 
         val csv = Csv(listOf(
             "Reservation ID",
