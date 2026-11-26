@@ -24,9 +24,21 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.ui.components.ReservationCard
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+
 
 /**
- * Screen displaying reservations for campsites owned by the currently logged-in owner (US 02.07.01).
+ * Screen displaying reservations for campsites owned by the currently logged-in owner (US 02.07.01-US 02.07.03).
  *
  * @param navController navigation controller used for back navigation
  * @param viewModel view model providing owner reservation list state
@@ -43,6 +55,7 @@ fun OwnerReservationListScreen(
     val state by viewModel.uiState.collectAsState()
     OwnerReservationListContent(
         state = state,
+        onFilterChange = viewModel::onFilterChange,
         onBack = { navController.popBackStack() },
         onReservationClick = onReservationClick,
         onChatClick = onChatClick,
@@ -55,10 +68,13 @@ fun OwnerReservationListScreen(
 @Composable
 fun OwnerReservationListContent(
     state: OwnerReservationListUiState,
+    onFilterChange: (ReservationFilter) -> Unit,
     onBack: () -> Unit,
     onReservationClick: (Reservation) -> Unit,
     onChatClick: (Reservation) -> Unit,
 ) {
+    var menuOpen by remember {mutableStateOf(false)}
+
     Column(
         Modifier
             .fillMaxSize()
@@ -69,7 +85,29 @@ fun OwnerReservationListContent(
         Text("Back", modifier = Modifier.clickable { onBack() })
         Text("All Reservations", fontSize = 36.sp, modifier = Modifier.padding(vertical = 16.dp))
 
-        Text("Active", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Box {
+            Row(
+                Modifier.clickable{menuOpen = true},
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Change Filter")
+                Text(state.filter.label, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            }
+            DropdownMenu(
+                expanded = menuOpen,
+                onDismissRequest = {menuOpen = false}) {
+
+                ReservationFilter.entries.filter { it != state.filter }.forEach { option ->
+                    DropdownMenuItem(
+                        text = {Text(option.label, fontWeight = FontWeight.Bold)},
+                        onClick = {
+                            onFilterChange(option)
+                            menuOpen = false
+                        }
+                    )
+                }
+            }
+        }
         Spacer(Modifier.height(16.dp))
 
         if (state.isLoading) {
@@ -82,7 +120,7 @@ fun OwnerReservationListContent(
             )
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(state.items) { reservationItem: OwnerReservationItem ->
+                items(state.items, key = {it.reservation.id}) { reservationItem: OwnerReservationItem ->
                     ReservationCard(
                         name = "${reservationItem.guestName} - ${reservationItem.campsiteName}",
                         partySize = null,

@@ -44,6 +44,17 @@ class ReservationRepository(dataSource: DataSource<Reservation>) :
             .map { reservations -> reservations.sortedBy { it.dates.start } }
 
     /**
+     * Live list of every reservation at one campsite, earliest dates first,
+     * so its owner can see who is staying and message them (US 02.12.01).
+     *
+     * @param campsiteId the campsite to watch
+     * @return a stream that updates whenever this campsite's reservations change
+     */
+    fun observeForCampsite(campsiteId: String): Flow<List<Reservation>> =
+        observeWhere(Filter("campsiteId", campsiteId) { it.campsiteId == campsiteId })
+            .map { reservations -> reservations.sortedBy { it.dates.start } }
+
+    /**
      * Returns the dates already taken at a campsite by active reservations,
      * for showing which dates a winner can still pick (US 01.04.01).
      *
@@ -122,7 +133,7 @@ class ReservationRepository(dataSource: DataSource<Reservation>) :
             "status" to reservation.status.name,
             "createdAt" to reservation.createdAt.toString(),
 
-        )
+            )
 
         /**
          * Rebuilds a reservation from a Firestore document.

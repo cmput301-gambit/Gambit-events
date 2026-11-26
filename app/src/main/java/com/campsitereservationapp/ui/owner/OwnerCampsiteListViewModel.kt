@@ -7,53 +7,81 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.LotteryStatus
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+
+/**
+ * Item representation for an owner's campsite, including active lottery status.
+ *
+ * @property campsite the campsite entity
+ * @property hasActiveLottery true if the campsite is currently part of an active/open lottery
+ */
+data class OwnerCampsiteItem(
+    val campsite: Campsite,
+    val hasActiveLottery: Boolean,
+)
 
 /**
  * UI state for the owner's campsite list screen.
  *
- * @property campsites list of campsites registered by the current owner
+ * @property campsites list of campsites registered by the current owner with active lottery flags
  * @property isLoading true while loading the list
  */
 data class OwnerCampsiteListUiState(
-    val campsites: List<Campsite> = emptyList(),
+    val campsites: List<OwnerCampsiteItem> = emptyList(),
     val isLoading: Boolean = true
 )
 
 /**
  * ViewModel for the owner's campsite list screen (US 02.03.01).
  *
- * **Purpose:** connects to [CampsiteRepository.observeByOwner] to display
- * all campsites registered by the currently logged-in campsite owner.
+ * **Purpose:** connects to [CampsiteRepository.observeByOwner] and [LotteryRepository.observeAll]
+ * to display all campsites registered by the currently logged-in owner and determine active lottery status.
  *
- * **Design rationale:** MVVM. Subscribes to live owner campsite data so the list
- * updates automatically whenever campsites are added or edited.
+ * **Design rationale:** MVVM. Subscribes to live owner campsite and lottery data so the list
+ * updates automatically whenever campsites or lotteries are created, edited, or drawn.
  *
  * **Outstanding issues:** none.
  *
  * @property campsiteRepository the shared repository providing campsite data
+ * @property lotteryRepository the shared repository providing lottery data
  * @property currentUserId ID of the logged-in campsite owner
  */
 class OwnerCampsiteListViewModel(
     private val campsiteRepository: CampsiteRepository,
+    private val lotteryRepository: LotteryRepository,
     private val currentUserId: String
 ) : ViewModel() {
 
     /**
-     * Observable stream emitting campsites registered by [currentUserId].
+     * Observable stream emitting campsites registered by [currentUserId] with active lottery status.
      */
-    val uiState: StateFlow<OwnerCampsiteListUiState> = campsiteRepository
-        .observeByOwner(currentUserId)
-        .map { campsites -> OwnerCampsiteListUiState(campsites = campsites, isLoading = false) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = OwnerCampsiteListUiState()
-        )
+    val uiState: StateFlow<OwnerCampsiteListUiState> = combine(
+        campsiteRepository.observeByOwner(currentUserId),
+        lotteryRepository.observeAll(),
+    ) { campsites, lotteries ->
+        val activeCampsiteIds = lotteries
+            .filter { it.stage == LotteryStatus.OPEN }
+            .flatMap { it.campsiteIds }
+            .toSet()
+
+        val items = campsites.map { campsite ->
+            OwnerCampsiteItem(
+                campsite = campsite,
+                hasActiveLottery = campsite.id in activeCampsiteIds
+            )
+        }
+        OwnerCampsiteListUiState(campsites = items, isLoading = false)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = OwnerCampsiteListUiState()
+    )
 
     companion object {
         /**
@@ -64,6 +92,7 @@ class OwnerCampsiteListViewModel(
                 val app = this[APPLICATION_KEY] as CampsiteApp
                 OwnerCampsiteListViewModel(
                     app.container.campsiteRepository,
+                    app.container.lotteryRepository,
                     app.container.currentUserId
                 )
             }

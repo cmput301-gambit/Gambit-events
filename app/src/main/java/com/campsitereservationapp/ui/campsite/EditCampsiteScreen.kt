@@ -1,40 +1,58 @@
 package com.campsitereservationapp.ui.campsite
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.model.CampsiteError
 
 /**
- * Screen for editing an existing campsite (US 02.01.03 / #20).
+ * Screen for editing an existing campsite matching the registration flow (US 02.01.03).
  *
- * **Purpose:** allows campsite owners to edit details of an existing campsite.
+ * **Purpose:** allows campsite owners to edit details of an existing campsite using a 2-step flow.
  *
  * **Design rationale:** reuses [CampsiteFormViewModel] via [CampsiteFormViewModel.provideFactory]
- * in editing mode, pre-populating existing campsite values and saving updates.
+ * in editing mode, pre-populating existing values with live image picking capabilities.
  *
- * **Outstanding issues:** image editing is a placeholder as image uploading has not been added yet.
- * Major styling is required.
+ * **Outstanding issues:** binary image files are selected locally via Content URIs and display on the current device,
+ * but cross-device cloud persistence requires an ImageRepository backed by Firebase Storage.
  *
  * @param navController navigation controller used to return on completion
  * @param campsiteId ID of the campsite being edited
@@ -54,7 +72,31 @@ fun EditCampsiteScreen(
         }
     }
 
+    var currentStep by remember { mutableIntStateOf(1) }
     var tagsText by remember(state.tags) { mutableStateOf(state.tags.joinToString(", ")) }
+    var step1Error by remember { mutableStateOf<String?>(null) }
+
+    var selectedImageUri by remember(state.posterImageId) {
+        mutableStateOf(state.posterImageId?.let { Uri.parse(it) })
+    }
+    val imageBitmap = rememberBitmapFromUri(selectedImageUri)
+    val context = LocalContext.current
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: Exception) {
+                // Ignore if URI doesn't support persistent permissions
+            }
+        }
+        selectedImageUri = uri
+        viewModel.onPosterImageIdChange(uri?.toString())
+    }
 
     Column(
         modifier = Modifier
@@ -66,14 +108,13 @@ fun EditCampsiteScreen(
 
         Text(
             text = "Back",
-            modifier = Modifier.clickable { navController.popBackStack() }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Edit Campsite",
-            style = MaterialTheme.typography.headlineSmall
+            modifier = Modifier.clickable {
+                if (currentStep == 2) {
+                    currentStep = 1
+                } else {
+                    navController.popBackStack()
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -82,12 +123,22 @@ fun EditCampsiteScreen(
             Text("Loading campsite details...")
         } else if (state.loadError) {
             Text("Failed to load campsite details.", color = MaterialTheme.colorScheme.error)
-        } else {
+        } else if (currentStep == 1) {
+            Text(
+                text = "Edit Campsite",
+                style = MaterialTheme.typography.headlineSmall
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Name
             Text("Name of Campsite", style = MaterialTheme.typography.labelLarge)
             OutlinedTextField(
                 value = state.name,
-                onValueChange = viewModel::onNameChange,
+                onValueChange = {
+                    step1Error = null
+                    viewModel.onNameChange(it)
+                },
                 placeholder = { Text("Type Name") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -98,7 +149,10 @@ fun EditCampsiteScreen(
             Text("Location of Campsite", style = MaterialTheme.typography.labelLarge)
             OutlinedTextField(
                 value = state.location,
-                onValueChange = viewModel::onLocationChange,
+                onValueChange = {
+                    step1Error = null
+                    viewModel.onLocationChange(it)
+                },
                 placeholder = { Text("Type Location") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -120,26 +174,115 @@ fun EditCampsiteScreen(
             Text("Maximum Capacity", style = MaterialTheme.typography.labelLarge)
             OutlinedTextField(
                 value = state.capacity,
-                onValueChange = viewModel::onCapacityChange,
+                onValueChange = {
+                    step1Error = null
+                    viewModel.onCapacityChange(it)
+                },
                 placeholder = { Text("Type Capacity Number") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Image Placeholder
-            Text("Insert Image (Optional)", style = MaterialTheme.typography.labelLarge)
-            OutlinedTextField(
-                value = "Image upload feature coming soon",
-                onValueChange = {},
-                enabled = false,
+            step1Error?.let { err ->
+                Text(
+                    text = err,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            Button(
+                onClick = {
+                    val parsedCap = state.capacity.toIntOrNull()
+                    if (state.name.isBlank()) {
+                        step1Error = "Please enter a campsite name."
+                    } else if (parsedCap == null || parsedCap <= 0) {
+                        step1Error = "Please enter a valid positive capacity number."
+                    } else {
+                        step1Error = null
+                        currentStep = 2
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Continue")
+            }
+        } else {
+            Text(
+                text = "Edit Campsite\n(Optional)",
+                style = MaterialTheme.typography.headlineSmall
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Insert Image Area
+            Text("Insert Image (Optional)", style = MaterialTheme.typography.labelLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (imageBitmap != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFD9D9D9))
+                        .clickable {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = "Selected campsite image",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                TextButton(onClick = {
+                    selectedImageUri = null
+                    viewModel.onPosterImageIdChange(null)
+                }) {
+                    Text("Remove Image", color = MaterialTheme.colorScheme.error)
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFD9D9D9))
+                        .clickable {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Upload Image",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.DarkGray
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = ".PNG, .JPEG, .IMG, .JPG",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Tags
-            Text("Campsite Tags (Optional, comma-separated)", style = MaterialTheme.typography.labelLarge)
+            // Campsite Tags
+            Text("Campsite Tags (Optional)", style = MaterialTheme.typography.labelLarge)
             OutlinedTextField(
                 value = tagsText,
                 onValueChange = { newTagsText ->
@@ -147,11 +290,11 @@ fun EditCampsiteScreen(
                     val tagsList = newTagsText.split(",").map { it.trim() }
                     viewModel.onTagsChange(tagsList)
                 },
-                placeholder = { Text("e.g. WiFi, Power, Lakefront") },
+                placeholder = { Text("Type Description") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Display Validation Errors
             if (state.errors.isNotEmpty()) {
@@ -176,6 +319,19 @@ fun EditCampsiteScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
+
+            OutlinedButton(
+                onClick = {
+                    viewModel.onTagsChange(emptyList())
+                    viewModel.save()
+                },
+                enabled = !state.isSaving,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Skip for Now")
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Button(
                 onClick = { viewModel.save() },

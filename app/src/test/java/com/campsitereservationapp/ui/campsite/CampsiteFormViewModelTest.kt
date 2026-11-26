@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -156,5 +157,32 @@ class CampsiteFormViewModelTest {
         assertTrue(editViewModel.uiState.value.isSaved)
         assertEquals(initialCount, repository.getAll().size)
         assertEquals("Updated Name", repository.get("campsite-edit-1")?.name)
+    }
+
+    @Test
+    fun posterImageId_isSavedOnRegisterLoadedOnEditAndClearedWhenNull() = runTest {
+        viewModel.onNameChange("Image Camp")
+        viewModel.onLocationChange("Banff")
+        viewModel.onCapacityChange("4")
+        viewModel.onPosterImageIdChange("content://media/image_123")
+
+        viewModel.save()
+        testScheduler.advanceUntilIdle()
+
+        val saved = repository.getAll().last()
+        assertEquals("content://media/image_123", saved.posterImageId)
+
+        // Edit mode loads it
+        val editVm = CampsiteFormViewModel(repository, userRepository, "entrant-user", saved.id)
+        testScheduler.advanceUntilIdle()
+        assertEquals("content://media/image_123", editVm.uiState.value.posterImageId)
+
+        // Clear it
+        editVm.onPosterImageIdChange(null)
+        editVm.save()
+        testScheduler.advanceUntilIdle()
+
+        val cleared = repository.get(saved.id)
+        assertTrue(cleared?.posterImageId == null || cleared.posterImageId == "")
     }
 }
