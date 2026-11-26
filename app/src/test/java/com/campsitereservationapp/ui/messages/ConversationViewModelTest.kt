@@ -1,21 +1,25 @@
 package com.campsitereservationapp.ui.messages
 
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.DataSource
 import com.campsitereservationapp.data.MessageRepository
 import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
+import com.campsitereservationapp.model.Identifiable
 import com.campsitereservationapp.model.Message
 import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.model.SenderRole
 import com.campsitereservationapp.model.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -34,10 +38,13 @@ import java.time.LocalDateTime
  * **Purpose:** checks that only the owner and the guest can open a
  * reservation's conversation, that the owner's messages go to the guest
  * (US 02.12.01) and the guest's go to the owner (US 01.14.01), that blank
- * messages are refused, and that received messages are marked read.
+ * messages are refused, that received messages are marked read, that a
+ * double tap on Send posts only one message, and that a reservation
+ * cancelled while the chat is open blocks sending.
  *
  * **Design rationale:** repositories backed by [MockDataSource], so nothing
- * touches Firestore.
+ * touches Firestore. The double-tap test uses [SlowDataSource], because
+ * [MockDataSource] saves instantly and would hide the bug.
  *
  * **Outstanding issues:** None.
  */
@@ -189,6 +196,45 @@ class ConversationViewModelTest {
     }
 
     @Test
+    fun doubleTapSend_sendsOnlyOnce() = runTest {
+        messageRepository = MessageRepository(SlowDataSource(MockDataSource()))
+        val viewModel = viewModelFor("owner-bobby")
+        viewModel.load("reservation-priya")
+        advanceUntilIdle()
+
+        viewModel.onDraftChanged("Gate code is 1234")
+        viewModel.send()
+        viewModel.send()
+        runCurrent()
+
+        assertTrue(viewModel.uiState.value.isSending)
+        assertFalse(viewModel.uiState.value.canSend)
+
+        advanceUntilIdle()
+
+        assertEquals(1, messageRepository.getAll().size)
+        assertNull(viewModel.uiState.value.error)
+        assertFalse(viewModel.uiState.value.isSending)
+        assertTrue(viewModel.uiState.value.canSend)
+    }
+
+    @Test
+    fun reservationCancelledWhileOpen_blocksSending() = runTest {
+        val viewModel = viewModelFor("owner-bobby")
+        viewModel.load("reservation-priya")
+        advanceUntilIdle()
+
+        reservationRepository.cancel("reservation-priya")
+        viewModel.onDraftChanged("See you soon")
+        viewModel.send()
+        advanceUntilIdle()
+
+        assertEquals("This reservation was cancelled.", viewModel.uiState.value.blockedReason)
+        assertFalse(viewModel.uiState.value.canSend)
+        assertTrue(messageRepository.getAll().isEmpty())
+    }
+
+    @Test
     fun messages_showOldestFirst_andWhoSentThem() = runTest {
         messageRepository.send(message("m-late", SenderRole.ENTRANT, hour = 11))
         messageRepository.send(message("m-early", SenderRole.OWNER, hour = 9))
@@ -214,5 +260,20 @@ class ConversationViewModelTest {
 
         assertTrue(messageRepository.get("m-1")!!.read)
         assertFalse(messageRepository.get("m-2")!!.read)
+    }
+}
+
+/**
+ * A [DataSource] that waits a second before saving, like a slow network.
+ * Lets tests tap Send again while the first message is still being saved.
+ *
+ * @param inner where items are really stored
+ */
+private class SlowDataSource<T : Identifiable>(
+    private val inner: DataSource<T>,
+) : DataSource<T> by inner {
+    override suspend fun add(item: T) {
+        delay(1_000)
+        inner.add(item)
     }
 }

@@ -28,6 +28,7 @@ import androidx.navigation.NavController
  *
  * **Purpose:** lists the entrants with an active reservation at the
  * owner's campsite, each with a Message button that opens the conversation.
+ * Anyone who isn't the campsite's owner sees a message instead of the list.
  *
  * **Outstanding issues:** plain styling.
  *
@@ -42,6 +43,7 @@ fun OwnerGuestsScreen(
     viewModel: OwnerGuestsViewModel = viewModel(factory = OwnerGuestsViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val blockedReason = state.blockedReason
     LaunchedEffect(campsiteId) { viewModel.load(campsiteId) }
 
     Column(
@@ -61,6 +63,7 @@ fun OwnerGuestsScreen(
 
         when {
             state.isLoading -> Text("Loading...")
+            blockedReason != null -> Text(blockedReason)
             state.guests.isEmpty() -> Text("No one has an upcoming reservation at this campsite yet.")
             else -> state.guests.forEach { guest ->
                 Card(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {

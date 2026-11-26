@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
+import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.UserRepository
 import kotlinx.coroutines.Job
@@ -35,10 +36,12 @@ data class GuestItem(
  *
  * @property isLoading true until the first data arrives
  * @property guests the campsite's current and upcoming guests, earliest first
+ * @property blockedReason why this user can't see the list, or null if they can
  */
 data class OwnerGuestsUiState(
     val isLoading: Boolean = true,
     val guests: List<GuestItem> = emptyList(),
+    val blockedReason: String? = null,
 )
 
 /**
@@ -46,11 +49,14 @@ data class OwnerGuestsUiState(
  *
  * **Purpose:** shows the owner who has an active reservation at one of
  * their campsites, so they can pick someone to message (US 02.12.01).
+ * Only the campsite's owner can see the list; anyone else, or a campsite
+ * that no longer exists, gets a message explaining why instead.
  *
- * **Design rationale:** MVVM, like the other screens. Combines the live
- * reservation and user streams, so the list updates on its own when
- * someone reserves or cancels. Reservations that have already ended are
- * left out, since the story is about users who are reserving.
+ * **Design rationale:** MVVM, like the other screens. Checks the campsite's
+ * owner first, so guest names and dates are never loaded for someone else.
+ * Then combines the live reservation and user streams, so the list updates
+ * on its own when someone reserves or cancels. Reservations that have
+ * already ended are left out, since the story is about users who are reserving.
  *
  * **Outstanding issues:** loads every user to look up names, which is fine
  * for this app's size. This is a messaging list only; the owner's full
@@ -58,11 +64,15 @@ data class OwnerGuestsUiState(
  *
  * @param reservationRepository where the campsite's reservations come from
  * @param userRepository used to show entrants' names
+ * @param campsiteRepository used to check who owns the campsite
+ * @param currentUserId the person using the phone; must own the campsite
  * @param today used to hide reservations that have ended; tests pass a fixed date
  */
 class OwnerGuestsViewModel(
     private val reservationRepository: ReservationRepository,
     private val userRepository: UserRepository,
+    private val campsiteRepository: CampsiteRepository,
+    private val currentUserId: String,
     private val today: LocalDate = LocalDate.now(),
 ) : ViewModel() {
 
@@ -74,13 +84,24 @@ class OwnerGuestsViewModel(
     private var watchJob: Job? = null
 
     /**
-     * Starts showing the guests of one campsite. Called by the screen when it opens.
+     * Starts showing the guests of one campsite. Called by the screen when it
+     * opens. If the campsite is missing or the current user doesn't own it,
+     * shows why instead of the list.
      *
      * @param campsiteId the owner's campsite
      */
     fun load(campsiteId: String) {
         watchJob?.cancel()
         watchJob = viewModelScope.launch {
+            val campsite = campsiteRepository.get(campsiteId)
+            if (campsite == null) {
+                _uiState.value = blocked("This campsite no longer exists.")
+                return@launch
+            }
+            if (campsite.ownerId != currentUserId) {
+                _uiState.value = blocked("Only this campsite's owner can message its guests.")
+                return@launch
+            }
             combine(
                 reservationRepository.observeForCampsite(campsiteId),
                 userRepository.observeAll(),
@@ -102,14 +123,21 @@ class OwnerGuestsViewModel(
         }
     }
 
+    private fun blocked(reason: String) = OwnerGuestsUiState(isLoading = false, blockedReason = reason)
+
     companion object {
-        /** Builds this ViewModel with the shared repositories from the AppContainer. */
+        /**
+         * Builds this ViewModel with the shared repositories and the current
+         * user's ID from the AppContainer.
+         */
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as CampsiteApp
                 OwnerGuestsViewModel(
                     app.container.reservationRepository,
                     app.container.userRepository,
+                    app.container.campsiteRepository,
+                    app.container.currentUserId,
                 )
             }
         }

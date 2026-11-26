@@ -46,6 +46,7 @@ data class ConversationMessage(
  * @property messages the conversation, oldest first
  * @property draft the message being typed
  * @property error a message about the last send, or null
+ * @property isSending true while a message is being sent, so a second tap is ignored
  */
 data class ConversationUiState(
     val isLoading: Boolean = true,
@@ -55,10 +56,11 @@ data class ConversationUiState(
     val messages: List<ConversationMessage> = emptyList(),
     val draft: String = "",
     val error: String? = null,
+    val isSending: Boolean = false,
 ) {
     /** True when the message box should be usable. */
     val canSend: Boolean
-        get() = !isLoading && blockedReason == null
+        get() = !isLoading && blockedReason == null && !isSending
 }
 
 /**
@@ -73,9 +75,13 @@ data class ConversationUiState(
  * owner and the entrant who made the reservation can open it. It watches
  * [MessageRepository.observeForReservation], so new messages appear on
  * their own, and marks messages sent to this user as read when they show.
+ * Before each send it looks the reservation up again, so if the guest
+ * cancels while the chat is open, the chat is blocked instead of sending.
+ * Only one send runs at a time, so double-tapping Send posts one message.
  *
- * **Outstanding issues:** cancelled reservations can't be messaged about.
- * There are no push notifications for new messages, only the screen.
+ * **Outstanding issues:** a cancellation while the chat is open only blocks
+ * it on the next send attempt, not the moment the guest cancels. There are
+ * no push notifications for new messages, only the screen.
  *
  * @param reservationRepository where the reservation comes from
  * @param campsiteRepository used to find the campsite and its owner
@@ -122,7 +128,9 @@ class ConversationViewModel(
 
     /**
      * Called when the user taps Send. Sends the draft, or shows why it
-     * couldn't be sent.
+     * couldn't be sent. Taps while a message is already being sent are
+     * ignored. If the reservation was cancelled or deleted since the chat
+     * opened, the chat is blocked and nothing is sent.
      */
     fun send() {
         viewModelScope.launch { sendNow() }
@@ -194,18 +202,29 @@ class ConversationViewModel(
 
     private suspend fun sendNow() {
         val current = reservation ?: return
-        val text = _uiState.value.draft
-        if (text.isBlank()) {
-            showError("Write a message first.")
-            return
-        }
-        val id = messageRepository.newId()
-        val message = if (isOwner) {
-            Message.fromOwner(id, current, ownerId, text)
-        } else {
-            Message.fromEntrant(id, current, ownerId, text)
-        }
+        if (_uiState.value.isSending) return
+        _uiState.update { it.copy(isSending = true) }
         try {
+            val text = _uiState.value.draft
+            if (text.isBlank()) {
+                showError("Write a message first.")
+                return
+            }
+            val latest = reservationRepository.get(current.id)
+            if (latest == null) {
+                stopConversation("This reservation no longer exists.")
+                return
+            }
+            if (!latest.isActive) {
+                stopConversation("This reservation was cancelled.")
+                return
+            }
+            val id = messageRepository.newId()
+            val message = if (isOwner) {
+                Message.fromOwner(id, latest, ownerId, text)
+            } else {
+                Message.fromEntrant(id, latest, ownerId, text)
+            }
             val sent = messageRepository.send(message)
             if (sent == null) {
                 showError("Messages can be up to ${Message.MAX_LENGTH} characters.")
@@ -216,7 +235,17 @@ class ConversationViewModel(
             throw e
         } catch (e: Exception) {
             showError("Couldn't send. Check your connection and try again.")
+        } finally {
+            _uiState.update { it.copy(isSending = false) }
         }
+    }
+
+    // Blocks the chat for good: stops watching messages and forgets the
+    // reservation, so later taps on Send do nothing.
+    private fun stopConversation(reason: String) {
+        reservation = null
+        watchJob?.cancel()
+        _uiState.value = blocked(reason)
     }
 
     private fun Message.toShown() = ConversationMessage(

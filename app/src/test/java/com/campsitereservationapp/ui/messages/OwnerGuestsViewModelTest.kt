@@ -1,8 +1,10 @@
 package com.campsitereservationapp.ui.messages
 
+import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.UserRepository
+import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.model.ReservationStatus
@@ -26,7 +28,9 @@ import java.time.LocalDate
  * Unit tests for [OwnerGuestsViewModel].
  *
  * **Purpose:** checks that an owner sees only the active, upcoming guests of
- * the campsite they picked, with names, so they can message them (US 02.12.01).
+ * the campsite they picked, with names, so they can message them (US 02.12.01),
+ * and that someone who doesn't own the campsite, or a campsite that no longer
+ * exists, gets a blocked message instead of the list.
  *
  * **Design rationale:** repositories backed by [MockDataSource] and a fixed
  * "today", so the tests never touch Firestore and behave the same on any day.
@@ -40,6 +44,10 @@ class OwnerGuestsViewModelTest {
     private val today = LocalDate.of(2026, 12, 1)
     private lateinit var reservationRepository: ReservationRepository
     private lateinit var userRepository: UserRepository
+    private lateinit var campsiteRepository: CampsiteRepository
+
+    private fun viewModelFor(userId: String = "owner-bobby", day: LocalDate = today) =
+        OwnerGuestsViewModel(reservationRepository, userRepository, campsiteRepository, userId, day)
 
     private fun reservation(id: String, entrantId: String, campsiteId: String, startDay: Int, finishDay: Int) =
         Reservation(
@@ -62,6 +70,14 @@ class OwnerGuestsViewModelTest {
             )
         )
         userRepository = UserRepository(MockDataSource(listOf(User(id = "entrant-priya", name = "Priya"))))
+        campsiteRepository = CampsiteRepository(
+            MockDataSource(
+                listOf(
+                    Campsite(id = "campsite-pine-ridge", ownerId = "owner-bobby", name = "Pine Ridge"),
+                    Campsite(id = "campsite-empty", ownerId = "owner-bobby", name = "Empty Meadow"),
+                )
+            )
+        )
     }
 
     @After
@@ -71,7 +87,7 @@ class OwnerGuestsViewModelTest {
 
     @Test
     fun showsOnlyThisCampsitesActiveGuests_earliestFirst() = runTest {
-        val viewModel = OwnerGuestsViewModel(reservationRepository, userRepository, today)
+        val viewModel = viewModelFor()
 
         viewModel.load("campsite-pine-ridge")
         advanceUntilIdle()
@@ -84,7 +100,7 @@ class OwnerGuestsViewModelTest {
 
     @Test
     fun guestsShowTheirName_orGuestIfTheyHaveNone() = runTest {
-        val viewModel = OwnerGuestsViewModel(reservationRepository, userRepository, today)
+        val viewModel = viewModelFor()
 
         viewModel.load("campsite-pine-ridge")
         advanceUntilIdle()
@@ -95,7 +111,7 @@ class OwnerGuestsViewModelTest {
     @Test
     fun pastReservations_areLeftOut() = runTest {
         val later = LocalDate.of(2026, 12, 15)
-        val viewModel = OwnerGuestsViewModel(reservationRepository, userRepository, later)
+        val viewModel = viewModelFor(day = later)
 
         viewModel.load("campsite-pine-ridge")
         advanceUntilIdle()
@@ -105,12 +121,36 @@ class OwnerGuestsViewModelTest {
 
     @Test
     fun campsiteWithNoReservations_isEmpty() = runTest {
-        val viewModel = OwnerGuestsViewModel(reservationRepository, userRepository, today)
+        val viewModel = viewModelFor()
 
         viewModel.load("campsite-empty")
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isLoading)
         assertTrue(viewModel.uiState.value.guests.isEmpty())
+    }
+
+    @Test
+    fun nonOwner_isBlocked_andSeesNoGuests() = runTest {
+        val viewModel = viewModelFor(userId = "entrant-ali")
+
+        viewModel.load("campsite-pine-ridge")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("Only this campsite's owner can message its guests.", state.blockedReason)
+        assertFalse(state.isLoading)
+        assertTrue(state.guests.isEmpty())
+    }
+
+    @Test
+    fun missingCampsite_isBlocked_notStuckLoading() = runTest {
+        val viewModel = viewModelFor()
+
+        viewModel.load("campsite-gone")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertEquals("This campsite no longer exists.", viewModel.uiState.value.blockedReason)
     }
 }
