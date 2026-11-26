@@ -42,12 +42,14 @@ data class ReservationListItem(
  * What the reservation list screen shows.
  *
  * @property reservations the entrant's active, upcoming reservations
+ * @property showPast true when the list shows past reservations instead of active ones
  * @property isLoading true until the first data arrives
  * @property sendCSV true if the user checked the CSV export box
  * @property csvRequested true when a CSV export has been requested by a successful cancellation
  */
 data class ReservationListUiState(
     val reservations: List<ReservationListItem> = emptyList(),
+    val showPast: Boolean = false,
     val isLoading: Boolean = true,
     val sendCSV: Boolean = false,
     val csvRequested: Boolean = false,
@@ -81,6 +83,8 @@ class ReservationListViewModel(
     today: LocalDate = LocalDate.now(),
 ) : ViewModel() {
 
+    private val showPast = MutableStateFlow(false)
+
     //Checkbox state
     private val isSendCSV = MutableStateFlow(false)
     private val csvRequested = MutableStateFlow(false)
@@ -90,14 +94,24 @@ class ReservationListViewModel(
         combine(
             reservationRepository.observeForEntrant(entrantId),
             campsiteRepository.observeAll(),
+            showPast,
             isSendCSV,
             csvRequested,
-        ) { reservations, campsites, csv, csvReq ->
+        ) { reservations, campsites, past, csv, csvReq ->
             val namesById = campsites.associate { it.id to it.name }
+            val shown = reservations
+                .filter {
+                    it.isActive &&
+                            if (past) it.dates.finish.isBefore(today) else !it.dates.finish.isBefore(today)
+                }
+                .let { list ->
+                    if (past) list.sortedByDescending { it.dates.start } else list
+                }
             ReservationListUiState(
-                reservations = reservations
-                    .filter { it.isActive && !it.dates.finish.isBefore(today) }
-                    .map { ReservationListItem(it, namesById[it.campsiteId] ?: "Removed campsite") },
+                reservations = shown.map {
+                    ReservationListItem(it, namesById[it.campsiteId] ?: "Removed campsite")
+                },
+                showPast = past,
                 isLoading = false,
                 sendCSV = csv,
                 csvRequested = csvReq,
@@ -107,6 +121,13 @@ class ReservationListViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = ReservationListUiState(),
         )
+
+    /**
+     * @param past true to show reservations that have already ended
+     */
+    fun onShowPastChange(past: Boolean) {
+        showPast.value = past
+    }
 
     /**
      * Cancels one of the entrant's reservations (US 01.07.01).

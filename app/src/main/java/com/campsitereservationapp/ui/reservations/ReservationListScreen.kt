@@ -54,6 +54,7 @@ import com.campsitereservationapp.ui.campsite.ReservationListViewModel
 import com.campsitereservationapp.ui.theme.CampsiteReservationAppTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import androidx.compose.material3.FilterChip
 
 /**
  * Reservation List Screen (US 01.06.01, 01.07.01, 01.14.01)
@@ -79,6 +80,7 @@ fun ReservationListScreen(
     ReservationListContent(
         state = state,
         onBack = { navController.popBackStack() },
+        onShowPastChange = viewModel::onShowPastChange,
         onCancel = viewModel::cancel,
         onMessage = { navController.navigate("Conversation/$it") },
         onCheckedChanged = viewModel::onToggleReceiveCSV,
@@ -102,6 +104,7 @@ fun ReservationListScreen(
 fun ReservationListContent(
     state: ReservationListUiState,
     onBack: () -> Unit,
+    onShowPastChange: (Boolean) -> Unit,
     onCancel: (reservationId: String) -> Unit,
     onCheckedChanged: (Boolean) -> Unit,
     onCsvLaunched: () -> Unit,
@@ -153,6 +156,22 @@ fun ReservationListContent(
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
+        Row (
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = !state.showPast,
+                onClick = {onShowPastChange(false)},
+                label = {Text("Active")}
+            )
+            FilterChip(
+                selected = state.showPast,
+                onClick = {onShowPastChange(true)},
+                label = {Text("Past")}
+            )
+        }
+
         Spacer(Modifier.height(16.dp))
 
         when {
@@ -170,7 +189,7 @@ fun ReservationListContent(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "No active reservations",
+                        if (state.showPast)"No past reservations" else "No active reservations",
                         color = MaterialTheme.colorScheme.onBackground,
                         style = MaterialTheme.typography.titleMedium
                     )
@@ -196,7 +215,7 @@ fun ReservationListContent(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        "CONFIRMED",
+                                        if (state.showPast) "PAST" else "CONFIRMED",
                                         color = MaterialTheme.colorScheme.secondary,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold
@@ -214,14 +233,16 @@ fun ReservationListContent(
                                         Text("Message owner", color = MaterialTheme.colorScheme.onPrimary)
                                     }
                                 }
-                                Button(
-                                    onClick = { toCancel = item },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.tertiary,
-                                        contentColor = MaterialTheme.colorScheme.onTertiary
-                                    )
-                                ) {
-                                    Text("Cancel")
+                                if(!state.showPast) {
+                                    Button(
+                                        onClick = { toCancel = item },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiary,
+                                            contentColor = MaterialTheme.colorScheme.onTertiary
+                                        )
+                                    ) {
+                                        Text("Cancel")
+                                    }
                                 }
                             }
                         }
@@ -302,6 +323,7 @@ fun ReservationsListScreenPreview() {
                 ),
             ),
             onBack = {},
+            onShowPastChange = {},
             onCancel = {},
             onCheckedChanged = {},
             onCsvLaunched = {},
