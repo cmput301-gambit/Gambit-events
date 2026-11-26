@@ -89,9 +89,10 @@ class ReservationListViewModel(
                     if (past) list.sortedByDescending { it.dates.start } else list
                 }
             ReservationListUiState(
-                reservations = reservations
-                    .filter { it.isActive && !it.dates.finish.isBefore(today) }
-                    .map { ReservationListItem(it, namesById[it.campsiteId] ?: "Removed campsite") },
+                reservations = shown.map {
+                    ReservationListItem(it, namesById[it.campsiteId] ?: "Removed campsite")
+                },
+                showPast = past,
                 isLoading = false,
             )
         }.stateIn(
