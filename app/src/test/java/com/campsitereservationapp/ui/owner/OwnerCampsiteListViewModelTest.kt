@@ -1,10 +1,13 @@
 package com.campsitereservationapp.ui.owner
 
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.ImageRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
+import com.campsitereservationapp.model.Image
+import com.campsitereservationapp.model.ImageKind
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +20,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -34,6 +38,7 @@ class OwnerCampsiteListViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var campsiteRepository: CampsiteRepository
     private lateinit var lotteryRepository: LotteryRepository
+    private lateinit var imageRepository: ImageRepository
     private lateinit var viewModel: OwnerCampsiteListViewModel
 
     @Before
@@ -41,7 +46,8 @@ class OwnerCampsiteListViewModelTest {
         Dispatchers.setMain(testDispatcher)
         campsiteRepository = CampsiteRepository(MockDataSource())
         lotteryRepository = LotteryRepository(MockDataSource(), campsiteRepository)
-        viewModel = OwnerCampsiteListViewModel(campsiteRepository, lotteryRepository, "owner-bobby")
+        imageRepository = ImageRepository(MockDataSource())
+        viewModel = OwnerCampsiteListViewModel(campsiteRepository, lotteryRepository, imageRepository, "owner-bobby")
     }
 
     @After
@@ -111,5 +117,23 @@ class OwnerCampsiteListViewModelTest {
         assertTrue(item1.hasActiveLottery)
         assertFalse(item2.hasActiveLottery)
         assertFalse(item3.hasActiveLottery)
+    }
+
+    @Test
+    fun showsEachCampsitesUploadedPoster() = runTest {
+        backgroundScope.launch(testDispatcher) {
+            viewModel.uiState.collect {}
+        }
+        val posterData = Image.encode(byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte()))
+        imageRepository.add(Image("image-pine-ridge", "owner-bobby", ImageKind.CAMPSITE, "camp-pine-ridge", posterData))
+        campsiteRepository.add(
+            Campsite(id = "camp-pine-ridge", ownerId = "owner-bobby", name = "Pine Ridge", posterImageId = "image-pine-ridge")
+        )
+        campsiteRepository.add(Campsite(id = "camp-bare-flats", ownerId = "owner-bobby", name = "Bare Flats"))
+        testScheduler.advanceUntilIdle()
+
+        val items = viewModel.uiState.value.campsites.associateBy { it.campsite.id }
+        assertEquals(posterData, items.getValue("camp-pine-ridge").posterImage)
+        assertNull(items.getValue("camp-bare-flats").posterImage)
     }
 }

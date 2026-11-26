@@ -1,10 +1,6 @@
 package com.campsitereservationapp.ui.campsite
 
-import android.content.Intent
-import android.graphics.ImageDecoder
 import android.net.Uri
-import android.os.Build
-import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,52 +30,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.model.CampsiteError
-
-/**
- * Decodes a local image [Uri] into a Compose [ImageBitmap] safely across Android API levels,
- * downscaling larger images to 512px max dimension to prevent main-thread OOM issues.
- *
- * @param uri local media URI selected by the photo picker
- * @return decoded [ImageBitmap] or null if error or null URI
- */
-@Composable
-fun rememberBitmapFromUri(uri: Uri?): ImageBitmap? {
-    val context = LocalContext.current
-    return remember(uri) {
-        if (uri == null) return@remember null
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { decoder, info, _ ->
-                    val scale = 512f / maxOf(info.size.width, info.size.height)
-                    if (scale < 1f) {
-                        decoder.setTargetSize(
-                            (info.size.width * scale).toInt(),
-                            (info.size.height * scale).toInt()
-                        )
-                    }
-                }.asImageBitmap()
-            } else {
-                @Suppress("DEPRECATION")
-                MediaStore.Images.Media.getBitmap(context.contentResolver, uri).asImageBitmap()
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
-}
+import com.campsitereservationapp.ui.components.loadJpegBytes
+import com.campsitereservationapp.ui.components.rememberImageBitmap
+import kotlinx.coroutines.launch
 
 /**
  * Screen for registering a campsite with a two-step form flow and image selection (US 02.01.01, US 02.01.02).
@@ -91,8 +56,7 @@ fun rememberBitmapFromUri(uri: Uri?): ImageBitmap? {
  * across two steps ("Continue" to proceed, "Skip for Now" or "Submit" to save), displays field validation errors inline,
  * and automatically navigates back once saved.
  *
- * **Outstanding issues:** binary image files are selected locally via Content URIs and display on the current device,
- * but cross-device cloud persistence requires an ImageRepository backed by Firebase Storage.
+ * **Outstanding issues:** None.
  *
  * @param navController navigation controller used to return to the previous screen on completion
  * @param viewModel view model managing form UI state and save logic
@@ -114,26 +78,19 @@ fun RegisterCampsiteScreen(
     var tagsText by remember(state.tags) { mutableStateOf(state.tags.joinToString(", ")) }
     var step1Error by remember { mutableStateOf<String?>(null) }
 
-    var selectedImageUri by remember(state.posterImageId) {
-        mutableStateOf(state.posterImageId?.let { Uri.parse(it) })
-    }
-    val imageBitmap = rememberBitmapFromUri(selectedImageUri)
+    val imageBitmap = rememberImageBitmap(state.posterImage)
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
+    // The photo is shrunk and read right away, so no long-lived URI permission is needed.
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (e: Exception) {
-                // Ignore if URI doesn't support persistent permissions
+            scope.launch {
+                loadJpegBytes(context, uri)?.let { viewModel.onPosterImagePicked(it) }
             }
         }
-        selectedImageUri = uri
-        viewModel.onPosterImageIdChange(uri?.toString())
     }
 
     Column(
@@ -278,8 +235,7 @@ fun RegisterCampsiteScreen(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 TextButton(onClick = {
-                    selectedImageUri = null
-                    viewModel.onPosterImageIdChange(null)
+                    viewModel.onPosterImageRemoved()
                 }) {
                     Text("Remove Image", color = MaterialTheme.colorScheme.error)
                 }
