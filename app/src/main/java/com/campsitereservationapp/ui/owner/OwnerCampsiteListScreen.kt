@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.R
-import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.ui.campsite.rememberBitmapFromUri
 
 /**
@@ -52,7 +51,7 @@ import com.campsitereservationapp.ui.campsite.rememberBitmapFromUri
  * **Purpose:** provides campsite owners a centralized list of their registered campsites and styled campsite cards.
  *
  * **Design rationale:** displays top header with back arrow, logo, and notification icon, and dark green
- * campsite cards with image thumbnail, status badge, "Edit Camp", and "View More" action buttons.
+ * campsite cards with image thumbnail, conditional active lottery badge, "Edit Camp", and "View More" action buttons.
  *
  * **Outstanding issues:** rating stars excluded per specification.
  *
@@ -142,14 +141,14 @@ fun OwnerCampsiteListScreen(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(state.campsites, key = { it.id }) { campsite ->
+                items(state.campsites, key = { it.campsite.id }) { item ->
                     OwnerCampsiteCardItem(
-                        campsite = campsite,
+                        item = item,
                         onEditCamp = {
-                            navController.navigate("EditCampsite/${campsite.id}")
+                            navController.navigate("EditCampsite/${item.campsite.id}")
                         },
                         onViewMore = {
-                            navController.navigate("OwnerCampsiteDetails/${campsite.id}")
+                            navController.navigate("OwnerCampsiteDetails/${item.campsite.id}")
                         }
                     )
                 }
@@ -161,16 +160,17 @@ fun OwnerCampsiteListScreen(
 /**
  * Custom styled owner campsite card matching the mockup design.
  *
- * @param campsite campsite entity to render
+ * @param item owner campsite item containing campsite data and active lottery status
  * @param onEditCamp callback when "Edit Camp" is tapped
  * @param onViewMore callback when "View More" is tapped
  */
 @Composable
 private fun OwnerCampsiteCardItem(
-    campsite: Campsite,
+    item: OwnerCampsiteItem,
     onEditCamp: () -> Unit,
     onViewMore: () -> Unit
 ) {
+    val campsite = item.campsite
     val imageUri = campsite.posterImageId?.let { Uri.parse(it) }
     val imageBitmap = rememberBitmapFromUri(imageUri)
 
@@ -219,14 +219,15 @@ private fun OwnerCampsiteCardItem(
                 verticalAlignment = Alignment.Bottom
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "ACTIVE LOTTERY",
-                        color = Color(0xFF70D6FF),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
+                    if (item.hasActiveLottery) {
+                        Text(
+                            text = "ACTIVE LOTTERY",
+                            color = Color(0xFF70D6FF),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
 
                     Text(
                         text = campsite.name,
