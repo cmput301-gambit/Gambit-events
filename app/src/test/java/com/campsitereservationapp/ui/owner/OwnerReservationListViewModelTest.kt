@@ -29,9 +29,9 @@ import java.time.LocalDate
  * Unit tests for [OwnerReservationListViewModel].
  *
  * **Purpose:** verifies that the owner reservation list view model correctly filters
- * reservations by owner campsite IDs, resolves campsite and entrant names, filters out
- * past/cancelled reservations, handles guest name fallbacks, tracks loading state, and supports
- * live updates when reservations are cancelled.
+ * reservations by owner campsite IDs and selected filter (ACTIVE, PAST, CANCELLED), resolves
+ * campsite and entrant names, handles guest name fallbacks, tracks loading state, supports
+ * live updates when reservations are cancelled, and switches filters.
  *
  * **Design rationale:** uses a StandardTestDispatcher and Coroutines test rules with mock
  * repositories seeded with test campsites, users, and reservations.
@@ -141,7 +141,7 @@ class OwnerReservationListViewModelTest {
             dates = DateRange(LocalDate.of(2026, 10, 25), LocalDate.of(2026, 10, 31)),
             status = ReservationStatus.CONFIRMED
         )
-        // Boundary reservation ending exactly on fixedToday (should stay)
+        // Boundary reservation ending exactly on fixedToday (should stay in ACTIVE)
         val boundaryRes = Reservation(
             id = "res-boundary",
             entrantId = "guest-noah",
@@ -160,6 +160,162 @@ class OwnerReservationListViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(1, state.items.size)
         assertEquals("res-boundary", state.items[0].reservation.id)
+    }
+
+    @Test
+    fun viewModel_pastFilter_showsEndedReservationsExcludesBoundaryAndOtherOwners() = runTest {
+        backgroundScope.launch(testDispatcher) {
+            viewModel.uiState.collect {}
+        }
+
+        val bobbyCamp = Campsite(id = "camp-bobby", ownerId = "owner-bobby", name = "Pine Ridge", capacity = 5)
+        val jillCamp = Campsite(id = "camp-jill", ownerId = "owner-jill", name = "Aspen Hollow", capacity = 5)
+        campsiteRepository.add(bobbyCamp)
+        campsiteRepository.add(jillCamp)
+
+        // Confirmed past reservation ending before fixedToday (should show in PAST)
+        val pastRes = Reservation(
+            id = "res-past",
+            entrantId = "guest-noah",
+            campsiteId = "camp-bobby",
+            lotteryId = "lottery-a",
+            dates = DateRange(LocalDate.of(2026, 10, 20), LocalDate.of(2026, 10, 30)),
+            status = ReservationStatus.CONFIRMED
+        )
+        // Boundary reservation ending on fixedToday (should NOT show in PAST)
+        val boundaryRes = Reservation(
+            id = "res-boundary",
+            entrantId = "guest-noah",
+            campsiteId = "camp-bobby",
+            lotteryId = "lottery-a",
+            dates = DateRange(LocalDate.of(2026, 10, 25), fixedToday),
+            status = ReservationStatus.CONFIRMED
+        )
+        // Past reservation on Jill's campsite (should NOT show for Bobby)
+        val jillPastRes = Reservation(
+            id = "res-jill-past",
+            entrantId = "guest-noah",
+            campsiteId = "camp-jill",
+            lotteryId = "lottery-a",
+            dates = DateRange(LocalDate.of(2026, 10, 10), LocalDate.of(2026, 10, 20)),
+            status = ReservationStatus.CONFIRMED
+        )
+
+        reservationRepository.add(pastRes)
+        reservationRepository.add(boundaryRes)
+        reservationRepository.add(jillPastRes)
+
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onFilterChange(ReservationFilter.PAST)
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(ReservationFilter.PAST, state.filter)
+        assertEquals(1, state.items.size)
+        assertEquals("res-past", state.items[0].reservation.id)
+    }
+
+    @Test
+    fun viewModel_cancelledFilter_showsCancelledReservationsExcludesOtherOwners() = runTest {
+        backgroundScope.launch(testDispatcher) {
+            viewModel.uiState.collect {}
+        }
+
+        val bobbyCamp = Campsite(id = "camp-bobby", ownerId = "owner-bobby", name = "Pine Ridge", capacity = 5)
+        val jillCamp = Campsite(id = "camp-jill", ownerId = "owner-jill", name = "Aspen Hollow", capacity = 5)
+        campsiteRepository.add(bobbyCamp)
+        campsiteRepository.add(jillCamp)
+
+        val bobbyCancelledRes = Reservation(
+            id = "res-bobby-cancelled",
+            entrantId = "guest-noah",
+            campsiteId = "camp-bobby",
+            lotteryId = "lottery-a",
+            dates = DateRange(LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 15)),
+            status = ReservationStatus.CANCELLED
+        )
+        val jillCancelledRes = Reservation(
+            id = "res-jill-cancelled",
+            entrantId = "guest-noah",
+            campsiteId = "camp-jill",
+            lotteryId = "lottery-a",
+            dates = DateRange(LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 15)),
+            status = ReservationStatus.CANCELLED
+        )
+
+        reservationRepository.add(bobbyCancelledRes)
+        reservationRepository.add(jillCancelledRes)
+
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onFilterChange(ReservationFilter.CANCELLED)
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(ReservationFilter.CANCELLED, state.filter)
+        assertEquals(1, state.items.size)
+        assertEquals("res-bobby-cancelled", state.items[0].reservation.id)
+    }
+
+    @Test
+    fun viewModel_switchingFilters_updatesUiStateAndItems() = runTest {
+        backgroundScope.launch(testDispatcher) {
+            viewModel.uiState.collect {}
+        }
+
+        val bobbyCamp = Campsite(id = "camp-bobby", ownerId = "owner-bobby", name = "Pine Ridge", capacity = 5)
+        campsiteRepository.add(bobbyCamp)
+
+        val activeRes = Reservation(
+            id = "res-active",
+            entrantId = "guest-noah",
+            campsiteId = "camp-bobby",
+            dates = DateRange(fixedToday, fixedToday.plusDays(5)),
+            status = ReservationStatus.CONFIRMED
+        )
+        val pastRes = Reservation(
+            id = "res-past",
+            entrantId = "guest-noah",
+            campsiteId = "camp-bobby",
+            dates = DateRange(fixedToday.minusDays(10), fixedToday.minusDays(2)),
+            status = ReservationStatus.CONFIRMED
+        )
+        val cancelledRes = Reservation(
+            id = "res-cancelled",
+            entrantId = "guest-noah",
+            campsiteId = "camp-bobby",
+            dates = DateRange(fixedToday, fixedToday.plusDays(5)),
+            status = ReservationStatus.CANCELLED
+        )
+
+        reservationRepository.add(activeRes)
+        reservationRepository.add(pastRes)
+        reservationRepository.add(cancelledRes)
+
+        testScheduler.advanceUntilIdle()
+
+        // Default: ACTIVE
+        assertEquals(ReservationFilter.ACTIVE, viewModel.uiState.value.filter)
+        assertEquals(listOf("res-active"), viewModel.uiState.value.items.map { it.reservation.id })
+
+        // Switch to PAST
+        viewModel.onFilterChange(ReservationFilter.PAST)
+        testScheduler.advanceUntilIdle()
+        assertEquals(ReservationFilter.PAST, viewModel.uiState.value.filter)
+        assertEquals(listOf("res-past"), viewModel.uiState.value.items.map { it.reservation.id })
+
+        // Switch to CANCELLED
+        viewModel.onFilterChange(ReservationFilter.CANCELLED)
+        testScheduler.advanceUntilIdle()
+        assertEquals(ReservationFilter.CANCELLED, viewModel.uiState.value.filter)
+        assertEquals(listOf("res-cancelled"), viewModel.uiState.value.items.map { it.reservation.id })
+
+        // Switch back to ACTIVE
+        viewModel.onFilterChange(ReservationFilter.ACTIVE)
+        testScheduler.advanceUntilIdle()
+        assertEquals(ReservationFilter.ACTIVE, viewModel.uiState.value.filter)
+        assertEquals(listOf("res-active"), viewModel.uiState.value.items.map { it.reservation.id })
     }
 
     @Test

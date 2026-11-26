@@ -27,6 +27,8 @@ import com.campsitereservationapp.ui.notifications.InboxScreen
 import com.campsitereservationapp.ui.reservations.ReservationListScreen
 import com.campsitereservationapp.ui.reservations.ReserveScreen
 import com.campsitereservationapp.ui.home.PolicyAndGuidelinesScreen
+import com.campsitereservationapp.ui.messages.ConversationScreen
+import com.campsitereservationapp.ui.messages.OwnerGuestsScreen
 import com.campsitereservationapp.ui.owner.OwnerReservationListScreen
 
 /**
@@ -102,6 +104,20 @@ fun CampsiteAppEntry(){
             ReserveScreen(navController, lotteryId = lotteryId)
         }
         composable("PolicyAndGuidelines") { PolicyAndGuidelinesScreen(navController) }
+        composable(
+            route = "OwnerGuests/{campsiteId}",
+            arguments = listOf(navArgument("campsiteId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val campId = backStackEntry.arguments?.getString("campsiteId") ?: return@composable
+            OwnerGuestsScreen(navController, campsiteId = campId)
+        }
+        composable(
+            route = "Conversation/{reservationId}",
+            arguments = listOf(navArgument("reservationId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val reservationId = backStackEntry.arguments?.getString("reservationId") ?: return@composable
+            ConversationScreen(navController, reservationId = reservationId)
+        }
         composable("OwnerReservations") { OwnerReservationListScreen(navController) }
     }
 }
