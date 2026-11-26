@@ -18,10 +18,10 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 
 /**
- * @property label text shown in dropdown
+ * Filter options for the owner reservation list screen.
  *
+ * @property label text shown in dropdown
  */
-
 enum class ReservationFilter(val label: String) {
     ACTIVE("Active"),
     PAST("Past"),
@@ -45,6 +45,7 @@ data class OwnerReservationItem(
  * UI state for owner reservation list screen.
  *
  * @property items filtered list of owner reservation items
+ * @property filter current selected filter (ACTIVE, PAST, or CANCELLED)
  * @property isLoading true while loading data
  */
 data class OwnerReservationListUiState(
@@ -56,12 +57,12 @@ data class OwnerReservationListUiState(
 /**
  * ViewModel for the campsite owner reservation list (US 02.07.01).
  *
- * **Purpose:** displays active upcoming reservations for campsites owned specifically
+ * **Purpose:** displays active, past, or cancelled reservations for campsites owned specifically
  * by the logged-in owner, resolving campsite and guest names cleanly.
  *
  * **Design rationale:** MVVM. Combines live streams from [ReservationRepository],
  * [CampsiteRepository], and [UserRepository] to filter reservations by owner campsite IDs
- * and resolve human-readable display names instead of raw Firestore IDs.
+ * and selected filter (ACTIVE, PAST, CANCELLED), resolving human-readable display names.
  *
  * **Outstanding issues:** none.
  *
@@ -82,7 +83,7 @@ class OwnerReservationListViewModel(
     private val filter = MutableStateFlow(ReservationFilter.ACTIVE)
 
     /**
-     * Observable state stream emitting owner reservations matching current owner.
+     * Observable state stream emitting owner reservations matching current owner and filter.
      */
     val uiState: StateFlow<OwnerReservationListUiState> = combine(
         reservationRepository.observeAll(),
@@ -94,10 +95,10 @@ class OwnerReservationListViewModel(
         val userNames = users.associate { it.id to (if (it.name.isNotBlank()) it.name else "Guest") }
         val ownerCampsiteIds = campsites.filter { it.ownerId == currentUserId }.map { it.id }.toSet()
 
-        val activeOwnerItems = reservations
+        val filteredItems = reservations
             .filter { res ->
                 res.campsiteId in ownerCampsiteIds &&
-                        when(f) {
+                        when (f) {
                             ReservationFilter.ACTIVE -> res.isActive && !res.dates.finish.isBefore(today)
                             ReservationFilter.PAST -> res.isActive && res.dates.finish.isBefore(today)
                             ReservationFilter.CANCELLED -> !res.isActive
@@ -113,7 +114,7 @@ class OwnerReservationListViewModel(
             .sortedBy { it.reservation.dates.start }
 
         OwnerReservationListUiState(
-            items = activeOwnerItems,
+            items = filteredItems,
             filter = f,
             isLoading = false,
         )
@@ -124,11 +125,10 @@ class OwnerReservationListViewModel(
     )
 
     /**
-     * Switches between the different filters
+     * Switches between the different filters (Active, Past, Cancelled).
      *
      * @param f filter owner picks
      */
-
     fun onFilterChange(f: ReservationFilter) {
         filter.value = f
     }
