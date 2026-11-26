@@ -62,6 +62,10 @@ class AppContainer(context: Context) {
      * Deletes profiles, owners and campsites together with everything that
      * depends on them (US 01.08.01, 03.02.01, 03.07.01).
      */
+    val imageRepository by lazy {
+        ImageRepository(ImageRepository.firestoreDataSource())
+    }
+
     val cascadeDeleter by lazy {
         CascadeDeleter(
             userRepository,
@@ -71,6 +75,7 @@ class AppContainer(context: Context) {
             notificationRepository,
             ratingRepository,
             messageRepository,
+            imageRepository,
         )
     }
 

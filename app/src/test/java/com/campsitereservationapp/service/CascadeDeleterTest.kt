@@ -1,6 +1,7 @@
 package com.campsitereservationapp.service
 
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.ImageRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MessageRepository
 import com.campsitereservationapp.data.MockDataSource
@@ -12,6 +13,8 @@ import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteOwner
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Entrant
+import com.campsitereservationapp.model.Image
+import com.campsitereservationapp.model.ImageKind
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.Message
@@ -41,8 +44,9 @@ import java.time.LocalDate
  * **Design rationale:** every repository is backed by [MockDataSource], so
  * nothing touches Firestore. The data is a small but realistic world: Priya
  * is an entrant with a waiting list spot, a lottery win, a reservation, a
- * message thread, a notification and a rating; Bobby owns two campsites;
- * Jill owns one and shares a lottery with Bobby.
+ * message thread, a notification, a rating and a profile picture; Bobby owns
+ * two campsites; Jill owns one and shares a lottery with Bobby. Pine Ridge and
+ * Aspen Hollow have posters.
  *
  * **Outstanding issues:** None.
  */
@@ -54,13 +58,17 @@ class CascadeDeleterTest {
     private lateinit var notifications: NotificationRepository
     private lateinit var ratings: RatingRepository
     private lateinit var messages: MessageRepository
+    private lateinit var images: ImageRepository
     private lateinit var deleter: CascadeDeleter
 
     private val today = LocalDate.of(2026, 11, 25)
     private val registration = DateRange(today.plusDays(1), today.plusDays(5))
     private val stay = DateRange(today.plusDays(10), today.plusDays(12))
 
-    private val priya = User("entrant-priya", name = "Priya Shah", entrant = Entrant("entrant-priya"))
+    private val priya = User(
+        "entrant-priya", name = "Priya Shah", profileImageId = "image-priya-profile",
+        entrant = Entrant("entrant-priya"),
+    )
     private val noah = User("entrant-noah", name = "Noah Walters", entrant = Entrant("entrant-noah"))
     private val bobby = User(
         "owner-bobby", name = "Bobby Smith",
@@ -68,9 +76,21 @@ class CascadeDeleterTest {
     )
     private val jill = User("owner-jill", name = "Jill Mason", owner = CampsiteOwner("owner-jill"))
 
-    private val pineRidge = Campsite("campsite-pine-ridge", ownerId = "owner-bobby", name = "Pine Ridge", capacity = 6)
+    private val pineRidge = Campsite(
+        "campsite-pine-ridge", ownerId = "owner-bobby", name = "Pine Ridge", capacity = 6,
+        posterImageId = "image-pine-ridge",
+    )
     private val lakesideLoop = Campsite("campsite-lakeside-loop", ownerId = "owner-bobby", name = "Lakeside Loop", capacity = 4)
-    private val aspenHollow = Campsite("campsite-aspen-hollow", ownerId = "owner-jill", name = "Aspen Hollow", capacity = 2)
+    private val aspenHollow = Campsite(
+        "campsite-aspen-hollow", ownerId = "owner-jill", name = "Aspen Hollow", capacity = 2,
+        posterImageId = "image-aspen-hollow",
+    )
+
+    // The first bytes of a JPEG file, enough to stand in for a real photo.
+    private val jpegData = Image.encode(byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 0x00, 0x10))
+    private val pineRidgePoster = Image("image-pine-ridge", "owner-bobby", ImageKind.CAMPSITE, "campsite-pine-ridge", jpegData)
+    private val aspenHollowPoster = Image("image-aspen-hollow", "owner-jill", ImageKind.CAMPSITE, "campsite-aspen-hollow", jpegData)
+    private val priyaProfilePicture = Image("image-priya-profile", "entrant-priya", ImageKind.PROFILE, "entrant-priya", jpegData)
 
     // Priya and Noah are waiting for Pine Ridge.
     private val pineRidgeLottery = Lottery(
@@ -127,7 +147,8 @@ class CascadeDeleterTest {
         notifications = NotificationRepository(MockDataSource(listOf(priyaWon, noahLost)))
         ratings = RatingRepository(MockDataSource(listOf(priyaRatesAspen, noahRatesPine, noahRatesAspen)))
         messages = MessageRepository(MockDataSource(listOf(jillToPriya, bobbyToNoah)))
-        deleter = CascadeDeleter(users, campsites, lotteries, reservations, notifications, ratings, messages)
+        images = ImageRepository(MockDataSource(listOf(pineRidgePoster, aspenHollowPoster, priyaProfilePicture)))
+        deleter = CascadeDeleter(users, campsites, lotteries, reservations, notifications, ratings, messages, images)
     }
 
     // ---- Deleting an entrant's profile (US 01.08.01, 03.02.01) ----
@@ -243,5 +264,58 @@ class CascadeDeleterTest {
         assertNull(messages.get("message-jill-priya"))
         assertTrue(ratings.getAll().none { it.campsiteId == "campsite-aspen-hollow" })
         assertEquals(listOf("campsite-lakeside-loop"), lotteries.get("lottery-shared")!!.campsiteIds)
+    }
+
+    @Test
+    fun deleteCampsite_alsoRemovesItsPoster() = runTest {
+        deleter.deleteCampsite("campsite-aspen-hollow")
+
+        assertNull(images.get("image-aspen-hollow"))
+        assertNotNull(images.get("image-pine-ridge"))
+    }
+
+    @Test
+    fun deleteProfile_alsoRemovesTheirProfilePicture() = runTest {
+        deleter.deleteProfile("entrant-priya")
+
+        assertNull(images.get("image-priya-profile"))
+        assertEquals(2, images.getAll().size)
+    }
+
+    @Test
+    fun removeOwner_alsoRemovesTheirCampsitePosters() = runTest {
+        deleter.removeOwner("owner-bobby")
+
+        assertNull(images.get("image-pine-ridge"))
+        assertNotNull(images.get("image-aspen-hollow"))
+    }
+
+    // ---- Deleting a single image (US 03.03.01) ----
+
+    @Test
+    fun deleteImage_ofCampsitePoster_clearsItFromTheCampsite() = runTest {
+        deleter.deleteImage("image-pine-ridge")
+
+        assertNull(images.get("image-pine-ridge"))
+        assertNull(campsites.get("campsite-pine-ridge")!!.posterImageId)
+        assertEquals("Pine Ridge", campsites.get("campsite-pine-ridge")!!.name)
+        assertEquals("image-aspen-hollow", campsites.get("campsite-aspen-hollow")!!.posterImageId)
+    }
+
+    @Test
+    fun deleteImage_ofProfilePicture_clearsItFromTheProfile() = runTest {
+        deleter.deleteImage("image-priya-profile")
+
+        assertNull(images.get("image-priya-profile"))
+        assertNull(users.get("entrant-priya")!!.profileImageId)
+        assertEquals("Priya Shah", users.get("entrant-priya")!!.name)
+    }
+
+    @Test
+    fun deleteImage_ofMissingImage_changesNothing() = runTest {
+        deleter.deleteImage("image-nobody")
+
+        assertEquals(3, images.getAll().size)
+        assertEquals(pineRidge, campsites.get("campsite-pine-ridge"))
     }
 }
