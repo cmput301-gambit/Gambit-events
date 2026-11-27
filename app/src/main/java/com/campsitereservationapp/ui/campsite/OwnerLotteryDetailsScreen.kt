@@ -45,6 +45,7 @@ import androidx.navigation.NavController
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.LotteryError
+import com.campsitereservationapp.model.LotteryStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -173,7 +174,14 @@ fun OwnerLotteryDetailsScreen(
         }
 
         MinimalDropdownMenu(viewModel)
-
+        if (state.lotteryStage=="DRAWN") {
+            Text(
+                text = "Cannot start a lottery in the DRAWN stage. Create an OPEN lottery first.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(vertical = 2.dp)
+            )
+        }
         // Display Validation Errors
         if (state.errors.isNotEmpty()) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -191,7 +199,7 @@ fun OwnerLotteryDetailsScreen(
 
         if (state.saveError) {
             Text(
-                text = "Failed to save campsite. Please try again.",
+                text = "Failed to save Lottery. Please try again.",
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -199,7 +207,11 @@ fun OwnerLotteryDetailsScreen(
         }
 
         Button(
-            onClick = { viewModel.save() },
+            onClick = {
+                if (state.lotteryStage!="DRAWN") {
+                    viewModel.save()
+                }
+            },
             enabled = !state.isSaving,
             modifier = Modifier.fillMaxWidth()
         ) {
