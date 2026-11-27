@@ -58,19 +58,21 @@ fun OwnerLotteryCampsiteSelectionScreen(
         if (state.isSaved) {
             navController.popBackStack()
         }
-        campsites.addAll(viewModel.getCampsites())
     }
 
 
-    LaunchedEffect(campsites.isNotEmpty()) {
-        // Creates a map when the campsites are loaded with the campsite's id as the key it creates
-        // a bool list which contains whether the campsite has a lottery (to prevent overriding)
-        // and whether the campsite id is in the current lottery provided to the viewModel
-        campsites.forEach { campsite ->
-            campsiteLotteryDict[campsite.id] = listOf(
-                viewModel.campsiteHasLottery(campsite.id),
-                false
-            )
+    LaunchedEffect(state.isLoading) {
+        if (!state.isLoading) {
+            campsites.addAll(viewModel.getCampsites())
+            // Creates a map when the campsites are loaded with the campsite's id as the key it creates
+            // a bool list which contains whether the campsite has a lottery (to prevent overriding)
+            // and whether the campsite id is in the current lottery provided to the viewModel
+            campsites.forEach { campsite ->
+                campsiteLotteryDict[campsite.id] = listOf(
+                    viewModel.campsiteHasLottery(campsite.id),
+                    false
+                )
+            }
         }
     }
 

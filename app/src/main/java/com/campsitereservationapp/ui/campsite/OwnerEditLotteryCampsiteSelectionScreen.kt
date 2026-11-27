@@ -23,6 +23,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.model.DateRange
+import com.campsitereservationapp.model.LotteryError
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 
 /**
@@ -49,17 +53,20 @@ fun OwnerEditLotteryCampsiteSelectionScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val campsites = remember { mutableStateListOf<Campsite>()}
+    val colourButtonContainer = MaterialTheme.colorScheme.tertiary
+    val colourButtonContent = MaterialTheme.colorScheme.onTertiary
+    val colourButtonContainerEnabled = MaterialTheme.colorScheme.primary
+    val colourButtonContentEnabled = MaterialTheme.colorScheme.onPrimary
 
     val campsiteLotteryDict: MutableMap<String, List<Boolean>> = remember { mutableStateMapOf() }
-    LaunchedEffect(state.isSaved) {
-        if (state.isSaved) {
+    LaunchedEffect(state.isSaving) {
+        if (state.isSaving) {
             navController.navigate("EditLottery/${lotteryId}")
-        } else {
-            campsites.addAll(viewModel.getCampsites())
         }
     }
     LaunchedEffect(state.isLoading) {
         if (!state.isLoading) {
+            campsites.addAll(viewModel.getCampsites())
             campsites.forEach { campsite ->
                 // Creates a map when the campsites are loaded with the campsite's id as the key it creates
                 // a bool list which contains whether the campsite has a lottery (to prevent overriding)
@@ -104,8 +111,27 @@ fun OwnerEditLotteryCampsiteSelectionScreen(
 
         ExtendedFloatingActionButton(
             onClick = {
-                viewModel.save()
-            }
+                if (campsites.isNotEmpty()) {
+                    viewModel.save()
+                    // overrides the registration period and reservation period when they error in saving.
+                    if (viewModel.getErrors().contains(LotteryError.REGISTRATION_PERIOD_IN_PAST)) {
+                        val registrationStart: LocalDate = state.registrationPeriod.start
+                        viewModel.onRegistrationPeriodChange(DateRange(registrationStart, LocalDate.now()))
+
+                        val reservationStart: LocalDate = state.reservationPeriod.start
+                        if (reservationStart.isBefore(LocalDate.now())) {
+                            val reservationPeriod = ChronoUnit.DAYS.between(reservationStart, state.reservationPeriod.start)
+                            viewModel.onReservationPeriodChange(
+                                DateRange(LocalDate.now().plusDays(1),
+                                    LocalDate.now().plusDays(reservationPeriod+1)))
+                        }
+                        viewModel.save()
+                    }
+                }
+            },
+
+            containerColor = if (campsites.isNotEmpty()) colourButtonContainerEnabled else colourButtonContainer,
+            contentColor = if (campsites.isNotEmpty()) colourButtonContentEnabled else colourButtonContent,
         ) {
             Text("NEXT")
         }

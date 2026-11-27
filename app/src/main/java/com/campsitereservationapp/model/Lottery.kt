@@ -84,10 +84,10 @@ data class Lottery(
         if (registrationPeriod.finish.isAfter(reservationPeriod.start)) {
             errors.add(LotteryError.REGISTRATION_PERIOD_AFTER_RESERVATION_PERIOD)
         }
-        if (registrationPeriod.start.isBefore(LocalDate.now())) {
+        if (registrationPeriod.finish.isBefore(LocalDate.now())) {
             errors.add(LotteryError.REGISTRATION_PERIOD_IN_PAST)
         }
-        if (reservationPeriod.start.isBefore(LocalDate.now())) {
+        if (reservationPeriod.finish.isBefore(LocalDate.now())) {
             errors.add(LotteryError.RESERVATION_PERIOD_IN_PAST)
         }
         if (!waitingList.isValid()) {

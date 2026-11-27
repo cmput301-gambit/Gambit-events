@@ -266,6 +266,10 @@ class LotteryFormViewModel(
         _uiStateC?.update { it.copy(availability = uiState.value.reservationPeriod)}
     }
 
+    fun getErrors(): List<LotteryError> {
+        return uiState.value.errors
+    }
+
     /**
      * Removes availability by sending an update to the state flow of the [CampsiteFormUiState].
      *
@@ -329,17 +333,16 @@ class LotteryFormViewModel(
             availability = uiStateC.value.availability,
         )
         _uiStateC.update { it.copy(isSaving = true, saveError = false) }
-        viewModelScope.launch {
-            campsiteRepository.update(campsite)
-            _uiStateC.update {
-                it.copy(
-                    isSaving = false,
-                    isSaved = true,
-                    errors = emptyList(),
-                    saveError = false
-                )
-            }
+        campsiteRepository.update(campsite)
+        _uiStateC.update {
+            it.copy(
+                isSaving = false,
+                isSaved = true,
+                errors = emptyList(),
+                saveError = false
+            )
         }
+
     }
 
    
@@ -370,16 +373,19 @@ class LotteryFormViewModel(
             ownerId = currentUserId
         )
 
-        var convertedStage = LotteryStatus.DRAFT
-        if (state.lotteryStage == "OPEN") {
-            convertedStage = LotteryStatus.OPEN
+        var convertedStage = baseLottery.stage
+        when (state.lotteryStage) {
+            "OPEN" -> convertedStage = LotteryStatus.OPEN
+            "DRAFT" -> convertedStage = LotteryStatus.DRAFT
+            "DRAWN" -> convertedStage = LotteryStatus.DRAWN
+            "CLOSED" -> convertedStage = LotteryStatus.CLOSED
         }
         val lottery = baseLottery.copy(
             campsiteIds = state.campsiteIds,
             registrationPeriod = state.registrationPeriod,
             reservationPeriod = state.reservationPeriod,
             winnerAmount = parsedWinnerAmount ?: 0,
-            waitingList = WaitingList(entrantCap = parsedWaitlistCapacity ?: -2),
+            waitingList = baseLottery.waitingList.copy(entrantCap = parsedWaitlistCapacity ?: -2),
             stage = convertedStage
         )
 

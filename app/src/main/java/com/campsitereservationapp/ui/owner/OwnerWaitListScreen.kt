@@ -70,13 +70,13 @@ fun OwnerWaitlistScreen(
             Log.d("delete", "Delete button pressed")
             AlertDialog(
                 onDismissRequest = viewModel::cancelRemoval,
-                title = { Text("Remove campsite?") },
+                title = { Text("Delete Lottery?") },
                 text = {
                     Text("This will permanently delete this lottery.")
                 },
                 confirmButton = {
                     TextButton(onClick = viewModel::confirmRemoval) {
-                        Text("Remove", color = MaterialTheme.colorScheme.error)
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {

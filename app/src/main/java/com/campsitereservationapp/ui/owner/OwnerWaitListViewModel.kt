@@ -87,6 +87,7 @@ class OwnerWaitlistViewModel(
      */
     fun removeLottery(lotteryId: String) {
         viewModelScope.launch {
+            lotteryRepository.get(lotteryId) ?: return@launch
             val campsiteIds = lotteryRepository.listLotteries(lotteryId=lotteryId).first().first().campsiteIds
             campsiteIds.forEach { campsiteId ->
                 updateCampsite(campsiteId, ::removeAvailability)
