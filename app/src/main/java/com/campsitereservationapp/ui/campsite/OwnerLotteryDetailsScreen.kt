@@ -126,7 +126,7 @@ fun OwnerLotteryDetailsScreen(
         // dateRangeModifier for both registration and reservation periods.
         val dateRangeModifier = Modifier
             .height(400.dp)
-            .fillMaxWidth(0.5f)
+            .fillMaxWidth(0.8f)
             .align(Alignment.CenterHorizontally)
 
         // Registration Date Period
@@ -150,24 +150,24 @@ fun OwnerLotteryDetailsScreen(
         Row ()
         {
             // Winner Amount
-            Column()
+            Column(modifier = Modifier.fillMaxWidth(0.5f))
             {
                 Text("Amount of Lottery Winners", style = MaterialTheme.typography.labelLarge)
                 OutlinedTextField(
                     value = state.winnerAmount,
                     onValueChange = viewModel::onWinnerAmountChange,
                     placeholder = { Text("Enter Winner Amount") },
-                    modifier = Modifier.fillMaxWidth(0.5f)
+                    //modifier = Modifier.fillMaxWidth()
                 )
             }
             // Waitlist Capacity
-            Column () {
+            Column (modifier = Modifier.fillMaxWidth()) {
                 Text("Capacity of waitlist (optional)", style = MaterialTheme.typography.labelLarge)
                 OutlinedTextField(
                     value = state.waitlistCapacity,
                     onValueChange = viewModel::onWaitlistCapacityChange,
                     placeholder = { Text("Enter Waitlist Maximum") },
-                    modifier = Modifier.fillMaxWidth(0.5f)
+                    //modifier = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -218,7 +218,7 @@ fun MinimalDropdownMenu(viewModel: LotteryFormViewModel, lotteryStage: MutableSt
     }
     val textFieldState = rememberTextFieldState(initialText)
 
-    val options: List<String> = listOf("DRAFT", "OPEN")
+    val options: List<String> = listOf("DRAFT", "OPEN", "DRAWN")
     var checkedIndex by rememberSaveable { mutableIntStateOf(0) }
     Box(
         modifier = Modifier
