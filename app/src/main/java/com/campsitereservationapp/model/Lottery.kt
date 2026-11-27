@@ -11,6 +11,7 @@ enum class LotteryError {
     NO_CAMPSITES,
     REGISTRATION_PERIOD_AFTER_RESERVATION_PERIOD,
     WINNER_AMOUNT_LESS_THAN_ONE,
+    CAPACITY_NOT_A_NUMBER,
     REGISTRATION_PERIOD_IN_PAST,
     RESERVATION_PERIOD_IN_PAST,
     INVALID_WAITING_LIST,
@@ -63,14 +64,15 @@ enum class LotteryStatus {
 data class Lottery(
     override val id: String = "",
     val ownerId: String = "",
-    val campsiteIds: List<String> = emptyList(),
-    val registrationPeriod: DateRange,
-    val reservationPeriod: DateRange,
+    val campsiteIds: MutableList<String> = mutableListOf(),
+    val registrationPeriod: DateRange = DateRange(LocalDate.now().plusDays(1), LocalDate.now().plusDays(5)),
+    val reservationPeriod: DateRange = DateRange(LocalDate.now().plusDays(6), LocalDate.now().plusDays(10)),
     val stage: LotteryStatus = LotteryStatus.DRAFT,
     val winnerAmount: Int = 1,
     val waitingList: WaitingList = WaitingList(),
     val sentNotifications: Boolean = false,
 ) : Identifiable {
+
     fun validate() : List<LotteryError> {
         val errors = mutableListOf<LotteryError>()
         if (winnerAmount < 1) {
@@ -82,10 +84,10 @@ data class Lottery(
         if (registrationPeriod.finish.isAfter(reservationPeriod.start)) {
             errors.add(LotteryError.REGISTRATION_PERIOD_AFTER_RESERVATION_PERIOD)
         }
-        if (registrationPeriod.start.isBefore(LocalDate.now())) {
+        if (registrationPeriod.finish.isBefore(LocalDate.now())) {
             errors.add(LotteryError.REGISTRATION_PERIOD_IN_PAST)
         }
-        if (reservationPeriod.start.isBefore(LocalDate.now())) {
+        if (reservationPeriod.finish.isBefore(LocalDate.now())) {
             errors.add(LotteryError.RESERVATION_PERIOD_IN_PAST)
         }
         if (!waitingList.isValid()) {

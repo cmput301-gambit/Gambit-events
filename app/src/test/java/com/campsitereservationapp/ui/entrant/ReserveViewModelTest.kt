@@ -66,7 +66,7 @@ class ReserveViewModelTest {
     private val closedLottery = Lottery(
         id = "lottery-pine-ridge",
         ownerId = "owner-bobby",
-        campsiteIds = listOf("campsite-pine-ridge"),
+        campsiteIds = mutableListOf("campsite-pine-ridge"),
         registrationPeriod = DateRange(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 5)),
         reservationPeriod = DateRange(LocalDate.of(2026, 11, 6), LocalDate.of(2026, 12, 31)),
         stage = LotteryStatus.CLOSED,

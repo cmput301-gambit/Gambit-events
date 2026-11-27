@@ -34,14 +34,14 @@ class LotteryTest {
 
     private fun openLottery(waitingList: WaitingList = WaitingList(), winnerAmount: Int = 1) =
         Lottery("lottery-moose", ownerId = testCampsite.ownerId,
-            campsiteIds = listOf(testCampsite.id), registrationPeriod = registrationPeriod,
+            campsiteIds = mutableListOf(testCampsite.id), registrationPeriod = registrationPeriod,
             reservationPeriod = reservationPeriod, stage = LotteryStatus.OPEN,
             winnerAmount = winnerAmount, waitingList = waitingList)
 
     @Test
     fun validLotteryHasNoErrors() {
         val lottery = Lottery("lottery1", ownerId = testCampsite.ownerId,
-            campsiteIds = listOf(testCampsite.id), registrationPeriod = registrationPeriod,
+            campsiteIds = mutableListOf(testCampsite.id), registrationPeriod = registrationPeriod,
             reservationPeriod = reservationPeriod)
         assertTrue(lottery.isValid())
     }

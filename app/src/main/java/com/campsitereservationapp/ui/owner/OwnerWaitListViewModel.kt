@@ -9,10 +9,17 @@ import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.UserRepository
+import com.campsitereservationapp.model.Campsite
+import com.campsitereservationapp.ui.campsite.CampsiteFormUiState
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
  * One of the owner's lotteries and who has joined it.
@@ -31,12 +38,16 @@ data class LotteryWaitlist(
  * Everything the owner waitlist screen needs to draw.
  *
  * @property lotteries the current owner's lotteries and their waitlists
- * @property isLoading true until the first data arrives, so the screen
- * doesn't wrongly say there are no lotteries while loading
+ * @property isLoading true until the first data arrives, so the screen doesn't
+ *   wrongly say there are no lotteries while loading
+ * @property lotteryPendingRemoval the lottery the owner tapped Remove on, waiting
+ *  for them to confirm; null when no confirmation popup is showing
+ *
  */
 data class OwnerWaitlistUiState(
     val lotteries: List<LotteryWaitlist> = emptyList(),
     val isLoading: Boolean = true,
+    val lotteryPendingRemoval: String? = null,
 )
 
 /**
@@ -60,11 +71,134 @@ data class OwnerWaitlistUiState(
  * @param currentOwnerId ID of the owner viewing the screen
  */
 class OwnerWaitlistViewModel(
-    lotteryRepository: LotteryRepository,
-    campsiteRepository: CampsiteRepository,
+    val lotteryRepository: LotteryRepository,
+    val campsiteRepository: CampsiteRepository,
     userRepository: UserRepository,
-    currentOwnerId: String,
+    val currentOwnerId: String,
 ) : ViewModel() {
+
+    // The lottery the admin tapped Remove on, until they confirm or cancel.
+    private val pendingRemovalId = MutableStateFlow<String?>(null)
+
+    /**
+     * Removes a lottery from the repository by its ID.
+     *
+     * @param lotteryId ID of the lottery to delete
+     */
+    fun removeLottery(lotteryId: String) {
+        viewModelScope.launch {
+            lotteryRepository.get(lotteryId) ?: return@launch
+            val campsiteIds = lotteryRepository.listLotteries(lotteryId=lotteryId).first().first().campsiteIds
+            campsiteIds.forEach { campsiteId ->
+                updateCampsite(campsiteId, ::removeAvailability)
+            }
+            lotteryRepository.delete(lotteryId)
+        }
+    }
+
+    /**
+     * Called when the owner taps Remove. Opens the confirmation popup
+     * instead of deleting straight away.
+     *
+     * @param lotteryId the id of the lottery the owner wants to remove.
+     */
+    fun requestRemoval(lotteryId: String) {
+        pendingRemovalId.value = lotteryId
+    }
+
+    /**
+     * Called when the owner taps Cancel or closes the popup. Nothing is deleted.
+     */
+    fun cancelRemoval() {
+        pendingRemovalId.value = null
+    }
+
+    /**
+     * Called when the owner confirms. Deletes the lottery waiting for
+     * confirmation and closes the popup. Does nothing if no removal is pending.
+     */
+    fun confirmRemoval() {
+        val lottery = pendingRemovalId.value ?: return
+        pendingRemovalId.value = null
+        removeLottery(lottery)
+    }
+
+
+    /**
+     * Removes availability by sending an update to the state flow of the [CampsiteFormUiState].
+     *
+     * @param _uiStateC is the `MutableStateFlow<CampsiteFormUiState>` which will run '.update {}'
+     * */
+    private fun removeAvailability(_uiStateC: MutableStateFlow<CampsiteFormUiState>?=null) {
+        _uiStateC?.update { it.copy(availability = null)}
+    }
+
+    /**
+     * Updates a campsite based on the passed campsite's id. This is a general update function and will
+     *  execute any specific update function passed as long as it takes a `MutableStateFlow<CampsiteFormUiState>`
+     *  to accommodate the _uiState which will be passed into it.
+     *
+     *  @param campsiteId The id of the campsite to be updated
+     *  @param update The update function to be executed by [updateCampsite]. Update function requires
+     *  taking `MutableStateFlow<CampsiteFormUiState>` as an argument so _uiState may be supplied by [updateCampsite]
+     *
+     * */
+    suspend fun updateCampsite(campsiteId: String, update: (MutableStateFlow<CampsiteFormUiState>?)-> Unit) {
+        val _uiStateC = MutableStateFlow(CampsiteFormUiState(isLoading = true))
+        val uiStateC: StateFlow<CampsiteFormUiState> = _uiStateC.asStateFlow()
+        val loaded = campsiteRepository.get(campsiteId)
+        var originalCampsite: Campsite? = null
+        originalCampsite = loaded
+        // Load in original campsite
+        if (loaded != null) {
+            _uiStateC.update {
+                it.copy(
+                    isLoading = false,
+                    loadError = false,
+                    name = loaded.name,
+                    description = loaded.description,
+                    location = loaded.location,
+                    capacity = loaded.capacity.toString(),
+                    tags = loaded.tags,
+                    latitude = loaded.latitude,
+                    longitude = loaded.longitude,
+                    availability = loaded.availability
+                )
+            }
+        }
+        val stateC = _uiStateC.value
+
+        // Update campsite
+        update(_uiStateC)
+
+        val baseCampsite = originalCampsite ?: Campsite(
+            id = campsiteId,
+            ownerId = currentOwnerId
+        )
+
+        val campsite = baseCampsite.copy(
+            name = stateC.name.trim(),
+            description = stateC.description.trim(),
+            location = stateC.location.trim(),
+            capacity = stateC.capacity.toInt(),
+            tags = stateC.tags.map { it.trim() }.filter { it.isNotEmpty() }.distinct(),
+            latitude = stateC.latitude,
+            longitude = stateC.longitude,
+            availability = uiStateC.value.availability,
+        )
+        _uiStateC.update { it.copy(isSaving = true, saveError = false) }
+        viewModelScope.launch {
+            campsiteRepository.update(campsite)
+            _uiStateC.update {
+                it.copy(
+                    isSaving = false,
+                    isSaved = true,
+                    errors = emptyList(),
+                    saveError = false
+                )
+            }
+        }
+    }
 
     /**
      * The current screen state. The screen collects this and redraws
@@ -75,7 +209,8 @@ class OwnerWaitlistViewModel(
             lotteryRepository.listLotteries(ownerId = currentOwnerId),
             campsiteRepository.observeAll(),
             userRepository.observeAll(),
-        ) { lotteries, campsites, users ->
+            pendingRemovalId,
+        ) { lotteries, campsites, users, pending ->
             val namesById = users.associate { it.id to it.name }
             OwnerWaitlistUiState(
                 lotteries = lotteries.map { lottery ->
@@ -88,15 +223,20 @@ class OwnerWaitlistViewModel(
                         entrantNames = lottery.waitingList.entrantList.map { id ->
                             namesById[id].takeUnless { it.isNullOrBlank() } ?: id
                         },
+
                     )
                 },
                 isLoading = false,
+                lotteryPendingRemoval = pending
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = OwnerWaitlistUiState(),
         )
+
+
+
 
     companion object {
         /**
