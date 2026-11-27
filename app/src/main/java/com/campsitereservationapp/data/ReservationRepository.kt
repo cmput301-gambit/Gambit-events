@@ -95,6 +95,15 @@ class ReservationRepository(dataSource: DataSource<Reservation>) :
     suspend fun deleteByCampsite(campsiteId: String): List<Reservation> =
         getAll().filter { it.campsiteId == campsiteId }.onEach { delete(it.id) }
 
+    /**
+     * Deletes every reservation for a lottery, used when the lottery is deleted.
+     *
+     * @param lotteryId the ID of the deleted lottery
+     * @return the reservations that were deleted, so their messages can be cleaned up
+     */
+    suspend fun deleteByLottery(lotteryId: String): List<Reservation> =
+        getAll().filter { it.lotteryId == lotteryId }.onEach { delete(it.id) }
+
     companion object {
         /**
          * Creates the Firestore data source for reservations, used by [AppContainer].
