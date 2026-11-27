@@ -154,24 +154,24 @@ fun EditLotteryScreen(
             Row ()
             {
                 // Winner Amount
-                Column()
+                Column(modifier = Modifier.fillMaxWidth(0.5f))
                 {
                     Text("Amount of Lottery Winners", style = MaterialTheme.typography.labelLarge)
                     OutlinedTextField(
                         value = state.winnerAmount,
                         onValueChange = viewModel::onWinnerAmountChange,
                         placeholder = { Text("Enter Winner Amount") },
-                        modifier = Modifier.fillMaxWidth(0.5f)
+                        //modifier = Modifier.fillMaxWidth(0.5f)
                     )
                 }
                 // Waitlist Capacity
-                Column () {
+                Column (modifier = Modifier.fillMaxWidth(0.5f)) {
                     Text("Capacity of waitlist (optional)", style = MaterialTheme.typography.labelLarge)
                     OutlinedTextField(
                         value = viewModel.getWaitinglistCapacity(),
                         onValueChange = viewModel::onWaitlistCapacityChange,
                         placeholder = { Text("Enter Waitlist Maximum") },
-                        modifier = Modifier.fillMaxWidth(0.5f)
+                        //modifier = Modifier.fillMaxWidth(0.5f)
                     )
                 }
             }
