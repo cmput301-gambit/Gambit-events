@@ -26,6 +26,7 @@ import com.campsitereservationapp.ui.owner.OwnerCampsiteDetailsScreen
 import com.campsitereservationapp.ui.owner.OwnerCampsiteListScreen
 import com.campsitereservationapp.ui.owner.OwnerHomeScreen
 import com.campsitereservationapp.ui.owner.OwnerWaitlistScreen
+import com.campsitereservationapp.ui.owner.NotifyWaitlistScreen
 import com.campsitereservationapp.ui.campsite.RegisterCampsiteScreen
 import com.campsitereservationapp.ui.campsite.CampsiteDetailsScreen
 import com.campsitereservationapp.ui.discovery.CampsiteListScreen
@@ -126,6 +127,13 @@ fun CampsiteAppEntry(){
         }
         composable("UserSettings") { EntrantSettingsScreen(navController) }
         composable("OwnerWaitlists") { OwnerWaitlistScreen(navController) }
+        composable(
+            route = "NotifyWaitlist/{lotteryId}",
+            arguments = listOf(navArgument("lotteryId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val lotteryId = backStackEntry.arguments?.getString("lotteryId") ?: return@composable
+            NotifyWaitlistScreen(navController, lotteryId = lotteryId)
+        }
         composable("Inbox") { InboxScreen(navController) }
         composable(
             route = "Reserve/{lotteryId}",

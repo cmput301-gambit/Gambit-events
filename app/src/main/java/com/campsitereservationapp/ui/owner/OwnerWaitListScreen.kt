@@ -131,6 +131,11 @@ private fun WaitlistSection(lottery: LotteryWaitlist, navController: NavControll
                 ) {
                     Text("Edit Lottery")
                 }
+                Button(
+                    onClick = { navController.navigate("NotifyWaitlist/${lottery.lotteryId}") }
+                ) {
+                    Text("Notify Waitlist")
+                }
             }
             Button(
                 onClick = {

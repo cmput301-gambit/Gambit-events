@@ -165,6 +165,45 @@ class FirestoreMappingTest {
     fun notification_fromMap_withMissingType_isRejected() {
         NotificationRepository.fromMap("notification-1", mapOf("message" to "Hello"))
     }
+
+    private val bobbysMessage = Notification.fromOwner(
+        id = "notification-2",
+        recipientId = "entrant-priya",
+        lotteryId = "lottery-summer-2027",
+        senderId = "owner-bobby",
+        text = "Gate opens at 3pm",
+        batchId = "batch-1",
+        sentAt = LocalDateTime.of(2027, 5, 15, 14, 5, 9),
+    )
+
+    @Test
+    fun ownerMessage_roundTrip_keepsSenderBatchAndSendTime() {
+        val map = NotificationRepository.toMap(bobbysMessage)
+
+        assertEquals(bobbysMessage, NotificationRepository.fromMap(bobbysMessage.id, map))
+        assertEquals("OWNER_MESSAGE", map["type"])
+        assertEquals("2027-05-15T14:05:09", map["sentAt"])
+    }
+
+    @Test
+    fun notification_fromOldDocument_withoutOwnerFields_stillLoads() {
+        // Saved before owner messages existed: no senderId, batchId or sentAt.
+        val old = mapOf(
+            "recipientId" to "entrant-priya",
+            "lotteryId" to "lottery-summer-2027",
+            "type" to "LOTTERY_WON",
+            "message" to "You won",
+            "createdAt" to "2027-05-15",
+            "read" to false,
+        )
+
+        val loaded = NotificationRepository.fromMap("notification-old", old)
+
+        assertEquals("", loaded.senderId)
+        assertEquals("", loaded.batchId)
+        assertNull(loaded.sentAt)
+        assertEquals(LocalDate.of(2027, 5, 15), loaded.createdAt)
+    }
     // ---------- Lottery ----------
 
     private val mooseLottery = Lottery(
