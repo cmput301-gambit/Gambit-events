@@ -1,5 +1,8 @@
 package com.campsitereservationapp.ui.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,9 +30,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -46,7 +51,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.R
 import com.campsitereservationapp.model.User
+import com.campsitereservationapp.ui.components.loadJpegBytes
+import com.campsitereservationapp.ui.components.rememberImageBitmap
 import com.campsitereservationapp.ui.theme.CampsiteReservationAppTheme
+import kotlinx.coroutines.launch
 
 /**
  * Screen coinciding with M11
@@ -58,6 +66,21 @@ fun EntrantSettingsScreen(
     viewModel: EntrantSettingsViewModel = viewModel(factory = EntrantSettingsViewModel.Companion.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    val imageBitmap = rememberImageBitmap(state.currentProfileImage)
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // The photo is shrunk and read right away, so no long-lived URI permission is needed.
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                //loadJpegBytes(context, uri)?.let { viewModel.onProfilePicturePicked(it) }
+            }
+        }
+    }
 
     EntrantSettingsContent(
         state = state,

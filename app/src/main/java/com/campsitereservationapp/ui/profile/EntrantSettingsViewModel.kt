@@ -7,12 +7,15 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
+import com.campsitereservationapp.data.ImageRepository
 import com.campsitereservationapp.data.UserRepository
+import com.campsitereservationapp.model.Image
 import com.campsitereservationapp.model.User
 import com.campsitereservationapp.service.CascadeDeleter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -32,10 +35,13 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 data class EntrantSettingsState(
     val currentUser: User = User(),
+    val currentProfileImage: String? = null,
+    val isLoading: Boolean = false,
     val isUpdateUserOpen: Boolean = false,
     val isDeleteConfirmOpen: Boolean = false,
     val accountDeleted: Boolean = false,
     val deleteError: String? = null,
+    val updateError: String? = null,
 )
 
 /**
@@ -53,7 +59,7 @@ data class EntrantSettingsState(
  *
  * **Outstanding issues:** Currently the default screen, when it should be determined by the
  * current users roles. Because a profile is tied to the device ID, opening the
- * app again after deleting starts a fresh, empty profile.
+ * app again after deleting starts a fresh, empty profile. The screen will not update if the displayed image is removed by the admin.
  *
  * @property userRepository The shared repository users come from
  * @property currentUserId The id of the current user as a string
@@ -64,56 +70,63 @@ class EntrantSettingsViewModel(
     private val userRepository: UserRepository,
     private val currentUserId: String,
     private val cascadeDeleter: CascadeDeleter? = null,
+    private val imageRepository: ImageRepository,
 ) : ViewModel() {
 
     //Name to be displayed on screen
-    private val currentUser : MutableStateFlow<User> = MutableStateFlow(
-        User()
-    )
+//    private val currentUser : MutableStateFlow<User> = MutableStateFlow(
+//        User()
+//    )
 
-    private val isUpdateUserOpen : MutableStateFlow<Boolean> = MutableStateFlow(
-        false
-    )
+//    private val isUpdateUserOpen : MutableStateFlow<Boolean> = MutableStateFlow(
+//        false
+//    )
 
     // Account deletion steps (US 01.08.01).
-    private val isDeleteConfirmOpen = MutableStateFlow(false)
-    private val accountDeleted = MutableStateFlow(false)
-    private val deleteError = MutableStateFlow<String?>(null)
+//    private val isDeleteConfirmOpen = MutableStateFlow(false)
+//    private val accountDeleted = MutableStateFlow(false)
+//    private val deleteError = MutableStateFlow<String?>(null)
+
+    private var isProfileImageUpdated: Boolean = false
+    private var newProfileImageId: String? = null
     //Updating the user based on values from the userRepository. When the first time launch screen
     //is done, this should always return a real name instead of a blank or the device ID.
     init {
         viewModelScope.launch {
             val user: User = userRepository.getOrCreate(currentUserId)
-            currentUser.update { user }
+            val img: String? = loadProfilePicture(user.profileImageId)
+            _uiState.update { it.copy(currentUser = user, isLoading = false, currentProfileImage = img) }
         }
     }
+
+    val _uiState = MutableStateFlow(EntrantSettingsState( isLoading = true))
 
     /**
      * The current screen state. The screen collects this and redraws
      * every time it changes.
      */
-    val uiState: StateFlow<EntrantSettingsState> =
+    val uiState: StateFlow<EntrantSettingsState> = _uiState.asStateFlow()
 
-        combine(
-            userRepository.observe(currentUserId),
-            isUpdateUserOpen,
-            isDeleteConfirmOpen,
-            accountDeleted,
-            deleteError,
-        ) { newUser, updateOpen, deleteOpen, deleted, error ->
-            EntrantSettingsState(
-                currentUser = newUser ?: User(),
-                isUpdateUserOpen = updateOpen,
-                isDeleteConfirmOpen = deleteOpen,
-                accountDeleted = deleted,
-                deleteError = error,
-            )
-        }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = EntrantSettingsState(),
-            )
+//        combine(
+//            userRepository.observe(currentUserId),
+//            isUpdateUserOpen,
+//            isDeleteConfirmOpen,
+//            accountDeleted,
+//            deleteError,
+//        ) { newUser, updateOpen, deleteOpen, deleted, error ->
+//            EntrantSettingsState(
+//                currentUser = newUser ?: User(),
+//                isUpdateUserOpen = updateOpen,
+//                isDeleteConfirmOpen = deleteOpen,
+//                accountDeleted = deleted,
+//                deleteError = error,
+//            )
+//        }
+//            .stateIn(
+//                scope = viewModelScope,
+//                started = SharingStarted.WhileSubscribed(5_000),
+//                initialValue = EntrantSettingsState(),
+//            )
 
     fun updateUserDetails(
             newName: String? = null,
@@ -123,9 +136,9 @@ class EntrantSettingsViewModel(
             newNotificationsEnabled: Boolean? = null,
             ){
         viewModelScope.launch {
+            try{
                 val current = userRepository.getOrCreate(currentUserId)
-                println("Current = $current")
-                println("hasNotif? = $newNotificationsEnabled")
+
                 userRepository.update(
                     current.copy(
                         name = newName ?: current.name,
@@ -135,12 +148,32 @@ class EntrantSettingsViewModel(
                         notificationsEnabled = newNotificationsEnabled ?: current.notificationsEnabled
                     )
                 )
-            println("Current = ${userRepository.getOrCreate(currentUserId)}")
+
+                _uiState.update { it.copy(currentUser = userRepository.getOrCreate(currentUserId)) }
+
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e("EntrantSettings", "Failed to update profile $currentUserId")
+                    _uiState.update { it.copy(updateError = "Couldn't update your account. Check your connection and try again.") }
+                    //deleteError.value = "Couldn't delete your account. Check your connection and try again."
+                }
             }
         }
 
+    /**
+     * Shows a newly picked poster in the form. It's uploaded when the form is saved.
+     *
+     * @param jpegBytes the shrunk JPEG picture, from
+     *   [com.campsitereservationapp.ui.components.loadJpegBytes]
+     */
+//    fun onProfilePicturePicked(jpegBytes: ByteArray) {
+//        prof = true
+//        newProfileImageId = imageRepository.newId()
+//        _uiState.update { it.copy(posterImage = Image.encode(jpegBytes), saveError = false) }
+//    }
+
     fun toggleReceiveNotifications(){
-        println("Toggling user")
         viewModelScope.launch {
             updateUserDetails(
                 newNotificationsEnabled = !userRepository.getOrCreate(currentUserId).notificationsEnabled
@@ -149,7 +182,7 @@ class EntrantSettingsViewModel(
     }
 
     fun toggleUpdateUserOpen(){
-        isUpdateUserOpen.update { !it }
+        _uiState.update { it.copy(isUpdateUserOpen = !_uiState.value.isUpdateUserOpen) }
     }
 
     /**
@@ -157,18 +190,26 @@ class EntrantSettingsViewModel(
      * instead of deleting straight away (US 01.08.01).
      */
     fun requestDeleteAccount() {
-        deleteError.value = null
-        isDeleteConfirmOpen.value = true
+        _uiState.update {
+            it.copy(
+                deleteError = null,
+                isDeleteConfirmOpen = true
+            )
+        }
+//        deleteError.value = null
+//        isDeleteConfirmOpen.value = true
     }
 
     /** Called when the user taps Cancel or closes the popup. Nothing is deleted. */
     fun cancelDeleteAccount() {
-        isDeleteConfirmOpen.value = false
+        //isDeleteConfirmOpen.value = false
+        _uiState.update { it.copy(isDeleteConfirmOpen = false) }
     }
 
     /** Hides the "couldn't delete" message. */
     fun dismissDeleteError() {
-        deleteError.value = null
+        //deleteError.value = null
+        _uiState.update { it.copy(deleteError = null) }
     }
 
     /**
@@ -179,18 +220,31 @@ class EntrantSettingsViewModel(
      */
     fun confirmDeleteAccount() {
         val deleter = cascadeDeleter ?: return
-        isDeleteConfirmOpen.value = false
+        _uiState.update { it.copy(isDeleteConfirmOpen = false) }
+        //isDeleteConfirmOpen.value = false
         viewModelScope.launch {
             try {
                 deleter.deleteProfile(currentUserId)
-                accountDeleted.value = true
+                _uiState.update { it.copy(accountDeleted = true) }
+                //accountDeleted.value = true
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e("EntrantSettings", "Failed to delete profile $currentUserId", e)
-                deleteError.value = "Couldn't delete your account. Check your connection and try again."
+                _uiState.update { it.copy(deleteError = "Couldn't delete your account. Check your connection and try again.") }
+                //deleteError.value = "Couldn't delete your account. Check your connection and try again."
             }
         }
+    }
+
+    // Loads a saved poster's picture. Old campsites may hold a phone-only
+    // link instead of an image ID; those show no poster.
+    private suspend fun loadProfilePicture(imageId: String?): String? = try {
+        imageRepository.find(imageId)?.data
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
     }
 
 
@@ -210,6 +264,7 @@ class EntrantSettingsViewModel(
                     app.container.userRepository,
                     app.container.currentUserId,
                     app.container.cascadeDeleter,
+                    app.container.imageRepository,
                 )
             }
         }
