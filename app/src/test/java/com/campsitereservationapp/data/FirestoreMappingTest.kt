@@ -170,7 +170,7 @@ class FirestoreMappingTest {
     private val mooseLottery = Lottery(
         id = "lottery-moose-summer",
         ownerId = "owner-jill",
-        campsiteIds = listOf("campsite-moose-meadow", "campsite-aspen-hollow"),
+        campsiteIds = mutableListOf("campsite-moose-meadow", "campsite-aspen-hollow"),
         registrationPeriod = DateRange(LocalDate.of(2027, 5, 1), LocalDate.of(2027, 5, 14)),
         reservationPeriod = DateRange(LocalDate.of(2027, 6, 1), LocalDate.of(2027, 8, 31)),
         stage = LotteryStatus.CLOSED,

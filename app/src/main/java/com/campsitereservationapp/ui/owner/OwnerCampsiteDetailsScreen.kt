@@ -18,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -46,9 +48,11 @@ fun OwnerCampsiteDetailsScreen(
     viewModel: CampsiteDetailsViewModel = viewModel(factory = CampsiteDetailsViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsState()
+    val lotteryId = remember { mutableStateOf<String?>("")}
 
     LaunchedEffect(campsiteId) {
         viewModel.updateViewedCampSiteId(campsiteId)
+        lotteryId.value = viewModel.getLotteryIdByCampsiteId(campsiteId)
     }
 
     Column(
@@ -126,7 +130,11 @@ fun OwnerCampsiteDetailsScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             OutlinedButton(
-                onClick = { /* Placeholder for Edit Lottery story */ },
+                onClick = {
+                    if (lotteryId.value != "null") {
+                        navController.navigate("EditLottery/${lotteryId.value}")
+                    }
+                },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Edit Lottery")

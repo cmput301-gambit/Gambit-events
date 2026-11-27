@@ -51,7 +51,7 @@ class LotteryRepositoryTest {
         val lottery = Lottery(
             id = "lottery-101",
             ownerId = "owner-dana",
-            campsiteIds = listOf("camp-alpha"),
+            campsiteIds = mutableListOf("camp-alpha"),
             registrationPeriod = regPeriod,
             reservationPeriod = resPeriod,
             stage = LotteryStatus.OPEN
@@ -70,7 +70,7 @@ class LotteryRepositoryTest {
         val lottery = Lottery(
             id = "lottery-102",
             ownerId = "owner-dana",
-            campsiteIds = listOf("camp-alpha", "camp-beta"),
+            campsiteIds = mutableListOf("camp-alpha", "camp-beta"),
             registrationPeriod = regPeriod,
             reservationPeriod = resPeriod,
             stage = LotteryStatus.OPEN
@@ -89,14 +89,14 @@ class LotteryRepositoryTest {
         val lottery1 = Lottery(
             id = "lottery-1",
             ownerId = "owner-dana",
-            campsiteIds = listOf("camp-alpha"),
+            campsiteIds = mutableListOf("camp-alpha"),
             registrationPeriod = regPeriod,
             reservationPeriod = resPeriod
         )
         val lottery2 = Lottery(
             id = "lottery-2",
             ownerId = "owner-dana",
-            campsiteIds = listOf("camp-beta"),
+            campsiteIds = mutableListOf("camp-beta"),
             registrationPeriod = regPeriod,
             reservationPeriod = resPeriod
         )
@@ -111,7 +111,7 @@ class LotteryRepositoryTest {
     }
 
     private fun openLotteryWith(entrants: List<String>) = Lottery(
-        id = "lottery-moose", ownerId = "owner-jill", campsiteIds = listOf("camp-alpha"),
+        id = "lottery-moose", ownerId = "owner-jill", campsiteIds = mutableListOf("camp-alpha"),
         registrationPeriod = regPeriod, reservationPeriod = resPeriod,
         stage = LotteryStatus.OPEN, winnerAmount = 1,
         waitingList = WaitingList(entrantList = entrants, entrantCap = 2, isFull = entrants.size == 2),
@@ -158,7 +158,7 @@ class LotteryRepositoryTest {
 
     private fun summerLottery(registrationEnds: LocalDate) = Lottery(
         id = "lottery-pine-summer", ownerId = "owner-bobby",
-        campsiteIds = listOf("campsite-pine-ridge"),
+        campsiteIds = mutableListOf("campsite-pine-ridge"),
         registrationPeriod = DateRange(LocalDate.of(2027, 5, 1), registrationEnds),
         reservationPeriod = DateRange(LocalDate.of(2027, 6, 1), LocalDate.of(2027, 6, 30)),
         stage = LotteryStatus.OPEN, winnerAmount = 2,
