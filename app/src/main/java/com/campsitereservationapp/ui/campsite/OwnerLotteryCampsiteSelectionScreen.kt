@@ -53,6 +53,10 @@ fun OwnerLotteryCampsiteSelectionScreen(
     val state by viewModel.uiState.collectAsState()
     val campsites = remember { mutableStateListOf<Campsite>()}
     val campsiteLotteryDict: MutableMap<String, List<Boolean>> = remember { mutableStateMapOf() }
+    val colourButtonContainer = MaterialTheme.colorScheme.tertiary
+    val colourButtonContent = MaterialTheme.colorScheme.onTertiary
+    val colourButtonContainerEnabled = MaterialTheme.colorScheme.primary
+    val colourButtonContentEnabled = MaterialTheme.colorScheme.onPrimary
 
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
@@ -107,7 +111,9 @@ fun OwnerLotteryCampsiteSelectionScreen(
         ExtendedFloatingActionButton(
             onClick = {
                 navController.navigate("OwnerLotteryDetails")
-            }
+            },
+            containerColor = if (campsites.isNotEmpty()) colourButtonContainerEnabled else colourButtonContainer,
+            contentColor = if (campsites.isNotEmpty()) colourButtonContentEnabled else colourButtonContent,
         ) {
             Text("NEXT")
         }
@@ -132,7 +138,7 @@ fun CampsiteRow(campsite: Campsite, viewModel: LotteryFormViewModel, campsiteLot
                     lotteryConflict.value = false
                 } else {
                     // Check if campsite is already in a lottery
-                    if (campsiteLotteryDict[campsite.id]?.get(0) == false) {
+                    if (campsiteLotteryDict[campsite.id]?.get(0) == false || campsiteLotteryDict[campsite.id]?.get(1) == true) {
                         viewModel.onCampsitesChangeAdd(campsite.id)
                     } else {
                         lotteryConflict.value = true

@@ -45,6 +45,7 @@ import androidx.navigation.NavController
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.LotteryError
+import com.campsitereservationapp.model.LotteryStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -126,7 +127,7 @@ fun OwnerLotteryDetailsScreen(
         // dateRangeModifier for both registration and reservation periods.
         val dateRangeModifier = Modifier
             .height(400.dp)
-            .fillMaxWidth(0.5f)
+            .fillMaxWidth(0.8f)
             .align(Alignment.CenterHorizontally)
 
         // Registration Date Period
@@ -150,30 +151,37 @@ fun OwnerLotteryDetailsScreen(
         Row ()
         {
             // Winner Amount
-            Column()
+            Column(modifier = Modifier.fillMaxWidth(0.5f))
             {
                 Text("Amount of Lottery Winners", style = MaterialTheme.typography.labelLarge)
                 OutlinedTextField(
                     value = state.winnerAmount,
                     onValueChange = viewModel::onWinnerAmountChange,
                     placeholder = { Text("Enter Winner Amount") },
-                    modifier = Modifier.fillMaxWidth(0.5f)
+                    //modifier = Modifier.fillMaxWidth()
                 )
             }
             // Waitlist Capacity
-            Column () {
+            Column (modifier = Modifier.fillMaxWidth()) {
                 Text("Capacity of waitlist (optional)", style = MaterialTheme.typography.labelLarge)
                 OutlinedTextField(
                     value = state.waitlistCapacity,
                     onValueChange = viewModel::onWaitlistCapacityChange,
                     placeholder = { Text("Enter Waitlist Maximum") },
-                    modifier = Modifier.fillMaxWidth(0.5f)
+                    //modifier = Modifier.fillMaxWidth()
                 )
             }
         }
 
         MinimalDropdownMenu(viewModel)
-
+        if (state.lotteryStage=="DRAWN") {
+            Text(
+                text = "Cannot start a lottery in the DRAWN stage. Create an OPEN lottery first.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(vertical = 2.dp)
+            )
+        }
         // Display Validation Errors
         if (state.errors.isNotEmpty()) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -191,7 +199,7 @@ fun OwnerLotteryDetailsScreen(
 
         if (state.saveError) {
             Text(
-                text = "Failed to save campsite. Please try again.",
+                text = "Failed to save Lottery. Please try again.",
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -199,7 +207,11 @@ fun OwnerLotteryDetailsScreen(
         }
 
         Button(
-            onClick = { viewModel.save() },
+            onClick = {
+                if (state.lotteryStage!="DRAWN") {
+                    viewModel.save()
+                }
+            },
             enabled = !state.isSaving,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -218,7 +230,7 @@ fun MinimalDropdownMenu(viewModel: LotteryFormViewModel, lotteryStage: MutableSt
     }
     val textFieldState = rememberTextFieldState(initialText)
 
-    val options: List<String> = listOf("DRAFT", "OPEN")
+    val options: List<String> = listOf("DRAFT", "OPEN", "DRAWN")
     var checkedIndex by rememberSaveable { mutableIntStateOf(0) }
     Box(
         modifier = Modifier

@@ -68,6 +68,7 @@ fun OwnerEditLotteryCampsiteSelectionScreen(
         if (!state.isLoading) {
             campsites.addAll(viewModel.getCampsites())
             campsites.forEach { campsite ->
+                //viewModel.startingCampsiteIds.add(campsite.id)
                 // Creates a map when the campsites are loaded with the campsite's id as the key it creates
                 // a bool list which contains whether the campsite has a lottery (to prevent overriding)
                 // and whether the campsite id is in the current lottery provided to the viewModel.
