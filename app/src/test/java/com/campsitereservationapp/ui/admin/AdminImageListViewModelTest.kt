@@ -1,13 +1,21 @@
 package com.campsitereservationapp.ui.admin
 
+import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.ImageRepository
+import com.campsitereservationapp.data.LotteryRepository
+import com.campsitereservationapp.data.MessageRepository
 import com.campsitereservationapp.data.MockDataSource
+import com.campsitereservationapp.data.NotificationRepository
+import com.campsitereservationapp.data.RatingRepository
+import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.UserRepository
+import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteOwner
 import com.campsitereservationapp.model.Entrant
 import com.campsitereservationapp.model.Image
 import com.campsitereservationapp.model.ImageKind
 import com.campsitereservationapp.model.User
+import com.campsitereservationapp.service.CascadeDeleter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -21,6 +29,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -31,7 +40,9 @@ import org.junit.Test
  *
  * **Purpose:** checks the admin sees every uploaded image with the uploader's
  * name and user ID, in a stable order, and that the list stays live
- * (US 03.06.01).
+ * (US 03.06.01). Also checks that Remove asks for confirmation first, that
+ * cancelling keeps the image, and that confirming deletes only that image and
+ * clears it from its campsite (US 03.03.01).
  *
  * **Design rationale:** repositories backed by [MockDataSource], so nothing
  * touches Firestore. The image data is short made-up Base64 text, since the
@@ -50,6 +61,11 @@ class AdminImageListViewModelTest {
     private val jillPoster = Image("image-aspen-hollow", "owner-jill", ImageKind.CAMPSITE, "campsite-aspen-hollow", "/9j/4AAQSkZJRgABAw==")
     private val trollProfile = Image("image-troll-face", "entrant-troll", ImageKind.PROFILE, "entrant-troll", "/9j/4AAQSkZJRgABBA==")
     private val goneProfile = Image("image-gone-face", "entrant-gone", ImageKind.PROFILE, "entrant-gone", "/9j/4AAQSkZJRgABBQ==")
+    private val pineRidge = Campsite(
+        "campsite-pine-ridge", ownerId = "owner-bobby", name = "Pine Ridge", capacity = 6,
+        posterImageId = "image-pine-ridge",
+    )
+    private lateinit var campsiteRepository: CampsiteRepository
 
     @Before
     fun setUp() {
@@ -71,7 +87,18 @@ class AdminImageListViewModelTest {
             User("owner-jill", name = "jill Tremblay", owner = CampsiteOwner("owner-jill")),
             User("entrant-troll", name = "   ", entrant = Entrant("entrant-troll")),
         )))
-        viewModel = AdminImageListViewModel(imageRepository, userRepository)
+        campsiteRepository = CampsiteRepository(MockDataSource(listOf(pineRidge)))
+        val deleter = CascadeDeleter(
+            userRepository,
+            campsiteRepository,
+            LotteryRepository(MockDataSource(), campsiteRepository),
+            ReservationRepository(MockDataSource()),
+            NotificationRepository(MockDataSource()),
+            RatingRepository(MockDataSource()),
+            MessageRepository(MockDataSource()),
+            imageRepository,
+        )
+        viewModel = AdminImageListViewModel(imageRepository, userRepository, deleter)
     }
 
     private fun TestScope.startCollecting() {
@@ -151,5 +178,49 @@ class AdminImageListViewModelTest {
 
         assertTrue(viewModel.uiState.value.images.isEmpty())
         assertFalse(viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun tappingRemove_asksFirstAndDeletesNothing() = runTest {
+        createViewModel()
+        startCollecting()
+        advanceUntilIdle()
+
+        viewModel.requestRemoval(rowFor(bobbyPoster))
+        advanceUntilIdle()
+
+        assertEquals(bobbyPoster, viewModel.uiState.value.imagePendingRemoval?.image)
+        assertNotNull(imageRepository.get(bobbyPoster.id))
+    }
+
+    @Test
+    fun cancelling_keepsTheImage() = runTest {
+        createViewModel()
+        startCollecting()
+        advanceUntilIdle()
+
+        viewModel.requestRemoval(rowFor(bobbyPoster))
+        viewModel.cancelRemoval()
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.imagePendingRemoval)
+        assertNotNull(imageRepository.get(bobbyPoster.id))
+    }
+
+    @Test
+    fun confirming_deletesOnlyThatImageAndClearsTheCampsitePoster() = runTest {
+        createViewModel()
+        startCollecting()
+        advanceUntilIdle()
+
+        viewModel.requestRemoval(rowFor(bobbyPoster))
+        viewModel.confirmRemoval()
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.imagePendingRemoval)
+        assertNull(imageRepository.get(bobbyPoster.id))
+        assertEquals(4, viewModel.uiState.value.images.size)
+        assertNull(campsiteRepository.get(pineRidge.id)?.posterImageId)
+        assertNull(viewModel.uiState.value.errorMessage)
     }
 }
