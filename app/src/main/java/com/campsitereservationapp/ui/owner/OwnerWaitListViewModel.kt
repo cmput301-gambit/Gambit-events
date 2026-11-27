@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
+import com.campsitereservationapp.data.MessageRepository
 import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
@@ -76,7 +77,8 @@ class OwnerWaitlistViewModel(
     val campsiteRepository: CampsiteRepository,
     userRepository: UserRepository,
     val currentOwnerId: String,
-    val reservationRepository: ReservationRepository
+    val reservationRepository: ReservationRepository,
+    val messageRepository: MessageRepository
 ) : ViewModel() {
 
     // The lottery the admin tapped Remove on, until they confirm or cancel.
@@ -94,7 +96,11 @@ class OwnerWaitlistViewModel(
             campsiteIds.forEach { campsiteId ->
                 updateCampsite(campsiteId, ::removeAvailability)
             }
-            reservationRepository.deleteByLottery(lotteryId)
+
+            val reservationList = reservationRepository.deleteByLottery(lotteryId)
+            reservationList.forEach {reservation ->
+                messageRepository.deleteByReservation(reservation.id)
+            }
             lotteryRepository.delete(lotteryId)
         }
     }
@@ -254,7 +260,8 @@ class OwnerWaitlistViewModel(
                     app.container.campsiteRepository,
                     app.container.userRepository,
                     app.container.currentUserId,
-                    app.container.reservationRepository
+                    app.container.reservationRepository,
+                    app.container.messageRepository
                 )
             }
         }
