@@ -1,12 +1,14 @@
 package com.campsitereservationapp.service
 
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.ImageRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MessageRepository
 import com.campsitereservationapp.data.NotificationRepository
 import com.campsitereservationapp.data.RatingRepository
 import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.UserRepository
+import com.campsitereservationapp.model.ImageKind
 import com.campsitereservationapp.model.User
 
 /**
@@ -18,6 +20,7 @@ import com.campsitereservationapp.model.User
  * - US 01.08.01: an entrant deletes their own profile ([deleteProfile])
  * - US 03.02.01: an admin removes a profile ([deleteProfile])
  * - US 03.07.01: an admin removes a campsite owner who broke the rules ([removeOwner])
+ * - US 03.03.01: an admin removes an image ([deleteImage])
  *
  * **Design rationale:** a cascade touches many collections, so it doesn't
  * belong to any single repository (the same reason [NotificationHandler] lives
@@ -40,6 +43,7 @@ import com.campsitereservationapp.model.User
  * @property notificationRepository where notifications are kept
  * @property ratingRepository where campsite ratings are kept
  * @property messageRepository where owner and entrant messages are kept
+ * @property imageRepository where campsite posters and profile pictures are kept
  */
 class CascadeDeleter(
     private val userRepository: UserRepository,
@@ -49,13 +53,14 @@ class CascadeDeleter(
     private val notificationRepository: NotificationRepository,
     private val ratingRepository: RatingRepository,
     private val messageRepository: MessageRepository,
+    private val imageRepository: ImageRepository,
 ) {
 
     /**
      * Deletes a profile and everything that belongs to it (US 01.08.01, 03.02.01).
      *
      * Removes the user from every lottery waiting list, deletes their
-     * reservations, messages, notifications and ratings, and, if they own
+     * reservations, messages, notifications, ratings and profile picture, and, if they own
      * campsites, those campsites and lotteries too. The profile itself is
      * deleted last.
      *
@@ -73,6 +78,7 @@ class CascadeDeleter(
         messageRepository.deleteInvolving(userId)
         notificationRepository.deleteForUser(userId)
         ratingRepository.deleteByUser(userId)
+        imageRepository.deleteByTarget(userId)
 
         userRepository.delete(userId)
     }
@@ -94,7 +100,7 @@ class CascadeDeleter(
 
     /**
      * Deletes a campsite and everything that depends on it: lotteries that
-     * only list this campsite, its reservations and their messages, and its ratings.
+     * only list this campsite, its reservations and their messages, its ratings and its poster.
      * Lotteries shared with other campsites just drop this one from their list.
      *
      * @param campsiteId the ID of the campsite to delete
@@ -105,7 +111,28 @@ class CascadeDeleter(
             messageRepository.deleteByReservation(reservation.id)
         }
         ratingRepository.deleteByCampsite(campsiteId)
+        imageRepository.deleteByTarget(campsiteId)
         campsiteRepository.delete(campsiteId)
+    }
+
+    /**
+     * Deletes an image and clears it from the campsite or profile that shows
+     * it (US 03.03.01), so nothing points at a missing picture.
+     * Does nothing if the image doesn't exist.
+     *
+     * @param imageId the ID of the image to delete
+     */
+    suspend fun deleteImage(imageId: String) {
+        val image = imageRepository.get(imageId) ?: return
+        when (image.kind) {
+            ImageKind.CAMPSITE -> campsiteRepository.get(image.targetId)
+                ?.takeIf { it.posterImageId == imageId }
+                ?.let { campsiteRepository.update(it.copy(posterImageId = null)) }
+            ImageKind.PROFILE -> userRepository.get(image.targetId)
+                ?.takeIf { it.profileImageId == imageId }
+                ?.let { userRepository.update(it.copy(profileImageId = null)) }
+        }
+        imageRepository.delete(imageId)
     }
 
     // Deletes every campsite and lottery an owner created.

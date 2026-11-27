@@ -1,6 +1,7 @@
 package com.campsitereservationapp.ui.profile
 
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.ImageRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MessageRepository
 import com.campsitereservationapp.data.MockDataSource
@@ -69,6 +70,7 @@ class EntrantSettingsDeleteAccountTest {
             NotificationRepository(MockDataSource()),
             ratingRepository,
             MessageRepository(MockDataSource()),
+            ImageRepository(MockDataSource()),
         )
         viewModel = EntrantSettingsViewModel(userRepository, "entrant-priya", deleter)
     }

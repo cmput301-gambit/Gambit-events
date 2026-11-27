@@ -38,6 +38,15 @@ abstract class Repository<T : Identifiable>(private val dataSource: DataSource<T
     open fun observeWhere(filter: Filter<T>): Flow<List<T>> = dataSource.observeWhere(filter)
 
     /**
+     * Returns the items that match a filter right now, without watching for changes.
+     * In Firestore the filter runs on the server, so only matching items are downloaded.
+     *
+     * @param filter the condition items must meet
+     * @return a snapshot of the matching items
+     */
+    open suspend fun getWhere(filter: Filter<T>): List<T> = dataSource.getWhere(filter)
+
+    /**
      * Returns every item in the repository right now, without watching for changes.
      *
      * @return a snapshot of the current list

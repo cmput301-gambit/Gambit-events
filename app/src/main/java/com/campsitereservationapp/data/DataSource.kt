@@ -36,6 +36,14 @@ interface DataSource<T : Identifiable> {
     fun observeWhere(filter: Filter<T>): Flow<List<T>>
 
     /**
+     * Returns the items that match a filter right now, without watching for changes.
+     *
+     * @param filter the condition items must meet
+     * @return a snapshot of the matching items
+     */
+    suspend fun getWhere(filter: Filter<T>): List<T>
+
+    /**
      * Returns every item right now, without watching for changes.
      *
      * @return a snapshot of all items

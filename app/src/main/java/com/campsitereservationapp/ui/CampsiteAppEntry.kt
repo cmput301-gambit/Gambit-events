@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.campsitereservationapp.ui.admin.AdminBrowseCampsitesScreen
 import com.campsitereservationapp.ui.admin.AdminCampsiteListScreen
 import com.campsitereservationapp.ui.admin.AdminHomeScreen
+import com.campsitereservationapp.ui.admin.AdminImageListScreen
 import com.campsitereservationapp.ui.admin.AdminProfileListScreen
 import com.campsitereservationapp.ui.admin.AdminRatingListScreen
 import com.campsitereservationapp.ui.campsite.BookedDatesScreen
@@ -77,6 +78,7 @@ fun CampsiteAppEntry(){
         composable("AdminCampsiteList") { AdminCampsiteListScreen(navController) }
         composable("AdminProfileList") { AdminProfileListScreen(navController) }
         composable("AdminRatingList") { AdminRatingListScreen(navController) }
+        composable("AdminImageList") { AdminImageListScreen(navController) }
         composable("EntrantCampsiteSearch") { CampsiteListScreen(navController) }
         composable(
             route = "EntrantCampsiteDetails/{campsiteId}",

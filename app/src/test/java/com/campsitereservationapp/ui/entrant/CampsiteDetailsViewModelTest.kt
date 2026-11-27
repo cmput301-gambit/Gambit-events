@@ -1,6 +1,7 @@
 package com.campsitereservationapp.ui.entrant
 
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.ImageRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.data.MessageRepository
@@ -59,6 +60,7 @@ class CampsiteDetailsViewModelTest {
                 NotificationRepository(MockDataSource()),
                 ratingRepository,
                 MessageRepository(MockDataSource()),
+                ImageRepository(MockDataSource()),
             ))
     }
 

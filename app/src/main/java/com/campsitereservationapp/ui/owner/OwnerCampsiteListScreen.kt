@@ -1,6 +1,5 @@
 package com.campsitereservationapp.ui.owner
 
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,7 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.R
-import com.campsitereservationapp.ui.campsite.rememberBitmapFromUri
+import com.campsitereservationapp.ui.components.rememberImageBitmap
 
 /**
  * Screen listing all campsites registered by the owner matching the design mockup (US 02.03.01).
@@ -171,8 +170,7 @@ private fun OwnerCampsiteCardItem(
     onViewMore: () -> Unit
 ) {
     val campsite = item.campsite
-    val imageUri = campsite.posterImageId?.let { Uri.parse(it) }
-    val imageBitmap = rememberBitmapFromUri(imageUri)
+    val imageBitmap = rememberImageBitmap(item.posterImage)
 
     Card(
         modifier = Modifier.fillMaxWidth(),

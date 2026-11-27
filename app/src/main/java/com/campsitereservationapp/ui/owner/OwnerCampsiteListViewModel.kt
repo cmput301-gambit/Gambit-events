@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.ImageRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.LotteryStatus
@@ -20,10 +21,12 @@ import kotlinx.coroutines.flow.stateIn
  *
  * @property campsite the campsite entity
  * @property hasActiveLottery true if the campsite is currently part of an active/open lottery
+ * @property posterImage the campsite's poster as Base64 JPEG text, or null if it has none
  */
 data class OwnerCampsiteItem(
     val campsite: Campsite,
     val hasActiveLottery: Boolean,
+    val posterImage: String? = null,
 )
 
 /**
@@ -40,7 +43,8 @@ data class OwnerCampsiteListUiState(
 /**
  * ViewModel for the owner's campsite list screen (US 02.03.01).
  *
- * **Purpose:** connects to [CampsiteRepository.observeByOwner] and [LotteryRepository.observeAll]
+ * **Purpose:** connects to [CampsiteRepository.observeByOwner], [LotteryRepository.observeAll]
+ * and [ImageRepository.observeByUploader] (the owner's campsite posters)
  * to display all campsites registered by the currently logged-in owner and determine active lottery status.
  *
  * **Design rationale:** MVVM. Subscribes to live owner campsite and lottery data so the list
@@ -50,11 +54,13 @@ data class OwnerCampsiteListUiState(
  *
  * @property campsiteRepository the shared repository providing campsite data
  * @property lotteryRepository the shared repository providing lottery data
+ * @property imageRepository the shared repository providing campsite posters
  * @property currentUserId ID of the logged-in campsite owner
  */
 class OwnerCampsiteListViewModel(
     private val campsiteRepository: CampsiteRepository,
     private val lotteryRepository: LotteryRepository,
+    private val imageRepository: ImageRepository,
     private val currentUserId: String
 ) : ViewModel() {
 
@@ -64,7 +70,9 @@ class OwnerCampsiteListViewModel(
     val uiState: StateFlow<OwnerCampsiteListUiState> = combine(
         campsiteRepository.observeByOwner(currentUserId),
         lotteryRepository.observeAll(),
-    ) { campsites, lotteries ->
+        imageRepository.observeByUploader(currentUserId),
+    ) { campsites, lotteries, images ->
+        val posters = images.associate { it.id to it.data }
         val activeCampsiteIds = lotteries
             .filter { it.stage == LotteryStatus.OPEN }
             .flatMap { it.campsiteIds }
@@ -73,7 +81,8 @@ class OwnerCampsiteListViewModel(
         val items = campsites.map { campsite ->
             OwnerCampsiteItem(
                 campsite = campsite,
-                hasActiveLottery = campsite.id in activeCampsiteIds
+                hasActiveLottery = campsite.id in activeCampsiteIds,
+                posterImage = campsite.posterImageId?.let { posters[it] },
             )
         }
         OwnerCampsiteListUiState(campsites = items, isLoading = false)
@@ -93,6 +102,7 @@ class OwnerCampsiteListViewModel(
                 OwnerCampsiteListViewModel(
                     app.container.campsiteRepository,
                     app.container.lotteryRepository,
+                    app.container.imageRepository,
                     app.container.currentUserId
                 )
             }

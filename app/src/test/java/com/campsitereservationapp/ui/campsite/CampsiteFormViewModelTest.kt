@@ -1,21 +1,26 @@
 package com.campsitereservationapp.ui.campsite
 
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.ImageRepository
 import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.data.SampleData
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.CampsiteError
+import com.campsitereservationapp.model.Image
+import com.campsitereservationapp.model.ImageKind
 import com.campsitereservationapp.model.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -27,6 +32,7 @@ class CampsiteFormViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: CampsiteRepository
     private lateinit var userRepository: UserRepository
+    private lateinit var imageRepository: ImageRepository
     private lateinit var viewModel: CampsiteFormViewModel
 
     @Before
@@ -34,7 +40,8 @@ class CampsiteFormViewModelTest {
         Dispatchers.setMain(testDispatcher)
         repository = CampsiteRepository(MockDataSource(SampleData.campsites))
         userRepository = UserRepository(MockDataSource(SampleData.users))
-        viewModel = CampsiteFormViewModel(repository, userRepository, "entrant-user")
+        imageRepository = ImageRepository(MockDataSource())
+        viewModel = CampsiteFormViewModel(repository, userRepository, imageRepository, "entrant-user")
     }
 
     @After
@@ -143,7 +150,7 @@ class CampsiteFormViewModelTest {
         repository.add(existing)
         val initialCount = repository.getAll().size
 
-        val editViewModel = CampsiteFormViewModel(repository, userRepository, "owner-bobby", "campsite-edit-1")
+        val editViewModel = CampsiteFormViewModel(repository, userRepository, imageRepository, "owner-bobby", "campsite-edit-1")
         testScheduler.advanceUntilIdle()
 
         assertEquals("Original Name", editViewModel.uiState.value.name)
@@ -159,30 +166,139 @@ class CampsiteFormViewModelTest {
         assertEquals("Updated Name", repository.get("campsite-edit-1")?.name)
     }
 
-    @Test
-    fun posterImageId_isSavedOnRegisterLoadedOnEditAndClearedWhenNull() = runTest {
-        viewModel.onNameChange("Image Camp")
-        viewModel.onLocationChange("Banff")
+    // ---- Campsite posters (uploaded to ImageRepository) ----
+
+    // The start of a real JPEG file, standing in for a shrunk photo.
+    private val lakePhoto = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 0x00, 0x10, 0x4A)
+    private val forestPhoto = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE1.toByte(), 0x00, 0x22, 0x45)
+
+    // Registers "Lakeview Pines" with the lake photo as its poster and returns it.
+    private suspend fun TestScope.registerWithPoster(): Campsite {
+        viewModel.onNameChange("Lakeview Pines")
+        viewModel.onLocationChange("Canmore, AB")
         viewModel.onCapacityChange("4")
-        viewModel.onPosterImageIdChange("content://media/image_123")
+        viewModel.onPosterImagePicked(lakePhoto)
+        viewModel.save()
+        testScheduler.advanceUntilIdle()
+        return repository.getAll().first { it.name == "Lakeview Pines" }
+    }
+
+    // Opens the edit form for a campsite and waits for it to load.
+    private fun TestScope.editFormFor(campsiteId: String, ownerId: String = "entrant-user"): CampsiteFormViewModel {
+        val editVm = CampsiteFormViewModel(repository, userRepository, imageRepository, ownerId, campsiteId)
+        testScheduler.advanceUntilIdle()
+        return editVm
+    }
+
+    @Test
+    fun pickedPoster_isUploadedAndTheCampsiteKeepsItsId() = runTest {
+        val saved = registerWithPoster()
+
+        val poster = imageRepository.get(saved.posterImageId!!)
+        assertNotNull(poster)
+        assertEquals(ImageKind.CAMPSITE, poster!!.kind)
+        assertEquals(saved.id, poster.targetId)
+        assertEquals("entrant-user", poster.uploaderId)
+        assertEquals(Image.encode(lakePhoto), poster.data)
+    }
+
+    @Test
+    fun noPoster_uploadsNothing() = runTest {
+        viewModel.onNameChange("Bare Flats")
+        viewModel.onLocationChange("Hinton, AB")
+        viewModel.onCapacityChange("2")
+        viewModel.save()
+        testScheduler.advanceUntilIdle()
+
+        assertNull(repository.getAll().first { it.name == "Bare Flats" }.posterImageId)
+        assertTrue(imageRepository.getAll().isEmpty())
+    }
+
+    @Test
+    fun editing_showsTheSavedPoster() = runTest {
+        val saved = registerWithPoster()
+
+        val editVm = editFormFor(saved.id)
+
+        assertEquals(Image.encode(lakePhoto), editVm.uiState.value.posterImage)
+    }
+
+    @Test
+    fun editingWithoutTouchingThePoster_keepsItAndUploadsNothingNew() = runTest {
+        val saved = registerWithPoster()
+
+        val editVm = editFormFor(saved.id)
+        editVm.onNameChange("Lakeview Pines North")
+        editVm.save()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(saved.posterImageId, repository.get(saved.id)!!.posterImageId)
+        assertEquals(1, imageRepository.getAll().size)
+    }
+
+    @Test
+    fun replacingThePoster_uploadsTheNewOneAndDeletesTheOld() = runTest {
+        val saved = registerWithPoster()
+
+        val editVm = editFormFor(saved.id)
+        editVm.onPosterImagePicked(forestPhoto)
+        editVm.save()
+        testScheduler.advanceUntilIdle()
+
+        val newId = repository.get(saved.id)!!.posterImageId!!
+        assertTrue(newId != saved.posterImageId)
+        assertNull(imageRepository.get(saved.posterImageId!!))
+        assertEquals(Image.encode(forestPhoto), imageRepository.get(newId)!!.data)
+        assertEquals(1, imageRepository.getAll().size)
+    }
+
+    @Test
+    fun removingThePoster_clearsItAndDeletesTheImage() = runTest {
+        val saved = registerWithPoster()
+
+        val editVm = editFormFor(saved.id)
+        editVm.onPosterImageRemoved()
+        editVm.save()
+        testScheduler.advanceUntilIdle()
+
+        assertNull(repository.get(saved.id)!!.posterImageId)
+        assertTrue(imageRepository.getAll().isEmpty())
+    }
+
+    @Test
+    fun editingAnOldCampsiteWithAPhoneOnlyLink_showsNoPosterAndStillSaves() = runTest {
+        val old = Campsite(
+            id = "campsite-old-link", ownerId = "owner-bobby", name = "Old Link Camp",
+            location = "Jasper, AB", capacity = 3,
+            posterImageId = "content://media/picker/0/com.android.providers.media.photopicker/media/1000000033",
+        )
+        repository.add(old)
+
+        val editVm = editFormFor(old.id, ownerId = "owner-bobby")
+        assertNull(editVm.uiState.value.posterImage)
+        assertFalse(editVm.uiState.value.loadError)
+
+        editVm.onPosterImagePicked(lakePhoto)
+        editVm.save()
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(editVm.uiState.value.isSaved)
+        assertNotNull(imageRepository.get(repository.get(old.id)!!.posterImageId!!))
+    }
+
+    @Test
+    fun posterTooLargeToStore_isASaveErrorAndNothingIsSaved() = runTest {
+        viewModel.onNameChange("Huge Photo Camp")
+        viewModel.onLocationChange("Banff, AB")
+        viewModel.onCapacityChange("4")
+        viewModel.onPosterImagePicked(ByteArray(Image.MAX_DATA_LENGTH)) // about 1.2 MB once encoded
+        val before = repository.getAll().size
 
         viewModel.save()
         testScheduler.advanceUntilIdle()
 
-        val saved = repository.getAll().last()
-        assertEquals("content://media/image_123", saved.posterImageId)
-
-        // Edit mode loads it
-        val editVm = CampsiteFormViewModel(repository, userRepository, "entrant-user", saved.id)
-        testScheduler.advanceUntilIdle()
-        assertEquals("content://media/image_123", editVm.uiState.value.posterImageId)
-
-        // Clear it
-        editVm.onPosterImageIdChange(null)
-        editVm.save()
-        testScheduler.advanceUntilIdle()
-
-        val cleared = repository.get(saved.id)
-        assertTrue(cleared?.posterImageId == null || cleared.posterImageId == "")
+        assertTrue(viewModel.uiState.value.saveError)
+        assertEquals(before, repository.getAll().size)
+        assertTrue(imageRepository.getAll().isEmpty())
     }
 }

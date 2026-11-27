@@ -22,7 +22,7 @@ import androidx.navigation.NavController
  *
  * **Design rationale:** barebones Material 3 layout offering simple navigation buttons for admin tasks.
  *
- * **Outstanding issues:** "Browse All Photos" is a placeholder for a future story, also there has been no styling applied.
+ * **Outstanding issues:** no styling has been applied yet.
  *
  * @param navController navigation controller used for screen transitions
  */
@@ -79,7 +79,7 @@ fun AdminHomeScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedButton(
-            onClick = { /* Placeholder for future Browse All Photos story */ },
+            onClick = { navController.navigate("AdminImageList") },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Browse All Photos")

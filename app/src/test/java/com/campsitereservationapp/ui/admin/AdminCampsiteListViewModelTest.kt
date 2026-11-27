@@ -1,6 +1,7 @@
 package com.campsitereservationapp.ui.admin
 
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.ImageRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.data.MessageRepository
@@ -93,6 +94,7 @@ class AdminCampsiteListViewModelTest {
             NotificationRepository(MockDataSource()),
             ratingRepository,
             MessageRepository(MockDataSource()),
+            ImageRepository(MockDataSource()),
         )
         viewModel = AdminCampsiteListViewModel(campsiteRepository, deleter)
     }

@@ -36,6 +36,8 @@ class MockDataSource<T : Identifiable>(initialItems: List<T> = emptyList()) : Da
 
     override suspend fun getAll(): List<T> = items.value
 
+    override suspend fun getWhere(filter: Filter<T>): List<T> = items.value.filter(filter.matches)
+
     override suspend fun get(id: String): T? = items.value.find { it.id == id }
 
     override fun newId(): String = UUID.randomUUID().toString()
