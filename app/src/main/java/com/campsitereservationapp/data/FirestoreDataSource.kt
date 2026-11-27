@@ -73,6 +73,10 @@ class FirestoreDataSource<T : Identifiable>(
     override suspend fun getAll(): List<T> =
         collection.get().await().documents.mapNotNull { it.toItem() }
 
+    override suspend fun getWhere(filter: Filter<T>): List<T> =
+        collection.whereEqualTo(filter.field, filter.value).get().await()
+            .documents.mapNotNull { it.toItem() }
+
     override suspend fun get(id: String): T? =
         collection.document(id).get().await().toItem()
 

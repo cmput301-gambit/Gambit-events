@@ -55,7 +55,8 @@ class ImageRepository(dataSource: DataSource<Image>) : Repository<Image>(dataSou
      * @param targetId the ID of the deleted campsite or user
      */
     suspend fun deleteByTarget(targetId: String) {
-        getAll().filter { it.targetId == targetId }.forEach { delete(it.id) }
+        getWhere(Filter("targetId", targetId) { it.targetId == targetId })
+            .forEach { delete(it.id) }
     }
 
     companion object {
