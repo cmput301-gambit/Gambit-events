@@ -10,6 +10,7 @@ import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.ImageRepository
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Image
+import com.campsitereservationapp.model.ImageKind
 import com.campsitereservationapp.model.User
 import com.campsitereservationapp.service.CascadeDeleter
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,6 +92,8 @@ class EntrantSettingsViewModel(
     private var newProfileImageId: String? = null
     //Updating the user based on values from the userRepository. When the first time launch screen
     //is done, this should always return a real name instead of a blank or the device ID.
+    val _uiState = MutableStateFlow(EntrantSettingsState( isLoading = true))
+
     init {
         viewModelScope.launch {
             val user: User = userRepository.getOrCreate(currentUserId)
@@ -99,7 +102,7 @@ class EntrantSettingsViewModel(
         }
     }
 
-    val _uiState = MutableStateFlow(EntrantSettingsState( isLoading = true))
+
 
     /**
      * The current screen state. The screen collects this and redraws
@@ -107,59 +110,67 @@ class EntrantSettingsViewModel(
      */
     val uiState: StateFlow<EntrantSettingsState> = _uiState.asStateFlow()
 
-//        combine(
-//            userRepository.observe(currentUserId),
-//            isUpdateUserOpen,
-//            isDeleteConfirmOpen,
-//            accountDeleted,
-//            deleteError,
-//        ) { newUser, updateOpen, deleteOpen, deleted, error ->
-//            EntrantSettingsState(
-//                currentUser = newUser ?: User(),
-//                isUpdateUserOpen = updateOpen,
-//                isDeleteConfirmOpen = deleteOpen,
-//                accountDeleted = deleted,
-//                deleteError = error,
-//            )
-//        }
-//            .stateIn(
-//                scope = viewModelScope,
-//                started = SharingStarted.WhileSubscribed(5_000),
-//                initialValue = EntrantSettingsState(),
-//            )
-
     fun updateUserDetails(
-            newName: String? = null,
-            newPhone: String? = null,
-            newEmail: String? = null,
-            newProfileImageId: String? = null,
-            newNotificationsEnabled: Boolean? = null,
-            ){
+        newName: String? = null,
+        newPhone: String? = null,
+        newEmail: String? = null,
+        newNotificationsEnabled: Boolean? = null,
+    ) {
         viewModelScope.launch {
-            try{
+            try {
+                val state = _uiState.value
                 val current = userRepository.getOrCreate(currentUserId)
+                val oldPfpId = current.profileImageId
+
+                val newPfp = if (isProfileImageUpdated && state.currentProfileImage != null) {
+                    Image(
+                        id = newProfileImageId ?: imageRepository.newId().also { newProfileImageId = it },
+                        uploaderId = current.id,
+                        kind = ImageKind.PROFILE,
+                        targetId = current.id,
+                        data = state.currentProfileImage,
+                    )
+                } else null
+
+                val profileImageId = if (isProfileImageUpdated) newPfp?.id else oldPfpId
+
+                if (newPfp != null && imageRepository.get(newPfp.id) == null) {
+                    imageRepository.add(newPfp)
+                }
 
                 userRepository.update(
                     current.copy(
                         name = newName ?: current.name,
                         phone = newPhone ?: current.phone,
                         email = newEmail ?: current.email,
-                        profileImageId = newProfileImageId ?: current.profileImageId,
-                        notificationsEnabled = newNotificationsEnabled ?: current.notificationsEnabled
+                        profileImageId = profileImageId,
+                        notificationsEnabled = newNotificationsEnabled ?: current.notificationsEnabled,
                     )
                 )
 
-                _uiState.update { it.copy(currentUser = userRepository.getOrCreate(currentUserId)) }
-
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.e("EntrantSettings", "Failed to update profile $currentUserId")
-                    _uiState.update { it.copy(updateError = "Couldn't update your account. Check your connection and try again.") }
-                    //deleteError.value = "Couldn't delete your account. Check your connection and try again."
+                // The user now points at the new state, so the old image can go.
+                if (isProfileImageUpdated && oldPfpId != null && oldPfpId != profileImageId) {
+                    imageRepository.delete(oldPfpId)
                 }
+                isProfileImageUpdated = false
+                newProfileImageId = null
+
+                val fresh = userRepository.getOrCreate(currentUserId)
+                _uiState.update {
+                    it.copy(currentUser = fresh, isUpdateUserOpen = false, updateError = null)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("EntrantSettings", "Failed to update profile $currentUserId", e)
+                _uiState.update { it.copy(updateError = "Couldn't update your account. Check your connection and try again.") }
             }
         }
+    }
+
+    fun dismissUpdateError() {
+        _uiState.update { it.copy(updateError = null) }
+    }
 
     /**
      * Shows a newly picked poster in the form. It's uploaded when the form is saved.
@@ -167,11 +178,19 @@ class EntrantSettingsViewModel(
      * @param jpegBytes the shrunk JPEG picture, from
      *   [com.campsitereservationapp.ui.components.loadJpegBytes]
      */
-//    fun onProfilePicturePicked(jpegBytes: ByteArray) {
-//        prof = true
-//        newProfileImageId = imageRepository.newId()
-//        _uiState.update { it.copy(posterImage = Image.encode(jpegBytes), saveError = false) }
-//    }
+    fun onProfilePicturePicked(jpegBytes: ByteArray) {
+        isProfileImageUpdated = true
+        newProfileImageId = imageRepository.newId()
+        _uiState.update { it.copy(currentProfileImage = Image.encode(jpegBytes)) }
+    }
+    /**
+     * Removes the poster from the form. The old poster is deleted when the form is saved.
+     */
+    fun onProfilePictureRemoved() {
+        isProfileImageUpdated = true
+        newProfileImageId = null
+        _uiState.update { it.copy(currentProfileImage = null) }
+    }
 
     fun toggleReceiveNotifications(){
         viewModelScope.launch {
@@ -196,8 +215,6 @@ class EntrantSettingsViewModel(
                 isDeleteConfirmOpen = true
             )
         }
-//        deleteError.value = null
-//        isDeleteConfirmOpen.value = true
     }
 
     /** Called when the user taps Cancel or closes the popup. Nothing is deleted. */
