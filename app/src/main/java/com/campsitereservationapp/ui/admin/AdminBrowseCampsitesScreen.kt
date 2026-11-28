@@ -129,7 +129,7 @@ fun AdminBrowseCampsitesScreen(
 
             // Button 2: View All Notifications
             Button(
-                onClick = { navController.navigate("Inbox") },
+                onClick = {/* Placeholder until 03.08.01 */ },
                 shape = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFCCCCCC),
