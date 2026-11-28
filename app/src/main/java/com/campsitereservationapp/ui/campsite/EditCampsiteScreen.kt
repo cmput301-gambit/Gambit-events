@@ -165,6 +165,18 @@ fun EditCampsiteScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Rules and policies (US 02.11.01)
+            Text("Campsite Rules and Policies (Optional)", style = MaterialTheme.typography.labelLarge)
+            OutlinedTextField(
+                value = state.rules,
+                onValueChange = viewModel::onRulesChange,
+                placeholder = { Text("Type Rules and Policies") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             // Maximum Capacity
             Text("Maximum Capacity", style = MaterialTheme.typography.labelLarge)
             OutlinedTextField(

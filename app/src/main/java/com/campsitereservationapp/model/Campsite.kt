@@ -35,6 +35,8 @@ enum class CampsiteError {
  * @property latitude latitude coordinate of the campsite, or null
  * @property longitude longitude coordinate of the campsite, or null
  * @property availability range of dates available for reservation (US 02.01.02 / #76)
+ * @property rules the campsite's rules and policies, which entrants must read and
+ * agree to before confirming a reservation (US 02.11.01); blank if the owner set none
  * @constructor Creates a campsite. Every field has a default, so tests can
  * set only the fields they care about.
  */
@@ -50,6 +52,7 @@ data class Campsite(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val availability: DateRange? = null,
+    val rules: String = "",
 ) : Identifiable {
 
     /**
