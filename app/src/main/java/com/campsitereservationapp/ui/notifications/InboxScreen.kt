@@ -38,7 +38,7 @@ import com.campsitereservationapp.model.Notification
 import com.campsitereservationapp.model.NotificationType
 
 /**
- * Inbox / Notification Logs screen matching mockup design (US 01.03.01, 01.03.02).
+ * Inbox screen where an entrant sees their lottery results (US 01.03.01, 01.03.02).
  *
  * **Purpose:** lists win and lose notifications in styled cards, newest first.
  * Unread ones are highlighted, and tapping one marks it as read and opens reservations if won.
