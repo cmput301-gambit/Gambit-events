@@ -129,7 +129,7 @@ class ConversationViewModel(
     /**
      * Called when the user taps Send. Sends the draft, or shows why it
      * couldn't be sent. Taps while a message is already being sent are
-     * ignored. If the reservation was cancelled or deleted since the chat
+     * ignored. If the reservation is no longer active or was deleted since the chat
      * opened, the chat is blocked and nothing is sent.
      */
     fun send() {
@@ -158,7 +158,7 @@ class ConversationViewModel(
             return
         }
         if (!found.isActive) {
-            _uiState.value = blocked("This reservation was cancelled.")
+            _uiState.value = blocked("This reservation is no longer active.")
             return
         }
 
@@ -216,7 +216,7 @@ class ConversationViewModel(
                 return
             }
             if (!latest.isActive) {
-                stopConversation("This reservation was cancelled.")
+                stopConversation("This reservation is no longer active.")
                 return
             }
             val id = messageRepository.newId()

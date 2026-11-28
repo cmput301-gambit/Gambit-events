@@ -20,6 +20,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Unit tests for [InboxViewModel].
@@ -71,6 +72,34 @@ class InboxViewModelTest {
 
         val shown = viewModel.uiState.value.notifications.map { it.id }
         assertEquals(listOf("n-2", "n-1"), shown)
+    }
+
+    @Test
+    fun sameDayOwnerMessages_latestSendTimeFirst() = runTest {
+        val morning = Notification.fromOwner("m-1", "entrant-ben", "lottery-pine-ridge", "owner-bobby",
+            "Morning update", "batch-1", LocalDateTime.of(2026, 11, 5, 8, 0))
+        val evening = Notification.fromOwner("m-2", "entrant-ben", "lottery-pine-ridge", "owner-bobby",
+            "Evening update", "batch-2", LocalDateTime.of(2026, 11, 5, 20, 0))
+        repository = NotificationRepository(MockDataSource(listOf(morning, evening)))
+        val viewModel = InboxViewModel(repository, "entrant-ben")
+        startCollecting(viewModel)
+        advanceUntilIdle()
+
+        assertEquals(listOf("m-2", "m-1"), viewModel.uiState.value.notifications.map { it.id })
+    }
+
+    @Test
+    fun mixedNotifications_useSendTimeOrElseCreatedDate() = runTest {
+        val message = Notification.fromOwner("m-1", "entrant-priya", "lottery-pine-ridge", "owner-bobby",
+            "Gates open at 9", "batch-1", LocalDateTime.of(2026, 10, 31, 12, 0))
+        repository = NotificationRepository(
+            MockDataSource(listOf(priyasOlderWin, priyasNewerLoss, alisWin, message)))
+        val viewModel = InboxViewModel(repository, "entrant-priya")
+        startCollecting(viewModel)
+        advanceUntilIdle()
+
+        // Nov 2 loss, Oct 31 12:00 message, Oct 30 win
+        assertEquals(listOf("n-2", "m-1", "n-1"), viewModel.uiState.value.notifications.map { it.id })
     }
 
     @Test

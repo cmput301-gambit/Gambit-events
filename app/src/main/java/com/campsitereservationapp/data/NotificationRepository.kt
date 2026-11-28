@@ -22,8 +22,8 @@ import java.time.LocalDateTime
  * extra index. Its companion object converts notifications to and from
  * Firestore documents.
  *
- * **Outstanding issues:** createdAt has no time, so same-day notifications
- * can't be ordered.
+ * **Outstanding issues:** createdAt has no time, so same-day win/lose
+ * notifications can't be ordered (owner messages use sentAt).
  *
  * @param dataSource where notifications are kept, such as [firestoreDataSource]
  * or a [MockDataSource] in tests
@@ -32,7 +32,9 @@ class NotificationRepository(dataSource: DataSource<Notification>) :
     Repository<Notification>(dataSource) {
 
     /**
-     * Live list of the notifications sent to one user, newest first.
+     * Live list of the notifications sent to one user, newest first by
+     * [Notification.sortTime]: the send time for owner messages, otherwise
+     * the start of the day they were created.
      *
      * @param userId ID of the user who received the notifications
      * @return a stream that updates whenever this user receives a notification
@@ -40,7 +42,23 @@ class NotificationRepository(dataSource: DataSource<Notification>) :
      */
     fun observeForUser(userId: String): Flow<List<Notification>> =
         observeWhere(Filter("recipientId", userId) { it.recipientId == userId })
-            .map { notifications -> notifications.sortedByDescending { it.createdAt } }
+            .map { notifications -> notifications.sortedByDescending { it.sortTime } }
+
+    /**
+     * Live list of the waitlist messages one owner has sent (US 02.10.02),
+     * one notification per recipient, in no particular order.
+     *
+     * Only [NotificationType.OWNER_MESSAGE] notifications are included.
+     * Other kinds that also record the owner as sender, such as reservation
+     * rejections, are left out. The sender is filtered in the database and
+     * the type on the device, because [Filter] supports one field.
+     *
+     * @param ownerId ID of the owner who sent the messages
+     * @return a stream that updates whenever this owner sends a message
+     */
+    fun observeSentBy(ownerId: String): Flow<List<Notification>> =
+        observeWhere(Filter("senderId", ownerId) { it.senderId == ownerId })
+            .map { notifications -> notifications.filter { it.type == NotificationType.OWNER_MESSAGE } }
 
     /**
      * Live count of a user's unread notifications, for an inbox badge.

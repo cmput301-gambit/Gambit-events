@@ -80,6 +80,15 @@ data class Notification(
 ) : Identifiable {
 
     /**
+     * When this notification happened, for sorting newest first. Owner
+     * messages use [sentAt]; win/lose notifications have no time, so they
+     * count as the start of [createdAt]. That means an owner message sorts
+     * above a win/lose notification from the same day.
+     */
+    val sortTime: LocalDateTime
+        get() = sentAt ?: createdAt.atStartOfDay()
+
+    /**
      * Validates the notification fields and returns a list of errors found.
      * A sender is only required for owner messages.
      *
