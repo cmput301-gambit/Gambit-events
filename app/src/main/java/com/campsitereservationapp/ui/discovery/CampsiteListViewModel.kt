@@ -9,6 +9,8 @@ import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteFilter
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.RatingRepository
+import com.campsitereservationapp.data.ImageRepository
+import com.campsitereservationapp.model.ImageKind
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Rating
@@ -35,12 +37,14 @@ import java.util.Dictionary
  * database.
  * @property isLoading true until the first list of campsites arrives
  * @property campsiteRatings average rating for each campsite, by campsite ID; campsites with no ratings are missing
+ * @property posters each campsite's poster as Base64 JPEG text, by campsite ID; campsites with no poster are missing
  */
 data class CampsiteListUiState(
     val campsites: List<Campsite> = emptyList(),
     val campsiteFilter: CampsiteFilter = CampsiteFilter(),
     val isLoading: Boolean = true,
     val campsiteRatings: Map<String, Float> = emptyMap(),
+    val posters: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -57,10 +61,13 @@ data class CampsiteListUiState(
  * **Outstanding issues:** Huge popin when loading the individual scores for each campsite.
  *
  * @property campsiteRepository The shared repository campsites come from
+ * @property ratingRepository The shared repository ratings come from, for each card's stars
+ * @property imageRepository The shared repository posters come from, for each card's picture
  */
 class CampsiteListViewModel(
     private val campsiteRepository: CampsiteRepository,
     private val ratingRepository: RatingRepository,
+    private val imageRepository: ImageRepository,
 ) : ViewModel() {
 
     // State that belongs to this screen only: what the user typed.
@@ -79,7 +86,9 @@ class CampsiteListViewModel(
             campsiteRepository.observeAll(), // live campsite list from the repository
             campsiteFilter,                 // live filter from the user
             ratingRepository.observeAll(),  // live ratings, so averages stay current
-        ) { campsites, filter, ratings ->
+            imageRepository.observeAll(),   // live posters for the cards
+        ) { campsites, filter, ratings, images ->
+            val posterData = images.filter { it.kind == ImageKind.CAMPSITE }.associate { it.id to it.data }
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteListUiState(
                 campsites = filter.apply(campsites),//.filter { it.name.contains(query, ignoreCase = true) },
@@ -88,6 +97,9 @@ class CampsiteListViewModel(
                 // One download of all ratings, averaged per campsite on the device.
                 campsiteRatings = ratings.groupBy { it.campsiteId }
                     .mapValues { (_, forCampsite) -> forCampsite.map { it.score }.average().toFloat() },
+                posters = campsites.mapNotNull { campsite ->
+                    campsite.posterImageId?.let { posterData[it] }?.let { campsite.id to it }
+                }.toMap(),
             )
         }
             // stateIn() turns the stream into a StateFlow the screen can read.
@@ -168,7 +180,11 @@ class CampsiteListViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as CampsiteApp
-                CampsiteListViewModel(app.container.campsiteRepository, app.container.ratingRepository)
+                CampsiteListViewModel(
+                    app.container.campsiteRepository,
+                    app.container.ratingRepository,
+                    app.container.imageRepository,
+                )
             }
         }
     }

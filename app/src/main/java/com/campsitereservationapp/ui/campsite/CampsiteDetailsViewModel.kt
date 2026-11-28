@@ -10,6 +10,7 @@ import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.RatingRepository
+import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.Rating
 import com.campsitereservationapp.service.CascadeDeleter
@@ -31,6 +32,9 @@ import kotlin.coroutines.cancellation.CancellationException
  * The screen reads only this class. It never talks to a repository directly.
  *
  * @property mainButtonState determines the text displayed and behaviour of the join/leave waitlist button
+ * @property ratingCount how many campers have rated the viewed campsite
+ * @property reviews the written reviews for the viewed campsite, plus the user's own rating
+ * even without text so they can delete it; the user's own comes first (US 01.13.02)
  */
 data class CampsiteDetailsUiState(
     val mainButtonState: CampsiteDetailsMainButtonState = CampsiteDetailsMainButtonState.JOIN,
@@ -38,7 +42,31 @@ data class CampsiteDetailsUiState(
     val viewedCampsite: Campsite = Campsite(),
     val viewedCampsiteScore: Float = 0f,
     val giveRatingPopupOpen: Boolean = false,
-    val hasGivenRating: Boolean = false
+    val hasGivenRating: Boolean = false,
+    val ratingCount: Int = 0,
+    val reviews: List<CampsiteReview> = emptyList(),
+)
+
+/**
+ * One written review as campers see it on the campsite details screen (US 01.13.02).
+ *
+ * @property rating the rating holding the stars and review text
+ * @property authorName the reviewer's name, or "Camper" if they haven't set one
+ * @property isMine true if the current user wrote it
+ */
+data class CampsiteReview(
+    val rating: Rating,
+    val authorName: String,
+    val isMine: Boolean = false,
+)
+
+// Rating info for the viewed campsite, combined into the screen state.
+private data class RatingInfo(
+    val popupOpen: Boolean,
+    val hasRated: Boolean,
+    val score: Float,
+    val count: Int,
+    val reviews: List<CampsiteReview>,
 )
 
 /**
@@ -62,6 +90,7 @@ data class CampsiteDetailsUiState(
  * @property campsiteScore the score of the viewed campsite
  * @property cascadeDeleter deletes a campsite along with its lotteries, reservations and ratings
  * by value between this models screen and the last screen [com.campsitereservationapp.ui.discovery.CampsiteListScreen].
+ * @property userRepository provides reviewers' names for the reviews list (US 01.13.02)
  */
 class CampsiteDetailsViewModel(
     private val lotteryRepository: LotteryRepository,
@@ -69,6 +98,7 @@ class CampsiteDetailsViewModel(
     private val ratingRepository: RatingRepository,
     private val currentEntrantId: String,
     private val cascadeDeleter: CascadeDeleter,
+    private val userRepository: UserRepository,
 ) : ViewModel() {
 
     //ID of the currently viewed campsite, passed from the previous screen.
@@ -83,18 +113,32 @@ class CampsiteDetailsViewModel(
     )
 
     // Live rating info for the viewed campsite: whether the popup is open,
-    // whether this user already rated it, and its average score. Built from
-    // the live ratings, so it updates as soon as anyone (including this user) rates.
+    // whether this user already rated it, its average score, and the written
+    // reviews. Built from the live ratings, so it updates as soon as anyone
+    // (including this user) rates or reviews.
     private val popupState = combine(
         giveRatingPopupOpen,
         ratingRepository.observeAll(),
         viewedCampsiteId,
-    ) { ratingOpen, ratings, campsiteId ->
+        userRepository.observeAll(),
+    ) { ratingOpen, ratings, campsiteId, users ->
         val forCampsite = ratings.filter { it.campsiteId == campsiteId }
-        Triple(
-            ratingOpen,
-            forCampsite.any { it.userId == currentEntrantId },
-            forCampsite.map { it.score }.average().toFloat().takeUnless { it.isNaN() } ?: 0f,
+        val names = users.associate { it.id to it.name }
+        RatingInfo(
+            popupOpen = ratingOpen,
+            hasRated = forCampsite.any { it.userId == currentEntrantId },
+            score = forCampsite.map { it.score }.average().toFloat().takeUnless { it.isNaN() } ?: 0f,
+            count = forCampsite.size,
+            reviews = forCampsite
+                .filter { it.hasReview || it.userId == currentEntrantId }
+                .map {
+                    CampsiteReview(
+                        rating = it,
+                        authorName = names[it.userId]?.ifBlank { null } ?: "Camper",
+                        isMine = it.userId == currentEntrantId,
+                    )
+                }
+                .sortedByDescending { it.isMine },
         )
     }
     /**
@@ -108,7 +152,7 @@ class CampsiteDetailsViewModel(
             mainButtonState,
             viewedCampsiteId,
             popupState,
-        ) { lotteries, newButtonState, campsiteId, (rateOpen, hasRated, score)  ->
+        ) { lotteries, newButtonState, campsiteId, ratingInfo ->
             //Log.d("CampsiteDetails", "Fetching campsite with id='$campsiteId'")
             // Turn raw data into exactly what the screen needs to draw.
             CampsiteDetailsUiState(
@@ -116,9 +160,11 @@ class CampsiteDetailsViewModel(
                 campsiteId,
                 viewedCampsite = if (campsiteId.isBlank()) Campsite()
                 else campsiteRepository.get(campsiteId) ?: Campsite(), //Returns an empty campsite if no campsite is found.
-                viewedCampsiteScore = score,
-                giveRatingPopupOpen = rateOpen,
-                hasGivenRating = hasRated
+                viewedCampsiteScore = ratingInfo.score,
+                giveRatingPopupOpen = ratingInfo.popupOpen,
+                hasGivenRating = ratingInfo.hasRated,
+                ratingCount = ratingInfo.count,
+                reviews = ratingInfo.reviews,
                 )
         }
             // stateIn() turns the stream into a StateFlow the screen can read.
@@ -240,11 +286,13 @@ class CampsiteDetailsViewModel(
      *
      * Updating [newRating] makes combine() recalculate the state,
      * automatically hiding the rating popup after making a rating, and loading the rating to the
-     * correct repository location.
+     * correct repository location. The written review is optional (US 01.13.02): it is trimmed,
+     * cut to [Rating.MAX_REVIEW_LENGTH], and saved blank when the user only gave stars.
      *
      * @param newRating the rating given by the user
+     * @param review the user's optional written review
      */
-    fun onCreateRating(newRating: Float){
+    fun onCreateRating(newRating: Float, review: String = ""){
         giveRatingPopupOpen.update { false } //will always close the popup
         val campsiteId = viewedCampsiteId.value
         viewModelScope.launch {
@@ -256,7 +304,8 @@ class CampsiteDetailsViewModel(
                         id = RatingRepository.idFor(currentEntrantId, campsiteId),
                         userId = currentEntrantId,
                         campsiteId = campsiteId,
-                        score = newRating
+                        score = newRating,
+                        review = review.trim().take(Rating.MAX_REVIEW_LENGTH),
                     )
                 )
             } catch (e: CancellationException) {
@@ -265,6 +314,25 @@ class CampsiteDetailsViewModel(
                 // Already rated, or no connection. Nothing was saved, so the
                 // Rate button stays (unless they already rated) and they can retry.
                 Log.w("CampsiteDetails", "Rating not saved", e)
+            }
+        }
+    }
+
+    /**
+     * Deletes the current user's own rating and review of the viewed campsite
+     * (US 01.13.02). The average updates by itself, and the Rate and review
+     * button comes back so they can rate again.
+     */
+    fun deleteMyRating() {
+        val campsiteId = viewedCampsiteId.value
+        if (campsiteId.isBlank()) return
+        viewModelScope.launch {
+            try {
+                ratingRepository.delete(RatingRepository.idFor(currentEntrantId, campsiteId))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("CampsiteDetails", "Review not deleted", e)
             }
         }
     }
@@ -306,6 +374,7 @@ class CampsiteDetailsViewModel(
                     app.container.ratingRepository,
                     app.container.currentUserId,
                     app.container.cascadeDeleter,
+                    app.container.userRepository,
                )
             }
         }
