@@ -137,4 +137,28 @@ class NotificationTest {
     fun ownerMessage_toSelf_isInvalid() {
         assertEquals(listOf(NotificationError.SENT_TO_SELF), ownerMessage(recipientId = "owner-bobby").validate())
     }
+
+    @Test
+    fun reservationRejected_isAValidNoticeToTheEntrantFromTheOwner() {
+        val reservation = Reservation(
+            id = "res-1",
+            entrantId = "entrant-priya",
+            campsiteId = "campsite-pine-ridge",
+            lotteryId = "lottery-1",
+            dates = DateRange(LocalDate.of(2026, 12, 2), LocalDate.of(2026, 12, 4)),
+        )
+
+        val notice = Notification.reservationRejected(
+            "n-1", reservation, "Pine Ridge", "owner-bobby", LocalDate.of(2026, 11, 27)
+        )
+
+        assertEquals("entrant-priya", notice.recipientId)
+        assertEquals("owner-bobby", notice.senderId)
+        assertEquals("lottery-1", notice.lotteryId)
+        assertEquals(NotificationType.RESERVATION_REJECTED, notice.type)
+        assertTrue(notice.message.contains("Pine Ridge"))
+        assertTrue(notice.message.contains("2026-12-02"))
+        assertFalse(notice.read)
+        assertTrue(notice.isValid())
+    }
 }

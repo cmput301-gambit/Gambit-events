@@ -32,15 +32,22 @@ import com.campsitereservationapp.model.Reservation
  *
  * A component that can be used by Owner/Entrant although, Entrant will require editing
  * All components are followed by the design guide provided in Figma.
+ *
+ * @param name text shown on the card
+ * @param partySize how many people, or null to hide the line
+ * @param unreadCount unread messages shown on the chat badge
+ * @param onClick called when the card is tapped
+ * @param onChatClick called when the chat button is tapped
+ * @param profileImage the guest's profile picture as Base64 JPEG text, or null for the placeholder
  */
-
 @Composable
 fun ReservationCard(
     name: String,
     partySize: Int?,
     unreadCount: Int,
     onClick: () -> Unit,
-    onChatClick: () -> Unit
+    onChatClick: () -> Unit,
+    profileImage: String? = null,
 ) {
     Row(
         Modifier
@@ -51,16 +58,7 @@ fun ReservationCard(
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            Icons.Filled.Person,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .padding(10.dp)
-
-        )
+        ProfileAvatar(imageData = profileImage, size = 52.dp)
         Column(
             Modifier
                 .weight(1f)

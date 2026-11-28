@@ -19,6 +19,7 @@ import com.campsitereservationapp.model.Csv
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.Reservation
+import com.campsitereservationapp.model.ReservationStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -213,6 +214,15 @@ class ReserveViewModel(
                 campsiteCapacity = capacity,
                 confirmation = existing,
             )
+            return
+        }
+        // A rejected booking can't be remade; tell the entrant why (US 02.08.01).
+        val wasRejected = reservationRepository.getAll().any {
+            it.lotteryId == lotteryId && it.entrantId == currentUserId &&
+                it.status == ReservationStatus.REJECTED
+        }
+        if (wasRejected) {
+            _uiState.value = blocked("The campsite owner rejected your reservation.", name)
             return
         }
         if (lottery.stage != LotteryStatus.CLOSED) {

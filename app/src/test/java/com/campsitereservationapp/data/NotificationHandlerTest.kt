@@ -5,6 +5,7 @@ import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.Notification
+import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.model.NotificationType
 import com.campsitereservationapp.model.User
 import com.campsitereservationapp.model.WaitingList
@@ -284,5 +285,23 @@ class NotificationHandlerTest {
 
         assertTrue(thrown is IllegalArgumentException)
         assertTrue(repository.getAll().isEmpty())
+    }
+
+    @Test
+    fun sendReservationRejected_savesOneNoticeForTheEntrant() = runTest {
+        val reservation = Reservation(
+            id = "res-1",
+            entrantId = "entrant-priya",
+            campsiteId = "campsite-pine-ridge",
+            lotteryId = "lottery-1",
+            dates = DateRange(LocalDate.of(2026, 12, 2), LocalDate.of(2026, 12, 4)),
+        )
+
+        val sent = handler.sendReservationRejected(reservation, "Pine Ridge", "owner-bobby", createdOn)
+
+        assertEquals(listOf(sent), repository.getAll())
+        assertEquals("entrant-priya", sent.recipientId)
+        assertEquals(NotificationType.RESERVATION_REJECTED, sent.type)
+        assertEquals(createdOn, sent.createdAt)
     }
 }

@@ -59,6 +59,48 @@ class ReservationTest {
     }
 
     @Test
+    fun rejecting_marksRejectedAndFreesTheDates() {
+        val rejected = priyaAtPineRidge.rejected("Forest fire")
+
+        assertEquals(ReservationStatus.REJECTED, rejected?.status)
+        assertFalse(rejected!!.isActive)
+        assertFalse(rejected.clashesWith(priyaAtPineRidge.copy(id = "reservation-2")))
+    }
+
+    @Test
+    fun rejecting_keepsTheTrimmedReason() {
+        assertEquals("Forest fire", priyaAtPineRidge.rejected("  Forest fire  ")?.rejectionReason)
+    }
+
+    @Test
+    fun rejecting_withBlankOrTooLongReason_returnsNull() {
+        assertNull(priyaAtPineRidge.rejected("   "))
+        assertNull(priyaAtPineRidge.rejected("x".repeat(Reservation.MAX_REASON_LENGTH + 1)))
+    }
+
+    @Test
+    fun rejectingACancelledOrRejectedReservation_returnsNull() {
+        assertNull(priyaAtPineRidge.cancelled()!!.rejected("Forest fire"))
+        assertNull(priyaAtPineRidge.rejected("Forest fire")!!.rejected("Forest fire"))
+    }
+
+    @Test
+    fun rejecting_aStayThatAlreadyEnded_returnsNull() {
+        val dayAfter = LocalDate.of(2026, 12, 13)
+
+        assertFalse(priyaAtPineRidge.canBeRejected(dayAfter))
+        assertNull(priyaAtPineRidge.rejected("Forest fire", today = dayAfter))
+    }
+
+    @Test
+    fun rejecting_onTheLastDayOfTheStay_isAllowed() {
+        val lastDay = LocalDate.of(2026, 12, 12)
+
+        assertTrue(priyaAtPineRidge.canBeRejected(lastDay))
+        assertEquals(ReservationStatus.REJECTED, priyaAtPineRidge.rejected("Forest fire", today = lastDay)?.status)
+    }
+
+    @Test
     fun overlappingDatesAtSameCampsite_clash() {
         val ali = priyaAtPineRidge.copy(id = "reservation-2", entrantId = "entrant-ali", dates = december(12, 14))
 

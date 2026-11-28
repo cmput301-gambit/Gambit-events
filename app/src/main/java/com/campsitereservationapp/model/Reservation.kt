@@ -1,5 +1,6 @@
 package com.campsitereservationapp.model
 
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
@@ -19,6 +20,9 @@ enum class ReservationError {
 enum class ReservationStatus {
     CONFIRMED,
     CANCELLED,
+
+    /** The campsite owner turned the reservation down, e.g. for a forest fire (US 02.08.01). */
+    REJECTED,
 }
 
 /**
@@ -43,6 +47,7 @@ enum class ReservationStatus {
  * @property dates the reserved dates, first and last day included
  * @property status whether the reservation is confirmed or cancelled
  * @property createdAt when the reservation was made, to the second. Shown on the confirmation screen
+ * @property rejectionReason why the owner rejected it (US 02.08.01); blank unless [status] is REJECTED
  */
 data class Reservation(
     override val id: String = "",
@@ -52,7 +57,13 @@ data class Reservation(
     val dates: DateRange,
     val status: ReservationStatus = ReservationStatus.CONFIRMED,
     val createdAt: LocalDateTime = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS),
+    val rejectionReason: String = "",
 ) : Identifiable {
+
+    companion object {
+        /** The longest rejection reason an owner can write, in characters (US 02.08.01). */
+        const val MAX_REASON_LENGTH = 300
+    }
 
     /** True while the reservation still holds its dates. */
     val isActive: Boolean get() = status == ReservationStatus.CONFIRMED
@@ -84,6 +95,32 @@ data class Reservation(
      */
     fun cancelled(): Reservation? =
         if (isActive) copy(status = ReservationStatus.CANCELLED) else null
+
+    /**
+     * Whether the owner can still reject this reservation: it is active and the
+     * stay hasn't ended yet (US 02.08.01).
+     *
+     * @param today the current date
+     * @return true if [rejected] would accept a valid reason
+     */
+    fun canBeRejected(today: LocalDate = LocalDate.now()): Boolean =
+        isActive && !dates.finish.isBefore(today)
+
+    /**
+     * Returns a copy of this reservation rejected by the campsite owner, which
+     * frees its dates (US 02.08.01).
+     *
+     * @param reason why the owner rejected it, such as a forest fire; trimmed
+     * @param today the current date; a stay that already ended can't be rejected
+     * @return the rejected reservation, or null if it was already cancelled or
+     * rejected, the stay has ended, or the reason is blank or longer than
+     * [MAX_REASON_LENGTH]
+     */
+    fun rejected(reason: String, today: LocalDate = LocalDate.now()): Reservation? {
+        val trimmed = reason.trim()
+        if (!canBeRejected(today) || trimmed.isEmpty() || trimmed.length > MAX_REASON_LENGTH) return null
+        return copy(status = ReservationStatus.REJECTED, rejectionReason = trimmed)
+    }
 
     /**
      * Checks whether this reservation and [other] book the same campsite on

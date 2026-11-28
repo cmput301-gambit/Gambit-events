@@ -88,6 +88,23 @@ class ReservationRepository(dataSource: DataSource<Reservation>) :
         modify(reservationId) { it.cancelled() }
 
     /**
+     * Rejects a reservation on the owner's behalf and saves it, as one step,
+     * freeing its dates (US 02.08.01). The caller sends the entrant's notice.
+     *
+     * @param reservationId the reservation to reject
+     * @param reason why the owner rejected it, shown to the entrant
+     * @param today the current date; a stay that already ended can't be rejected
+     * @return the rejected reservation, or null if it doesn't exist, was
+     * already cancelled or rejected, has ended, or the reason is blank or too long
+     */
+    suspend fun reject(
+        reservationId: String,
+        reason: String,
+        today: LocalDate = LocalDate.now(),
+    ): Reservation? =
+        modify(reservationId) { it.rejected(reason, today) }
+
+    /**
      * Deletes every reservation an entrant made, used when their profile is
      * deleted (US 01.08.01, 03.02.01). This frees up the booked dates.
      *
@@ -141,6 +158,7 @@ class ReservationRepository(dataSource: DataSource<Reservation>) :
             "finish" to reservation.dates.finish.toString(),
             "status" to reservation.status.name,
             "createdAt" to reservation.createdAt.toString(),
+            "rejectionReason" to reservation.rejectionReason,
 
             )
 
@@ -167,6 +185,7 @@ class ReservationRepository(dataSource: DataSource<Reservation>) :
                 dates = DateRange(LocalDate.parse(start), LocalDate.parse(finish)),
                 status = ReservationStatus.valueOf(data["status"] as? String ?: ""),
                 createdAt = LocalDateTime.parse(createdAt),
+                rejectionReason = data["rejectionReason"] as? String ?: "",
             )
         }
     }

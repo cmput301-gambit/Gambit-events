@@ -15,6 +15,9 @@ enum class NotificationType {
 
     /** A message a campsite owner sent to a lottery's waiting list (US 02.10.01). */
     OWNER_MESSAGE,
+
+    /** The campsite owner rejected the entrant's reservation (US 02.08.01). */
+    RESERVATION_REJECTED,
 }
 
 /**
@@ -156,6 +159,36 @@ data class Notification(
                 sentAt = sentAtSeconds,
             )
         }
+
+        /**
+         * Creates a notice telling an entrant the campsite owner rejected
+         * their reservation (US 02.08.01).
+         *
+         * @param id unique ID for the notification
+         * @param reservation the rejected reservation; its [Reservation.rejectionReason] is
+         * added to the message
+         * @param campsiteName name of the campsite, shown in the message
+         * @param ownerId ID of the owner who rejected it
+         * @param createdAt the date the notification is created
+         * @return a new unread rejection notice
+         */
+        fun reservationRejected(
+            id: String,
+            reservation: Reservation,
+            campsiteName: String,
+            ownerId: String,
+            createdAt: LocalDate,
+        ): Notification = Notification(
+            id = id,
+            recipientId = reservation.entrantId,
+            lotteryId = reservation.lotteryId,
+            type = NotificationType.RESERVATION_REJECTED,
+            message = "Your reservation at $campsiteName for ${reservation.dates.start} to " +
+                "${reservation.dates.finish} was rejected by the owner." +
+                if (reservation.rejectionReason.isBlank()) "" else " Reason: ${reservation.rejectionReason}",
+            createdAt = createdAt,
+            senderId = ownerId,
+        )
 
         /**
          * Creates a notification telling an entrant they won a lottery.

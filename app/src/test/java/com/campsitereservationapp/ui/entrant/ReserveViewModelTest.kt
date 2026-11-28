@@ -325,6 +325,21 @@ class ReserveViewModelTest {
     // ---------- Rules and policies (US 02.11.01) ----------
 
     @Test
+    fun winnerWhoseReservationWasRejected_isBlockedFromRebooking() = runTest {
+        reservationRepository.reserve(
+            aliBooks(december(2, 4)).copy(id = "reservation-priya", entrantId = "entrant-priya")
+        )
+        reservationRepository.reject("reservation-priya", "Forest fire")
+        val viewModel = viewModelFor("entrant-priya")
+
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        assertEquals("The campsite owner rejected your reservation.", viewModel.uiState.value.blockedReason)
+        assertFalse(viewModel.uiState.value.canReserve)
+    }
+
+    @Test
     fun winner_seesCampsiteRulesAndTheirName_withRulesNotYetAccepted() = runTest {
         val viewModel = viewModelFor("entrant-priya")
         viewModel.load("lottery-pine-ridge")
