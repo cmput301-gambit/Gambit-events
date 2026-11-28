@@ -87,7 +87,7 @@ fun InboxScreen(
 
             // Title
             Text(
-                text = if (state.unreadCount > 0) "Notification Logs (${state.unreadCount} unread)" else "Notification Logs",
+                                text = if (state.unreadCount > 0) "Inbox (${state.unreadCount} unread)" else "Inbox",
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
