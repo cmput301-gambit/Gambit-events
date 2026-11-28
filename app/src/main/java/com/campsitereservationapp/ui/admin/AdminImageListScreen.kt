@@ -310,7 +310,7 @@ private fun AdminImageGridCard(
                     )
                 } else {
                     Text(
-                        text = "Image Here",
+                        text = "Can't show this photo",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.DarkGray
                     )
