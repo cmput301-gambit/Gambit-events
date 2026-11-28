@@ -21,7 +21,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import kotlin.coroutines.cancellation.CancellationException
-
+import com.campsitereservationapp.data.Filter
+import com.campsitereservationapp.model.ImageKind
 /**
  * Filter options for the owner reservation list screen.
  *
