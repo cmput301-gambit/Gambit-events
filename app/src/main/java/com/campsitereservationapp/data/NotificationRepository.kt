@@ -5,6 +5,7 @@ import com.campsitereservationapp.model.NotificationType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Stores and provides [Notification] objects.
@@ -84,6 +85,9 @@ class NotificationRepository(dataSource: DataSource<Notification>) :
          *
          * The ID is not included because it is the document ID. The type is
          * saved by name (such as "LOTTERY_WON") and the date as "yyyy-MM-dd" text.
+         * An owner message's send time is saved as text like
+         * "2026-11-27T14:05:09", the same way messages are; win/lose
+         * notifications save null.
          *
          * @param notification the notification to convert
          * @return the fields to save
@@ -95,6 +99,9 @@ class NotificationRepository(dataSource: DataSource<Notification>) :
             "message" to notification.message,
             "createdAt" to notification.createdAt.toString(),
             "read" to notification.read,
+            "senderId" to notification.senderId,
+            "batchId" to notification.batchId,
+            "sentAt" to notification.sentAt?.toString(),
         )
 
         /**
@@ -103,6 +110,9 @@ class NotificationRepository(dataSource: DataSource<Notification>) :
          * Missing fields fall back to the same defaults as [Notification]'s
          * constructor, except the type: a missing or unknown type throws,
          * so the document is skipped rather than shown as the wrong result.
+         * Documents saved before owner messages existed have no sender,
+         * batch or send time, and load with a blank sender and batch and a
+         * null send time.
          *
          * @param id the document ID, used as the notification ID
          * @param data the saved fields
@@ -118,6 +128,9 @@ class NotificationRepository(dataSource: DataSource<Notification>) :
             createdAt = (data["createdAt"] as? String)?.let(LocalDate::parse)
                 ?: LocalDate.of(1970, 1, 1),
             read = data["read"] as? Boolean ?: false,
+            senderId = data["senderId"] as? String ?: "",
+            batchId = data["batchId"] as? String ?: "",
+            sentAt = (data["sentAt"] as? String)?.let(LocalDateTime::parse),
         )
     }
 }

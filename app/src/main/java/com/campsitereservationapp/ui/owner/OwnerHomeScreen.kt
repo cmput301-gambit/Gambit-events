@@ -77,7 +77,16 @@ fun OwnerHomeScreen(
         ) {
             Text("View Lottery Waitlists")
         }
+
+        Button(
+            onClick = { navController.navigate("OwnerLotteryCampsiteSelectionScreen") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Create Lottery")
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
+        //Spacer(modifier = Modifier.height(12.dp))
 
         Button(
             onClick = { navController.navigate("OwnerReservations") },

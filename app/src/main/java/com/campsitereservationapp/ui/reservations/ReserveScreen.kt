@@ -2,7 +2,29 @@ package com.campsitereservationapp.ui.reservations
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import com.campsitereservationapp.ui.theme.CampPrimary
+import com.campsitereservationapp.ui.theme.CampTertiary
+import com.campsitereservationapp.ui.theme.CampWhite
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,7 +63,8 @@ import android.util.Log
  * user pick check-in and check-out in a date range picker, and shows a
  * confirmation once reserved: the campsite details, the booked dates, and
  * when the reservation was made. Anyone who can't reserve sees why instead
- * of the form.
+ * of the form. Before reserving, the entrant must tick "Read & Agree to Rules
+ * and Policy" on the confirmation card (mockup M34, US 02.11.01).
  *
  * **Outstanding issues:** plain styling. The picker lets you select days
  * outside the free ranges, and picking one shows an error.
@@ -111,7 +134,8 @@ fun ReserveScreen(
             else -> ReserveForm(state, viewModel,
                 onReserveClicked = {
                     viewModel.reserve()
-                }
+                },
+                onCancelClicked = { navController.popBackStack() },
             )
         }
 
@@ -119,14 +143,20 @@ fun ReserveScreen(
 }
 
 /**
- * The free dates, the date picker button, and the Reserve button.
+ * The free dates, the date picker button, and the rules confirmation card.
  *
  * @param state what to show
  * @param viewModel receives the picked dates and the Reserve tap
- * @param onReserveClicked callback when reserve button is tapped
+ * @param onReserveClicked callback when the green confirm button is tapped
+ * @param onCancelClicked callback when the red cancel button is tapped
  */
 @Composable
-private fun ReserveForm(state: ReserveUiState, viewModel: ReserveViewModel, onReserveClicked: () -> Unit) {
+private fun ReserveForm(
+    state: ReserveUiState,
+    viewModel: ReserveViewModel,
+    onReserveClicked: () -> Unit,
+    onCancelClicked: () -> Unit,
+) {
     var showPicker by remember { mutableStateOf(false) }
     val checkIn = state.checkIn
     val checkOut = state.checkOut
@@ -165,10 +195,161 @@ private fun ReserveForm(state: ReserveUiState, viewModel: ReserveViewModel, onRe
         )
     }
 
+    Spacer(modifier = Modifier.height(16.dp))
+    RulesConfirmationCard(
+        entrantName = state.entrantName,
+        campsiteCapacity = state.campsiteCapacity,
+        rules = state.campsiteRules,
+        rulesAccepted = state.rulesAccepted,
+        canConfirm = state.canConfirm,
+        onRulesAcceptedChange = viewModel::onRulesAcceptedChange,
+        onCancel = onCancelClicked,
+        onConfirm = onReserveClicked,
+    )
+}
 
-    Button(onClick = onReserveClicked)
+/**
+ * Card where the entrant agrees to the campsite rules and confirms the
+ * reservation (mockup M34 marker 1, US 02.11.01).
+ *
+ * **Purpose:** shows who is reserving and for how many people, a "Read &
+ * Agree to Rules and Policy" checkbox whose label opens the rules, and red
+ * (cancel) and green (confirm) circle buttons. Confirm stays disabled until
+ * the box is ticked.
+ *
+ * **Design rationale:** stateless; the agreement lives in [ReserveUiState] so
+ * the gate is unit-testable in [ReserveViewModel]. Only whether the rules
+ * dialog is open is kept here, because it is pure UI.
+ *
+ * **Outstanding issues:** the mockup's profile picture is left out for now.
+ * Party size shows the campsite's capacity, since reservations don't record
+ * a guest count yet.
+ *
+ * @param entrantName the entrant's profile name, or blank if they haven't set one
+ * @param campsiteCapacity how many people the campsite holds, as text
+ * @param rules the campsite's rules and policies, or blank if none were set
+ * @param rulesAccepted whether the checkbox is ticked
+ * @param canConfirm whether the green confirm button is enabled
+ * @param onRulesAcceptedChange called when the checkbox is ticked or unticked
+ * @param onCancel called when the red button is tapped
+ * @param onConfirm called when the green button is tapped
+ */
+@Composable
+private fun RulesConfirmationCard(
+    entrantName: String,
+    campsiteCapacity: String,
+    rules: String,
+    rulesAccepted: Boolean,
+    canConfirm: Boolean,
+    onRulesAcceptedChange: (Boolean) -> Unit,
+    onCancel: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    var showRules by remember { mutableStateOf(false) }
 
-    { Text("Reserve") }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(CampTertiary)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = entrantName.ifBlank { "You" },
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+        )
+        if (campsiteCapacity.isNotBlank()) {
+            Text("$campsiteCapacity people", style = MaterialTheme.typography.bodyMedium)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = rulesAccepted, onCheckedChange = onRulesAcceptedChange)
+            Text(
+                text = "Read & Agree to Rules and Policy",
+                style = MaterialTheme.typography.bodySmall,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.clickable { showRules = true },
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            CircleActionButton(
+                icon = Icons.Default.Close,
+                contentDescription = "Cancel reservation",
+                color = Color(0xFFE53935),
+                enabled = true,
+                onClick = onCancel,
+            )
+            CircleActionButton(
+                icon = Icons.Default.Check,
+                contentDescription = "Confirm reservation",
+                color = CampPrimary,
+                enabled = canConfirm,
+                onClick = onConfirm,
+            )
+        }
+    }
+
+    if (showRules) {
+        AlertDialog(
+            onDismissRequest = { showRules = false },
+            title = { Text("Rules and Policy") },
+            text = {
+                Box(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(rules.ifBlank { "The owner hasn't listed any rules for this campsite." })
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRulesAcceptedChange(true)
+                    showRules = false
+                }) { Text("I Agree") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRules = false }) { Text("Close") }
+            },
+        )
+    }
+}
+
+/**
+ * A large coloured circle button with an icon, as on mockup M34.
+ *
+ * @param icon the icon drawn in the circle
+ * @param contentDescription what the button does, for screen readers
+ * @param color the circle's colour when enabled
+ * @param enabled whether the button can be tapped
+ * @param onClick called when tapped
+ */
+@Composable
+private fun CircleActionButton(
+    icon: ImageVector,
+    contentDescription: String,
+    color: Color,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(72.dp),
+        shape = CircleShape,
+        colors = IconButtonDefaults.iconButtonColors(
+            containerColor = color,
+            contentColor = CampWhite,
+            disabledContainerColor = color.copy(alpha = 0.35f),
+            disabledContentColor = CampWhite.copy(alpha = 0.7f),
+        ),
+    ) {
+        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(36.dp))
+    }
 }
 
 /**

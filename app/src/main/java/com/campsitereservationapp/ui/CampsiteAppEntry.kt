@@ -2,6 +2,8 @@ package com.campsitereservationapp.ui
 
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -15,10 +17,16 @@ import com.campsitereservationapp.ui.admin.AdminProfileListScreen
 import com.campsitereservationapp.ui.admin.AdminRatingListScreen
 import com.campsitereservationapp.ui.campsite.BookedDatesScreen
 import com.campsitereservationapp.ui.campsite.EditCampsiteScreen
+import com.campsitereservationapp.ui.campsite.EditLotteryScreen
+import com.campsitereservationapp.ui.campsite.LotteryFormViewModel
+import com.campsitereservationapp.ui.campsite.OwnerEditLotteryCampsiteSelectionScreen
+import com.campsitereservationapp.ui.campsite.OwnerLotteryCampsiteSelectionScreen
+import com.campsitereservationapp.ui.campsite.OwnerLotteryDetailsScreen
 import com.campsitereservationapp.ui.owner.OwnerCampsiteDetailsScreen
 import com.campsitereservationapp.ui.owner.OwnerCampsiteListScreen
 import com.campsitereservationapp.ui.owner.OwnerHomeScreen
 import com.campsitereservationapp.ui.owner.OwnerWaitlistScreen
+import com.campsitereservationapp.ui.owner.NotifyWaitlistScreen
 import com.campsitereservationapp.ui.campsite.RegisterCampsiteScreen
 import com.campsitereservationapp.ui.campsite.CampsiteDetailsScreen
 import com.campsitereservationapp.ui.discovery.CampsiteListScreen
@@ -50,6 +58,28 @@ fun CampsiteAppEntry(){
         composable("EntrantHome") { EntrantHomeScreen(navController) }
         composable("OwnerHome") { OwnerHomeScreen(navController) }
         composable("RegisterCampsite") { RegisterCampsiteScreen(navController) }
+        composable("OwnerLotteryCampsiteSelectionScreen") { OwnerLotteryCampsiteSelectionScreen(navController) }
+        composable("OwnerLotteryDetails") { backStackEntry ->
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("OwnerLotteryCampsiteSelectionScreen")
+            }
+            val viewModel: LotteryFormViewModel = viewModel(viewModelStoreOwner = parentEntry)
+            OwnerLotteryDetailsScreen(navController, viewModel=viewModel)
+        }
+        composable(
+            route="EditLottery/{lotteryId}",
+            arguments = listOf(navArgument("lotteryId") { type = NavType.StringType})
+        ) { backStackEntry ->
+            val lotteryId = backStackEntry.arguments?.getString("lotteryId") ?: return@composable
+            EditLotteryScreen(navController, lotteryId = lotteryId)
+        }
+        composable(
+            route="OwnerEditLotteryCampsiteSelectionScreen/{lotteryId}",
+            arguments = listOf(navArgument("lotteryId") { type = NavType.StringType})
+        ) { backStackEntry ->
+            val lotteryId = backStackEntry.arguments?.getString("lotteryId") ?: return@composable
+            OwnerEditLotteryCampsiteSelectionScreen(navController, lotteryId = lotteryId)
+        }
         composable("Reservations") { ReservationListScreen(navController) }
         composable("OwnerCampsiteList") { OwnerCampsiteListScreen(navController) }
         composable(
@@ -97,6 +127,13 @@ fun CampsiteAppEntry(){
         }
         composable("UserSettings") { EntrantSettingsScreen(navController) }
         composable("OwnerWaitlists") { OwnerWaitlistScreen(navController) }
+        composable(
+            route = "NotifyWaitlist/{lotteryId}",
+            arguments = listOf(navArgument("lotteryId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val lotteryId = backStackEntry.arguments?.getString("lotteryId") ?: return@composable
+            NotifyWaitlistScreen(navController, lotteryId = lotteryId)
+        }
         composable("Inbox") { InboxScreen(navController) }
         composable(
             route = "Reserve/{lotteryId}",

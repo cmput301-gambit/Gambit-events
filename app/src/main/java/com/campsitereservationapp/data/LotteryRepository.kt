@@ -69,6 +69,7 @@ class LotteryRepository(
         entrantInWinners: Boolean? = null,
         entrantInDeclined: Boolean? = null,
         hasSentNotifications: Boolean? = null,
+        lotteryId: String? = null,
     ): Flow<List<Lottery>> =
         observeAll().map { lotteries ->
             lotteries.filter { lottery ->
@@ -82,9 +83,20 @@ class LotteryRepository(
                                         (entrantInWinners == null || (userId in waitingList.entrantWinners) == entrantInWinners) &&
                                         (entrantInLosers == null || (userId in waitingList.entrantLosers) == entrantInLosers) &&
                                         (entrantInDeclined == null || (userId in waitingList.entrantsDeclined) == entrantInDeclined)
-                                ))
+                                )) &&
+                        (lotteryId == null || lottery.id == lotteryId)
             }
         }
+
+    fun getLotteryFromCampsiteId(
+        campsiteId: String? = null,
+    ): Flow<List<Lottery>> =
+        observeAll().map { lotteries ->
+            lotteries.filter { lottery ->
+                        (campsiteId == null || campsiteId in lottery.campsiteIds)
+            }
+        }
+
 
     /**
      * Draws every lottery that is ready (stage DRAWN, notifications not yet
@@ -174,7 +186,8 @@ class LotteryRepository(
     suspend fun deleteByCampsite(campsiteId: String) {
         for (lottery in getAll()) {
             if (campsiteId in lottery.campsiteIds) {
-                val updatedCampsiteIds = lottery.campsiteIds - campsiteId
+                val updatedCampsiteIds = lottery.campsiteIds
+                updatedCampsiteIds.remove(campsiteId)
                 if (updatedCampsiteIds.isEmpty()) {
                     delete(lottery.id)
                 } else {
@@ -265,7 +278,7 @@ class LotteryRepository(
             return Lottery(
                 id = id,
                 ownerId = data["ownerId"] as? String ?: "",
-                campsiteIds = readStringList(data["campsiteIds"]),
+                campsiteIds = readStringList(data["campsiteIds"]) as MutableList<String>,
                 registrationPeriod = readDateRange(data["registrationStart"], data["registrationFinish"]),
                 reservationPeriod = readDateRange(data["reservationStart"], data["reservationFinish"]),
                 stage = LotteryStatus.valueOf(data["stage"] as? String ?: ""),

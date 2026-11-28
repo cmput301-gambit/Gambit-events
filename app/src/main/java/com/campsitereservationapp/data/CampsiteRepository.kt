@@ -71,6 +71,7 @@ class CampsiteRepository(dataSource: DataSource<Campsite>) : Repository<Campsite
             "longitude" to campsite.longitude,
             "availabilityStart" to campsite.availability?.start?.toString(),
             "availabilityFinish" to campsite.availability?.finish?.toString(),
+            "rules" to campsite.rules,
         )
 
         /**
@@ -94,6 +95,7 @@ class CampsiteRepository(dataSource: DataSource<Campsite>) : Repository<Campsite
             latitude = (data["latitude"] as? Number)?.toDouble(),
             longitude = (data["longitude"] as? Number)?.toDouble(),
             availability = readDateRange(data["availabilityStart"], data["availabilityFinish"]),
+            rules = data["rules"] as? String ?: "",
         )
 
         // Builds a DateRange only when both dates were saved.

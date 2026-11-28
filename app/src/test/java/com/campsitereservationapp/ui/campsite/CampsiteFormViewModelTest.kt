@@ -166,6 +166,23 @@ class CampsiteFormViewModelTest {
         assertEquals("Updated Name", repository.get("campsite-edit-1")?.name)
     }
 
+    @Test
+    fun rules_areSavedTrimmed_andLoadedWhenEditing() = runTest {
+        viewModel.onNameChange("Rules Camp")
+        viewModel.onCapacityChange("4")
+        viewModel.onRulesChange("  No pets. Quiet after 10pm.  ")
+
+        viewModel.save()
+        testScheduler.advanceUntilIdle()
+
+        val saved = repository.getAll().last()
+        assertEquals("No pets. Quiet after 10pm.", saved.rules)
+
+        val editViewModel = CampsiteFormViewModel(repository, userRepository, imageRepository, saved.ownerId, saved.id)
+        testScheduler.advanceUntilIdle()
+        assertEquals("No pets. Quiet after 10pm.", editViewModel.uiState.value.rules)
+    }
+
     // ---- Campsite posters (uploaded to ImageRepository) ----
 
     // The start of a real JPEG file, standing in for a shrunk photo.

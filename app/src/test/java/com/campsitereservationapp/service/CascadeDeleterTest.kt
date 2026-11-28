@@ -94,7 +94,7 @@ class CascadeDeleterTest {
 
     // Priya and Noah are waiting for Pine Ridge.
     private val pineRidgeLottery = Lottery(
-        "lottery-pine-ridge", ownerId = "owner-bobby", campsiteIds = listOf("campsite-pine-ridge"),
+        "lottery-pine-ridge", ownerId = "owner-bobby", campsiteIds = mutableListOf("campsite-pine-ridge"),
         registrationPeriod = registration, reservationPeriod = stay, stage = LotteryStatus.OPEN,
         waitingList = WaitingList(entrantList = listOf("entrant-priya", "entrant-noah")),
     )
@@ -102,7 +102,7 @@ class CascadeDeleterTest {
     // Jill's lottery that also lists Bobby's Lakeside Loop. Priya already won it.
     private val sharedLottery = Lottery(
         "lottery-shared", ownerId = "owner-jill",
-        campsiteIds = listOf("campsite-aspen-hollow", "campsite-lakeside-loop"),
+        campsiteIds = mutableListOf("campsite-aspen-hollow", "campsite-lakeside-loop"),
         registrationPeriod = registration, reservationPeriod = stay, stage = LotteryStatus.CLOSED,
         waitingList = WaitingList(
             entrantList = listOf("entrant-priya", "entrant-noah"),

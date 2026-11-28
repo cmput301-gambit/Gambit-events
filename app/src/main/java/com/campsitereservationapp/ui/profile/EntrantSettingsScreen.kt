@@ -1,5 +1,10 @@
 package com.campsitereservationapp.ui.profile
 
+import android.net.Uri
+import androidx.activity.compose.ManagedActivityResultLauncher
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,14 +36,20 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
@@ -47,7 +58,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.campsitereservationapp.R
 import com.campsitereservationapp.model.User
+import com.campsitereservationapp.ui.components.loadJpegBytes
+import com.campsitereservationapp.ui.components.rememberImageBitmap
 import com.campsitereservationapp.ui.theme.CampsiteReservationAppTheme
+import kotlinx.coroutines.launch
 
 /**
  * Screen for managing user profile settings, notification toggles, and account details.
@@ -62,21 +76,32 @@ fun EntrantSettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
+    val imageBitmap = rememberImageBitmap(state.currentProfileImage)
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    //Used when the user wants to pick a new profile picture.
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                loadJpegBytes(context, uri)?.let { viewModel.onProfilePicturePicked(it) }
+            }
+        }
+    }
+
     EntrantSettingsContent(
         state = state,
         onBack = { navController.popBackStack() },
         onToggleUpdateUser = viewModel::toggleUpdateUserOpen,
-        onSaveProfile = { name, phone, email ->
-            viewModel.updateUserDetails(
-                newName = name,
-                newPhone = phone,
-                newEmail = email,
-            )
-            viewModel.toggleUpdateUserOpen()
-        },
+        onSaveProfile = viewModel::updateUserDetails,
         onToggleNotifications = viewModel::toggleReceiveNotifications,
         onPolicyClick = { navController.navigate("PolicyAndGuidelines") },
         onDeleteAccount = viewModel::requestDeleteAccount,
+        profileImageBitmap = imageBitmap,
+        photoPickerLauncher = photoPickerLauncher,
+        onProfilePictureRemoved = viewModel::onProfilePictureRemoved
     )
 
     // "Are you sure?" popup for deleting the account (US 01.08.01).
@@ -113,6 +138,17 @@ fun EntrantSettingsScreen(
         )
     }
 
+    state.updateError?.let { message ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissUpdateError,
+            title = { Text("Something went wrong updating your profile.") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissUpdateError) { Text("OK") }
+            },
+        )
+    }
+
     // Once the profile is gone, leave settings and clear the back stack so
     // Back can't return to a deleted profile.
     LaunchedEffect(state.accountDeleted) {
@@ -127,12 +163,15 @@ fun EntrantSettingsScreen(
 @Composable
 fun EntrantSettingsContent(
     state: EntrantSettingsState,
+    profileImageBitmap: ImageBitmap?,
     onBack: () -> Unit,
     onToggleUpdateUser: () -> Unit,
-    onSaveProfile: (name: String, phone: String, email: String) -> Unit,
+    onSaveProfile: (name: String?, phone: String?, email: String?) -> Unit,
+    onProfilePictureRemoved: () -> Unit,
     onToggleNotifications: () -> Unit,
     onPolicyClick: () -> Unit,
     onDeleteAccount: () -> Unit,
+    photoPickerLauncher: ManagedActivityResultLauncher<PickVisualMediaRequest, Uri?>?,
     modifier: Modifier = Modifier,
 ) {
     var tempNewName by remember(state.currentUser.name) { mutableStateOf(state.currentUser.name) }
@@ -215,6 +254,18 @@ fun EntrantSettingsContent(
                 fontSize = 18.sp,
                 color = Color.DarkGray
             )
+
+            Spacer(Modifier.height(18.dp))
+
+            // Profile Picture
+            Text(
+                text = "Profile Picture",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+            Spacer(Modifier.height(8.dp))
+            ProfilePicture(profileImageBitmap)
 
             Spacer(Modifier.height(18.dp))
 
@@ -326,7 +377,9 @@ fun EntrantSettingsContent(
                         .fillMaxWidth(0.85f)
                 ) {
                     Column(
-                        Modifier.fillMaxWidth(),
+                        Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.Start
                     ) {
                         Text(
@@ -366,6 +419,24 @@ fun EntrantSettingsContent(
                             modifier = Modifier.fillMaxWidth()
                         )
 
+                        Spacer(Modifier.height(12.dp))
+
+                        Text("Profile Picture", fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        ProfilePicture(profileImageBitmap, size = 120.dp)
+                        TextButton(onClick = {
+                            photoPickerLauncher?.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }) {
+                            Text("Choose new profile picture", color = Color(0xFF4C6B3E))
+                        }
+                        if (profileImageBitmap != null) {
+                            TextButton(onClick = onProfilePictureRemoved) {
+                                Text("Remove Image", color = Color(0xFFE53935))
+                            }
+                        }
+
                         Spacer(Modifier.height(20.dp))
 
                         Button(
@@ -382,12 +453,55 @@ fun EntrantSettingsContent(
     }
 }
 
+@Composable
+private fun ProfilePicture(
+    profileImageBitmap: ImageBitmap?,
+    modifier: Modifier = Modifier,
+    size: Dp = 160.dp,
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFD9D9D9))
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (profileImageBitmap != null) {
+            Image(
+                bitmap = profileImageBitmap,
+                contentDescription = "Current profile picture",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "No profile picture found.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.DarkGray,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Accepts .PNG, .JPEG, .IMG, and .JPG.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.DarkGray,
+                    textAlign = TextAlign.Center,
+                    fontSize = 9.sp
+                )
+            }
+        }
+    }
+}
+
 private val previewUser = User(
     id = "1234",
     name = "Test User",
     email = "test@example.com",
     phone = "780-111-1111",
     notificationsEnabled = true,
+    profileImageId = "1"
 )
 
 @Preview(showBackground = true, showSystemUi = true, name = "Settings")
@@ -399,7 +513,26 @@ private fun EntrantSettingsPreview() {
                 currentUser = previewUser
             ),
             onBack = {}, onToggleUpdateUser = {}, onSaveProfile = { _, _, _ -> },
-            onToggleNotifications = {}, onPolicyClick = {}, onDeleteAccount = {},
+            onToggleNotifications = {}, onPolicyClick = {}, onDeleteAccount = {}, profileImageBitmap = null,
+            photoPickerLauncher = null,
+            onProfilePictureRemoved = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "Update popup open")
+@Composable
+private fun EntrantSettingsPopupPreview() {
+    CampsiteReservationAppTheme {
+        EntrantSettingsContent(
+            state = EntrantSettingsState(
+                currentUser = previewUser,
+                isUpdateUserOpen = true
+            ),
+            onBack = {}, onToggleUpdateUser = {}, onSaveProfile = { _, _, _ -> },
+            onToggleNotifications = {}, onPolicyClick = {}, onDeleteAccount = {}, profileImageBitmap = null,
+            photoPickerLauncher = null,
+            onProfilePictureRemoved = {}
         )
     }
 }

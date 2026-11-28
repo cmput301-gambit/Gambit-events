@@ -1,13 +1,18 @@
 package com.campsitereservationapp.ui.campsite
 
+import android.util.Log
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
+import com.campsitereservationapp.data.MessageRepository
 import com.campsitereservationapp.data.MockDataSource
+import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
+import com.campsitereservationapp.model.Message
+import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.model.User
 import com.campsitereservationapp.model.WaitingList
 import com.campsitereservationapp.ui.owner.OwnerWaitlistViewModel
@@ -47,6 +52,8 @@ class OwnerWaitlistViewModelTest {
     private lateinit var lotteryRepository: LotteryRepository
     private lateinit var campsiteRepository: CampsiteRepository
     private lateinit var userRepository: UserRepository
+    private lateinit var messageRepository: MessageRepository
+    private lateinit var reservationRepository: ReservationRepository
 
     private val registrationPeriod = DateRange(LocalDate.now().plusDays(1), LocalDate.now().plusDays(5))
     private val reservationPeriod = DateRange(LocalDate.now().plusDays(6), LocalDate.now().plusDays(8))
@@ -83,6 +90,16 @@ class OwnerWaitlistViewModelTest {
         )))
         lotteryRepository = LotteryRepository(
             MockDataSource(listOf(bobbysLottery, jillsLottery)), campsiteRepository)
+        messageRepository = MessageRepository(MockDataSource(listOf(
+            Message(id="message-bobby", reservationId="reservation-bobby"),
+
+
+
+        )))
+        reservationRepository = ReservationRepository(MockDataSource(listOf(
+            Reservation(id="reservation-bobby", lotteryId=bobbysLottery.id, dates = DateRange(
+                LocalDate.now(), LocalDate.now().plusDays(1))),
+        )))
     }
 
     @After
@@ -91,7 +108,8 @@ class OwnerWaitlistViewModelTest {
     }
 
     private fun viewModelFor(ownerId: String) =
-        OwnerWaitlistViewModel(lotteryRepository, campsiteRepository, userRepository, ownerId)
+        OwnerWaitlistViewModel(lotteryRepository, campsiteRepository, userRepository, ownerId, reservationRepository,
+            messageRepository)
 
     private fun TestScope.startCollecting(viewModel: OwnerWaitlistViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -166,5 +184,16 @@ class OwnerWaitlistViewModelTest {
 
         assertFalse(viewModel.uiState.value.isLoading)
         assertTrue(viewModel.uiState.value.lotteries.isEmpty())
+    }
+
+    @Test
+    fun cleanupAfterDeletion() = runTest {
+        val viewModel = viewModelFor("owner-bobby")
+        startCollecting(viewModel)
+        viewModel.requestRemoval(bobbysLottery.id)
+        viewModel.confirmRemoval()
+        advanceUntilIdle()
+        assert(reservationRepository.get("reservation-bobby")==null)
+        assert(messageRepository.get("message-bobby")==null)
     }
 }

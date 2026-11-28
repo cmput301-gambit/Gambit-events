@@ -40,6 +40,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * @property latitude optional latitude map coordinate
  * @property longitude optional longitude map coordinate
  * @property availability optional reservation availability date range
+ * @property rules the campsite's rules and policies shown to entrants before they reserve (US 02.11.01)
  * @property errors list of validation errors encountered during save attempts
  */
 data class CampsiteFormUiState(
@@ -57,6 +58,7 @@ data class CampsiteFormUiState(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val availability: DateRange? = null,
+    val rules: String = "",
     val errors: List<CampsiteError> = emptyList()
 )
 
@@ -129,7 +131,8 @@ class CampsiteFormViewModel(
                                 posterImage = loadPoster(loaded.posterImageId),
                                 latitude = loaded.latitude,
                                 longitude = loaded.longitude,
-                                availability = loaded.availability
+                                availability = loaded.availability,
+                                rules = loaded.rules,
                             )
                         }
                     } else {
@@ -160,6 +163,15 @@ class CampsiteFormViewModel(
      */
     fun onDescriptionChange(description: String) {
         _uiState.update { it.copy(description = description) }
+    }
+
+    /**
+     * Updates the campsite rules and policies input in the form state (US 02.11.01).
+     *
+     * @param rules new rules and policies text
+     */
+    fun onRulesChange(rules: String) {
+        _uiState.update { it.copy(rules = rules) }
     }
 
     /**
@@ -282,6 +294,7 @@ class CampsiteFormViewModel(
             latitude = state.latitude,
             longitude = state.longitude,
             availability = state.availability,
+            rules = state.rules.trim(),
         )
 
         val errors = campsite.validate().toMutableList()

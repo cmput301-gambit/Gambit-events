@@ -13,6 +13,7 @@ import com.campsitereservationapp.CampsiteApp
 import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.ReservationRepository
+import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.Csv
 import com.campsitereservationapp.model.DateRange
@@ -45,6 +46,9 @@ import kotlin.coroutines.cancellation.CancellationException
  * @property confirmation the saved reservation once booking worked, or null
  * @property sendCSV toggles whether to give a download prompt of a CSV after reservation has been confirmed.
  * @property csvRequested true when a CSV export has been requested by a successful reservation.
+ * @property entrantName the reserving entrant's profile name, shown on the confirmation card (M34)
+ * @property campsiteRules the campsite's rules and policies the entrant must agree to (US 02.11.01)
+ * @property rulesAccepted true once the entrant has ticked "Read & Agree to Rules and Policy"
  */
 data class ReserveUiState(
     val isLoading: Boolean = true,
@@ -59,10 +63,20 @@ data class ReserveUiState(
     val confirmation: Reservation? = null,
     val sendCSV: Boolean = false,
     val csvRequested: Boolean = false,
+    val entrantName: String = "",
+    val campsiteRules: String = "",
+    val rulesAccepted: Boolean = false,
 ) {
     /** True when the form should be usable. */
     val canReserve: Boolean
         get() = !isLoading && blockedReason == null && confirmation == null
+
+    /**
+     * True when the confirm button can be tapped: the form is usable and the
+     * entrant has agreed to the campsite's rules and policies (US 02.11.01).
+     */
+    val canConfirm: Boolean
+        get() = canReserve && rulesAccepted
 }
 
 /**
@@ -70,7 +84,8 @@ data class ReserveUiState(
  *
  * **Purpose:** shows a winner which dates are free at their campsite and
  * lets them reserve some, then confirms the reservation
- * (US 01.04.01, 01.05.01).
+ * (US 01.04.01, 01.05.01). Before confirming, the entrant must read and agree
+ * to the campsite's rules and policies (US 02.11.01).
  *
  * **Design rationale:** MVVM, like the other screens. Only winners of a
  * drawn lottery can reserve, and each winner gets one active reservation
@@ -80,7 +95,9 @@ data class ReserveUiState(
  * be booked twice. Dates come from the same date range picker as the
  * campsite search ([com.campsitereservationapp.ui.discovery.DateFilterMenu]), which can't limit the days you can
  * select, so this class checks that the picked dates fall inside a free
- * range.
+ * range. The rules gate lives in [ReserveUiState.rulesAccepted] and is checked
+ * again in [reserve], so a reservation can't be saved without agreement even if
+ * the screen's disabled button were bypassed.
  *
  * **Outstanding issues:** uses the first campsite if a lottery has
  * several. Reservations are not saved between app restarts until the
@@ -89,12 +106,14 @@ data class ReserveUiState(
  * @param lotteryRepository where the lottery comes from
  * @param campsiteRepository where the campsite comes from
  * @param reservationRepository where reservations are saved
+ * @param userRepository where the entrant's profile name comes from
  * @param currentUserId the entrant using the phone
  */
 class ReserveViewModel(
     private val lotteryRepository: LotteryRepository,
     private val campsiteRepository: CampsiteRepository,
     private val reservationRepository: ReservationRepository,
+    private val userRepository: UserRepository,
     private val currentUserId: String,
 ) : ViewModel() {
 
@@ -128,6 +147,21 @@ class ReserveViewModel(
         _uiState.update { it.copy(checkIn = checkIn, checkOut = checkOut ?: checkIn, error = null) }
     }
 
+    /**
+     * Called when the entrant ticks or unticks "Read & Agree to Rules and
+     * Policy" (US 02.11.01).
+     *
+     * @param accepted true if the entrant agrees to the campsite's rules
+     */
+    fun onRulesAcceptedChange(accepted: Boolean) {
+        _uiState.update { it.copy(rulesAccepted = accepted, error = null) }
+    }
+
+    /**
+     * Toggles whether a CSV of the reservation is offered once it is confirmed.
+     *
+     * @param newState true to offer the CSV download
+     */
     fun onToggleReceiveCSV(newState: Boolean){
         _uiState.update { it.copy(sendCSV = newState) }
     }
@@ -168,6 +202,8 @@ class ReserveViewModel(
         val name = campsite?.name.orEmpty()
         val location = campsite?.location.orEmpty()
         val capacity = campsite?.capacity?.toString().orEmpty()
+        val rules = campsite?.rules.orEmpty()
+        val entrantName = userRepository.get(currentUserId)?.name.orEmpty()
 
         if (existing != null) {
             _uiState.value = ReserveUiState(
@@ -213,6 +249,8 @@ class ReserveViewModel(
                 campsiteLocation = location,
                 campsiteCapacity = capacity,
                 freeRanges = free,
+                entrantName = entrantName,
+                campsiteRules = rules,
             )
         }
     }
@@ -222,6 +260,10 @@ class ReserveViewModel(
         val reservingLotteryId = lotteryId ?: return
         val reservingCampsiteId = campsiteId ?: return
         if (!state.canReserve) return
+        if (!state.rulesAccepted) {
+            showError("Read and agree to the campsite rules and policies first.")
+            return
+        }
 
         val checkIn = state.checkIn
         val checkOut = state.checkOut
@@ -253,6 +295,7 @@ class ReserveViewModel(
         if (saved == null) {
             // Someone booked these dates after the screen loaded, so refresh the free dates.
             loadNow(reservingLotteryId)
+            _uiState.update { it.copy(rulesAccepted = state.rulesAccepted) }
             showError("Those dates were just taken. Pick other dates.")
         } else {
             _uiState.update { it.copy(confirmation = saved, error = null, csvRequested = it.sendCSV) }
@@ -377,6 +420,7 @@ class ReserveViewModel(
                     app.container.lotteryRepository,
                     app.container.campsiteRepository,
                     app.container.reservationRepository,
+                    app.container.userRepository,
                     app.container.currentUserId,
                 )
             }
