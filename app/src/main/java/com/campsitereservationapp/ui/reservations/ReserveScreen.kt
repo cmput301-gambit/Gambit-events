@@ -6,25 +6,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import com.campsitereservationapp.ui.components.CircleActionButton
+import com.campsitereservationapp.ui.components.RejectRed
 import com.campsitereservationapp.ui.theme.CampPrimary
 import com.campsitereservationapp.ui.theme.CampTertiary
-import com.campsitereservationapp.ui.theme.CampWhite
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -283,7 +277,7 @@ private fun RulesConfirmationCard(
             CircleActionButton(
                 icon = Icons.Default.Close,
                 contentDescription = "Cancel reservation",
-                color = Color(0xFFE53935),
+                color = RejectRed,
                 enabled = true,
                 onClick = onCancel,
             )
@@ -316,39 +310,6 @@ private fun RulesConfirmationCard(
                 TextButton(onClick = { showRules = false }) { Text("Close") }
             },
         )
-    }
-}
-
-/**
- * A large coloured circle button with an icon, as on mockup M34.
- *
- * @param icon the icon drawn in the circle
- * @param contentDescription what the button does, for screen readers
- * @param color the circle's colour when enabled
- * @param enabled whether the button can be tapped
- * @param onClick called when tapped
- */
-@Composable
-private fun CircleActionButton(
-    icon: ImageVector,
-    contentDescription: String,
-    color: Color,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    IconButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.size(72.dp),
-        shape = CircleShape,
-        colors = IconButtonDefaults.iconButtonColors(
-            containerColor = color,
-            contentColor = CampWhite,
-            disabledContainerColor = color.copy(alpha = 0.35f),
-            disabledContentColor = CampWhite.copy(alpha = 0.7f),
-        ),
-    ) {
-        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(36.dp))
     }
 }
 

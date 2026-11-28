@@ -1,15 +1,24 @@
 package com.campsitereservationapp.ui.owner
 
 import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.DataSource
+import com.campsitereservationapp.data.ImageRepository
 import com.campsitereservationapp.data.MockDataSource
+import com.campsitereservationapp.data.NotificationRepository
 import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Entrant
+import com.campsitereservationapp.model.Image
+import com.campsitereservationapp.model.ImageKind
+import com.campsitereservationapp.model.Notification
+import com.campsitereservationapp.model.NotificationType
 import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.model.ReservationStatus
 import com.campsitereservationapp.model.User
+import com.campsitereservationapp.service.NotificationHandler
+import org.junit.Assert.assertNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -45,6 +54,8 @@ class OwnerReservationListViewModelTest {
     private lateinit var campsiteRepository: CampsiteRepository
     private lateinit var reservationRepository: ReservationRepository
     private lateinit var userRepository: UserRepository
+    private lateinit var imageRepository: ImageRepository
+    private lateinit var notificationRepository: NotificationRepository
     private lateinit var viewModel: OwnerReservationListViewModel
     private val fixedToday = LocalDate.of(2026, 11, 1)
 
@@ -54,11 +65,15 @@ class OwnerReservationListViewModelTest {
         campsiteRepository = CampsiteRepository(MockDataSource())
         reservationRepository = ReservationRepository(MockDataSource())
         userRepository = UserRepository(MockDataSource())
+        imageRepository = ImageRepository(MockDataSource())
+        notificationRepository = NotificationRepository(MockDataSource())
 
         viewModel = OwnerReservationListViewModel(
             reservationRepository = reservationRepository,
             campsiteRepository = campsiteRepository,
             userRepository = userRepository,
+            imageRepository = imageRepository,
+            notificationHandler = NotificationHandler(notificationRepository),
             currentUserId = "owner-bobby",
             today = fixedToday,
         )
@@ -386,6 +401,206 @@ class OwnerReservationListViewModelTest {
 
         // Cancel the reservation live
         reservationRepository.cancel("res-bobby")
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.items.isEmpty())
+    }
+
+    // ---------- Reject a reservation (US 02.08.01) ----------
+
+    private val pineRidge = Campsite(id = "camp-bobby", ownerId = "owner-bobby", name = "Pine Ridge", capacity = 8)
+    private val noahStay = Reservation(
+        id = "res-noah",
+        entrantId = "guest-noah",
+        campsiteId = "camp-bobby",
+        lotteryId = "lottery-a",
+        dates = DateRange(LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12)),
+    )
+
+    private suspend fun seedNoahAtPineRidge() {
+        campsiteRepository.add(pineRidge)
+        userRepository.add(
+            User(id = "guest-noah", name = "Noah W", profileImageId = "img-noah", entrant = Entrant("guest-noah"))
+        )
+        imageRepository.add(
+            Image(id = "img-noah", uploaderId = "guest-noah", kind = ImageKind.PROFILE, targetId = "guest-noah", data = "QUJD")
+        )
+        reservationRepository.add(noahStay)
+    }
+
+    @Test
+    fun items_includeGuestProfilePictureAndPartySize() = runTest {
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+        seedNoahAtPineRidge()
+        testScheduler.advanceUntilIdle()
+
+        val item = viewModel.uiState.value.items.single()
+        assertEquals("QUJD", item.guestProfileImage)
+        assertEquals(8, item.partySize)
+    }
+
+    @Test
+    fun selectingAReservation_opensItsPopup_andDismissCloses() = runTest {
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+        seedNoahAtPineRidge()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onReservationSelected("res-noah")
+        testScheduler.advanceUntilIdle()
+        assertEquals("Noah W", viewModel.uiState.value.selected?.guestName)
+
+        viewModel.onDismissSelected()
+        testScheduler.advanceUntilIdle()
+        assertNull(viewModel.uiState.value.selected)
+        assertEquals(ReservationStatus.CONFIRMED, reservationRepository.get("res-noah")?.status)
+    }
+
+    @Test
+    fun rejectSelected_marksRejected_notifiesEntrant_andMovesToRejectedFilter() = runTest {
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+        seedNoahAtPineRidge()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onReservationSelected("res-noah")
+        viewModel.rejectSelected("Forest fire nearby")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(ReservationStatus.REJECTED, reservationRepository.get("res-noah")?.status)
+        val notice = notificationRepository.getAll().single()
+        assertEquals("guest-noah", notice.recipientId)
+        assertEquals("owner-bobby", notice.senderId)
+        assertEquals(NotificationType.RESERVATION_REJECTED, notice.type)
+        assertTrue(notice.message.contains("Pine Ridge"))
+        assertTrue(notice.message.endsWith("Reason: Forest fire nearby"))
+        assertEquals("Forest fire nearby", reservationRepository.get("res-noah")?.rejectionReason)
+
+        val state = viewModel.uiState.value
+        assertNull(state.selected)
+        assertEquals("Reservation rejected. The guest has been notified.", state.message)
+        assertTrue(state.items.isEmpty())
+
+        viewModel.onFilterChange(ReservationFilter.REJECTED)
+        testScheduler.advanceUntilIdle()
+        assertEquals("res-noah", viewModel.uiState.value.items.single().reservation.id)
+    }
+
+    @Test
+    fun rejectSelected_withBlankReason_isRefusedAndKeepsThePopupOpen() = runTest {
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+        seedNoahAtPineRidge()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onReservationSelected("res-noah")
+        viewModel.rejectSelected("   ")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(ReservationStatus.CONFIRMED, reservationRepository.get("res-noah")?.status)
+        assertTrue(notificationRepository.getAll().isEmpty())
+        assertEquals("Write a reason for rejecting this reservation.", viewModel.uiState.value.message)
+        assertEquals("res-noah", viewModel.uiState.value.selected?.reservation?.id)
+    }
+
+    @Test
+    fun rejectSelected_alreadyCancelled_isRefusedAndSendsNothing() = runTest {
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+        seedNoahAtPineRidge()
+        reservationRepository.cancel("res-noah")
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onReservationSelected("res-noah")
+        viewModel.rejectSelected("Forest fire nearby")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(ReservationStatus.CANCELLED, reservationRepository.get("res-noah")?.status)
+        assertTrue(notificationRepository.getAll().isEmpty())
+        assertEquals("This reservation was already cancelled or rejected.", viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun rejectSelected_atAnotherOwnersCampsite_isRefused() = runTest {
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+        campsiteRepository.add(Campsite(id = "camp-jill", ownerId = "owner-jill", name = "Aspen Hollow", capacity = 5))
+        reservationRepository.add(noahStay.copy(id = "res-jill", campsiteId = "camp-jill"))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onReservationSelected("res-jill")
+        viewModel.rejectSelected("Forest fire nearby")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(ReservationStatus.CONFIRMED, reservationRepository.get("res-jill")?.status)
+        assertTrue(notificationRepository.getAll().isEmpty())
+    }
+
+    @Test
+    fun items_onlyAllowRejectingStaysThatHaventEnded() = runTest {
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+        seedNoahAtPineRidge()
+        reservationRepository.add(
+            noahStay.copy(id = "res-old", dates = DateRange(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 3)))
+        )
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.items.single().canReject)
+
+        viewModel.onFilterChange(ReservationFilter.PAST)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.items.single().canReject)
+    }
+
+    @Test
+    fun rejectSelected_aStayThatAlreadyEnded_isRefusedAndSendsNothing() = runTest {
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+        seedNoahAtPineRidge()
+        reservationRepository.add(
+            noahStay.copy(id = "res-old", dates = DateRange(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 3)))
+        )
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onReservationSelected("res-old")
+        viewModel.rejectSelected("Forest fire nearby")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(ReservationStatus.CONFIRMED, reservationRepository.get("res-old")?.status)
+        assertTrue(notificationRepository.getAll().isEmpty())
+        assertEquals("This stay has already ended, so it can't be rejected.", viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun rejectSelected_whenTheNoticeFails_saysItWasRejectedButNotSent() = runTest {
+        val failingNotices = object : DataSource<Notification> by MockDataSource() {
+            override suspend fun add(item: Notification) = throw IllegalStateException("offline")
+        }
+        val vm = OwnerReservationListViewModel(
+            reservationRepository = reservationRepository,
+            campsiteRepository = campsiteRepository,
+            userRepository = userRepository,
+            imageRepository = imageRepository,
+            notificationHandler = NotificationHandler(NotificationRepository(failingNotices)),
+            currentUserId = "owner-bobby",
+            today = fixedToday,
+        )
+        backgroundScope.launch(testDispatcher) { vm.uiState.collect {} }
+        seedNoahAtPineRidge()
+        testScheduler.advanceUntilIdle()
+
+        vm.onReservationSelected("res-noah")
+        vm.rejectSelected("Forest fire nearby")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(ReservationStatus.REJECTED, reservationRepository.get("res-noah")?.status)
+        assertEquals(
+            "Reservation rejected, but the guest couldn't be notified. Message them directly.",
+            vm.uiState.value.message,
+        )
+        assertNull(vm.uiState.value.selected)
+    }
+
+    @Test
+    fun cancelledFilter_excludesRejectedReservations() = runTest {
+        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect {} }
+        seedNoahAtPineRidge()
+        reservationRepository.reject("res-noah", "Forest fire", today = fixedToday)
+        viewModel.onFilterChange(ReservationFilter.CANCELLED)
         testScheduler.advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.items.isEmpty())

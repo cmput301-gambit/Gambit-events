@@ -290,6 +290,16 @@ class FirestoreMappingTest {
     }
 
     @Test
+    fun reservation_roundTrip_keepsRejectedStatusAndReason() {
+        val rejected = priyaAtPineRidge.rejected("Forest fire nearby")!!
+
+        val rebuilt = ReservationRepository.fromMap(rejected.id, ReservationRepository.toMap(rejected))
+
+        assertEquals(rejected, rebuilt)
+        assertEquals("Forest fire nearby", rebuilt.rejectionReason)
+    }
+
+    @Test
     fun reservation_savesEntrantIdUnderTheNameTheFilterUses() {
         // observeForEntrant filters on "entrantId", so the saved field must match.
         assertEquals("entrant-priya", ReservationRepository.toMap(priyaAtPineRidge)["entrantId"])

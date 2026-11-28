@@ -5,6 +5,7 @@ import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.Notification
+import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.model.User
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -179,6 +180,29 @@ class NotificationHandler(private val notificationRepository: NotificationReposi
         val lost = losers.map { Notification.lost(newId(), it, lottery.id, campsiteName, today) }
         return won + lost
     }
+
+    /**
+     * Tells an entrant the campsite owner rejected their reservation, and
+     * saves the notice to their inbox (US 02.08.01). Like win/lose results, it
+     * ignores the notification opt-out, because the entrant must learn their
+     * booking is gone.
+     *
+     * @param reservation the rejected reservation
+     * @param campsiteName name of the campsite, shown in the message
+     * @param ownerId ID of the owner who rejected it
+     * @param today the date to put on the notification
+     * @return the saved notification
+     */
+    suspend fun sendReservationRejected(
+        reservation: Reservation,
+        campsiteName: String,
+        ownerId: String,
+        today: LocalDate = LocalDate.now(),
+    ): Notification = notificationRepository.add(
+        Notification.reservationRejected(
+            notificationRepository.newId(), reservation, campsiteName, ownerId, today
+        )
+    )
 
     /**
      * Builds the campsite name shown in the message, joining names if the

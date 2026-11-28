@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
@@ -89,6 +90,33 @@ class ReservationRepositoryTest {
     @Test
     fun cancel_missingReservation_returnsNull() = runTest {
         assertNull(repository.cancel("does-not-exist"))
+    }
+
+    @Test
+    fun reject_marksItRejected_andFreesTheDates() = runTest {
+        repository.reserve(reservation("r1", "entrant-priya", december(10, 12)))
+
+        repository.reject("r1", "Forest fire")
+
+        assertEquals(ReservationStatus.REJECTED, repository.get("r1")?.status)
+        assertTrue(repository.bookedDates("campsite-pine-ridge").isEmpty())
+    }
+
+    @Test
+    fun reject_missingOrAlreadyCancelled_returnsNull() = runTest {
+        repository.reserve(reservation("r1", "entrant-priya", december(10, 12)))
+        repository.cancel("r1")
+
+        assertNull(repository.reject("r1", "Forest fire"))
+        assertNull(repository.reject("does-not-exist", "Forest fire"))
+    }
+
+    @Test
+    fun reject_aStayThatAlreadyEnded_returnsNullAndKeepsIt() = runTest {
+        repository.reserve(reservation("r1", "entrant-priya", december(10, 12)))
+
+        assertNull(repository.reject("r1", "Forest fire", today = LocalDate.of(2026, 12, 13)))
+        assertEquals(ReservationStatus.CONFIRMED, repository.get("r1")?.status)
     }
 
     @Test
