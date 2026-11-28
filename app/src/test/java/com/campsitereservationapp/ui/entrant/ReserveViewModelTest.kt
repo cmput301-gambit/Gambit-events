@@ -4,12 +4,14 @@ import com.campsitereservationapp.data.CampsiteRepository
 import com.campsitereservationapp.data.LotteryRepository
 import com.campsitereservationapp.data.MockDataSource
 import com.campsitereservationapp.data.ReservationRepository
+import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
 import com.campsitereservationapp.model.Reservation
 import com.campsitereservationapp.model.ReservationStatus
+import com.campsitereservationapp.model.User
 import com.campsitereservationapp.model.WaitingList
 import com.campsitereservationapp.ui.reservations.ReserveViewModel
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +37,9 @@ import java.time.LocalDate
  * **Purpose:** checks that only winners of a drawn lottery can reserve, that
  * free dates are worked out correctly (inside the campsite's availability and
  * the lottery's reservation period), and that missing, out-of-range or
- * already-taken dates are refused (US 01.04.01, 01.05.01).
+ * already-taken dates are refused (US 01.04.01, 01.05.01). Also checks that
+ * a reservation is refused until the entrant agrees to the campsite rules
+ * (US 02.11.01).
  *
  * **Design rationale:** repositories backed by [MockDataSource], so nothing
  * touches Firestore. Dates are passed in the way the date range picker
@@ -49,6 +53,7 @@ class ReserveViewModelTest {
     private lateinit var campsiteRepository: CampsiteRepository
     private lateinit var lotteryRepository: LotteryRepository
     private lateinit var reservationRepository: ReservationRepository
+    private lateinit var userRepository: UserRepository
 
     private fun december(start: Int, finish: Int) =
         DateRange(LocalDate.of(2026, 12, start), LocalDate.of(2026, 12, finish))
@@ -60,7 +65,10 @@ class ReserveViewModelTest {
         ownerId = "owner-bobby",
         name = "Pine Ridge",
         availability = december(1, 10),
+        rules = "Quiet hours after 10pm. Pack out all garbage.",
     )
+
+    private val priya = User(id = "entrant-priya", name = "Priya S")
 
     // Priya won. Ali entered and lost. The reservation period covers all of December.
     private val closedLottery = Lottery(
@@ -83,6 +91,7 @@ class ReserveViewModelTest {
         campsiteRepository = CampsiteRepository(MockDataSource(listOf(pineRidge)))
         lotteryRepository = LotteryRepository(MockDataSource(listOf(closedLottery)), campsiteRepository)
         reservationRepository = ReservationRepository(MockDataSource())
+        userRepository = UserRepository(MockDataSource(listOf(priya)))
     }
 
     @After
@@ -91,7 +100,7 @@ class ReserveViewModelTest {
     }
 
     private fun viewModelFor(userId: String) =
-        ReserveViewModel(lotteryRepository, campsiteRepository, reservationRepository, userId)
+        ReserveViewModel(lotteryRepository, campsiteRepository, reservationRepository, userRepository, userId)
 
     private fun aliBooks(dates: DateRange) = Reservation(
         id = "reservation-ali",
@@ -187,6 +196,7 @@ class ReserveViewModelTest {
         advanceUntilIdle()
 
         viewModel.onDatesPicked(day(2), day(4))
+        viewModel.onRulesAcceptedChange(true)
         viewModel.reserve()
         advanceUntilIdle()
 
@@ -205,6 +215,7 @@ class ReserveViewModelTest {
         advanceUntilIdle()
 
         viewModel.onDatesPicked(day(7), null)
+        viewModel.onRulesAcceptedChange(true)
         viewModel.reserve()
         advanceUntilIdle()
 
@@ -217,6 +228,7 @@ class ReserveViewModelTest {
         viewModel.load("lottery-pine-ridge")
         advanceUntilIdle()
 
+        viewModel.onRulesAcceptedChange(true)
         viewModel.reserve()
         advanceUntilIdle()
 
@@ -231,6 +243,7 @@ class ReserveViewModelTest {
         advanceUntilIdle()
 
         viewModel.onDatesPicked(day(8), day(12))
+        viewModel.onRulesAcceptedChange(true)
         viewModel.reserve()
         advanceUntilIdle()
 
@@ -246,6 +259,7 @@ class ReserveViewModelTest {
         advanceUntilIdle()
 
         viewModel.onDatesPicked(day(5), day(3))
+        viewModel.onRulesAcceptedChange(true)
         viewModel.reserve()
         advanceUntilIdle()
 
@@ -262,6 +276,7 @@ class ReserveViewModelTest {
         // Ali books these dates after Priya's screen loaded.
         reservationRepository.reserve(aliBooks(december(2, 4)))
         viewModel.onDatesPicked(day(3), day(5))
+        viewModel.onRulesAcceptedChange(true)
         viewModel.reserve()
         advanceUntilIdle()
 
@@ -275,6 +290,7 @@ class ReserveViewModelTest {
         first.load("lottery-pine-ridge")
         advanceUntilIdle()
         first.onDatesPicked(day(2), day(4))
+        first.onRulesAcceptedChange(true)
         first.reserve()
         advanceUntilIdle()
 
@@ -295,6 +311,7 @@ class ReserveViewModelTest {
         viewModel.onToggleReceiveCSV(true)
         assertTrue(viewModel.uiState.value.sendCSV)
         viewModel.onDatesPicked(day(2), day(4))
+        viewModel.onRulesAcceptedChange(true)
         viewModel.reserve()
         advanceUntilIdle()
 
@@ -305,6 +322,86 @@ class ReserveViewModelTest {
         assertFalse(viewModel.uiState.value.csvRequested)
     }
 
+    // ---------- Rules and policies (US 02.11.01) ----------
+
+    @Test
+    fun winner_seesCampsiteRulesAndTheirName_withRulesNotYetAccepted() = runTest {
+        val viewModel = viewModelFor("entrant-priya")
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("Quiet hours after 10pm. Pack out all garbage.", state.campsiteRules)
+        assertEquals("Priya S", state.entrantName)
+        assertFalse(state.rulesAccepted)
+        assertTrue(state.canReserve)
+        assertFalse(state.canConfirm)
+    }
+
+    @Test
+    fun reserve_withoutAcceptingRules_isRefused() = runTest {
+        val viewModel = viewModelFor("entrant-priya")
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        viewModel.onDatesPicked(day(2), day(4))
+        viewModel.reserve()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("Read and agree to the campsite rules and policies first.", state.error)
+        assertNull(state.confirmation)
+        assertTrue(reservationRepository.getAll().isEmpty())
+    }
+
+    @Test
+    fun reserve_afterAcceptingRules_isConfirmed() = runTest {
+        val viewModel = viewModelFor("entrant-priya")
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        viewModel.onDatesPicked(day(2), day(4))
+        viewModel.onRulesAcceptedChange(true)
+        assertTrue(viewModel.uiState.value.canConfirm)
+        viewModel.reserve()
+        advanceUntilIdle()
+
+        assertEquals(december(2, 4), viewModel.uiState.value.confirmation?.dates)
+        assertEquals(1, reservationRepository.getAll().size)
+    }
+
+    @Test
+    fun unticking_theRules_blocksReservingAgain() = runTest {
+        val viewModel = viewModelFor("entrant-priya")
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        viewModel.onDatesPicked(day(2), day(4))
+        viewModel.onRulesAcceptedChange(true)
+        viewModel.onRulesAcceptedChange(false)
+        assertFalse(viewModel.uiState.value.canConfirm)
+        viewModel.reserve()
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.confirmation)
+        assertTrue(reservationRepository.getAll().isEmpty())
+    }
+
+    @Test
+    fun datesTakenAfterLoading_keepsRulesAccepted() = runTest {
+        val viewModel = viewModelFor("entrant-priya")
+        viewModel.load("lottery-pine-ridge")
+        advanceUntilIdle()
+
+        reservationRepository.reserve(aliBooks(december(2, 4)))
+        viewModel.onDatesPicked(day(3), day(5))
+        viewModel.onRulesAcceptedChange(true)
+        viewModel.reserve()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.rulesAccepted)
+    }
+
     @Test
     fun successfulReserve_withSendCsvOff_setsCsvRequestedFalse() = runTest {
         val viewModel = viewModelFor("entrant-priya")
@@ -313,6 +410,7 @@ class ReserveViewModelTest {
 
         viewModel.onToggleReceiveCSV(false)
         viewModel.onDatesPicked(day(2), day(4))
+        viewModel.onRulesAcceptedChange(true)
         viewModel.reserve()
         advanceUntilIdle()
 

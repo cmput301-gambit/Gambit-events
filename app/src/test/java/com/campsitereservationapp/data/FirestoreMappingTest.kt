@@ -52,6 +52,7 @@ class FirestoreMappingTest {
         latitude = 52.8737,
         longitude = -118.0814,
         availability = DateRange(LocalDate.of(2027, 6, 1), LocalDate.of(2027, 8, 31)),
+        rules = "Quiet hours 10pm-7am. No open fires.",
     )
 
     @Test
