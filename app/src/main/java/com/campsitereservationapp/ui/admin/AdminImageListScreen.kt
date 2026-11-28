@@ -63,6 +63,9 @@ import com.campsitereservationapp.ui.components.rememberImageBitmap
  * **Design rationale:** styled layout matching mockup design with 2-column grid, red delete badge buttons,
  * and a removal reason popup dialog.
  *
+ * **Outstanding issues:** The removal reason isn't saved or sent anywhere.
+ 
+ *
  * @param navController navigation controller used for screen transitions
  * @param viewModel view model providing the live image list and removals
  */
