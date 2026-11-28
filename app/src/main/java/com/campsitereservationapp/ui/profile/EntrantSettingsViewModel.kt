@@ -82,14 +82,21 @@ class EntrantSettingsViewModel(
     private var newProfileImageId: String? = null
     //Updating the user based on values from the userRepository. When the first time launch screen
     //is done, this should always return a real name instead of a blank or the device ID.
-    val _uiState = MutableStateFlow(EntrantSettingsState( isLoading = true))
+    private val _uiState = MutableStateFlow(EntrantSettingsState( isLoading = true))
 
     //Loading the user and their pfp
     init {
         viewModelScope.launch {
-            val user: User = userRepository.getOrCreate(currentUserId)
-            val img: String? = loadProfilePicture(user.profileImageId)
-            _uiState.update { it.copy(currentUser = user, isLoading = false, currentProfileImage = img) }
+            try {
+                val user = userRepository.getOrCreate(currentUserId)
+                val img = loadProfilePicture(user.profileImageId)
+                _uiState.update { it.copy(currentUser = user, isLoading = false, currentProfileImage = img) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("EntrantSettings", "Failed to load profile $currentUserId", e)
+                _uiState.update { it.copy(isLoading = false, updateError = "Couldn't load your profile.") }
+            }
         }
     }
 
@@ -152,7 +159,9 @@ class EntrantSettingsViewModel(
 
                 //Removing the old profile picture after the new one has been assigned to the user.
                 if (isProfileImageUpdated && oldPfpId != null && oldPfpId != profileImageId) {
-                    imageRepository.delete(oldPfpId)
+                    try { imageRepository.delete(oldPfpId) }
+                    catch (e: CancellationException) { throw e }
+                    catch (e: Exception) { Log.e("EntrantSettings", "Failed to delete image $oldPfpId", e) }
                 }
                 isProfileImageUpdated = false
                 newProfileImageId = null
