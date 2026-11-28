@@ -119,7 +119,7 @@ class OwnerReservationListViewModel(
         reservationRepository.observeAll(),
         campsiteRepository.observeAll(),
         userRepository.observeAll(),
-        imageRepository.observeAll(),
+                imageRepository.observeWhere(Filter("kind", ImageKind.PROFILE.name) { it.kind == ImageKind.PROFILE }),
     ) { reservations, campsites, users, images ->
         val campsitesById = campsites.associateBy { it.id }
         val usersById = users.associateBy { it.id }
