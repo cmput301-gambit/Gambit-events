@@ -229,7 +229,7 @@ private fun ReservationPopup(
             ProfileAvatar(imageData = item.guestProfileImage, size = 92.dp)
             Spacer(Modifier.height(16.dp))
             Text(item.guestName, fontSize = 26.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-            item.partySize?.let { Text("$it people") }
+            item.partySize?.let { Text("Holds $it people") }
             Spacer(Modifier.height(8.dp))
             Text(item.campsiteName, style = MaterialTheme.typography.bodyMedium)
             Text(
