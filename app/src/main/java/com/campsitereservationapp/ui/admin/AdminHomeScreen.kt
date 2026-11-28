@@ -39,7 +39,7 @@ import com.campsitereservationapp.R
  * **Design rationale:** styled layout matching mockup design with dark green title,
  * custom pill buttons, app logo header, and bottom mode indicator.
  *
- * **Outstanding issues:** none.
+ * **Outstanding issues:** Nothing checks if the user is an admin. Maybe we use a password?
  *
  * @param navController navigation controller used for screen transitions
  */
