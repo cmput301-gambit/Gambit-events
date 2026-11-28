@@ -29,10 +29,13 @@ import kotlin.coroutines.cancellation.CancellationException
  * The screen reads only this class. It never talks to a repository directly.
  *
  * @property currentUser the user whose settings are shown
+ * @property currentProfileImage the encoded profile image
+ * @property isLoading dictates if the screen is still getting info
  * @property isUpdateUserOpen true while the edit profile popup is showing
  * @property isDeleteConfirmOpen true while the "Delete your account?" popup is showing
  * @property accountDeleted true once the profile has been deleted, so the screen can leave
  * @property deleteError shown when deleting the profile failed, for example with no network
+ * @property updateError shown when updating the profile failed
  */
 data class EntrantSettingsState(
     val currentUser: User = User(),
@@ -103,9 +106,10 @@ class EntrantSettingsViewModel(
      * depending on what changed. Passed values will always trump the old values, unless the passed values are null.
      * Profile picture updating is managed by local variables in the view model, specifically [isProfileImageUpdated] and [newProfileImageId]
      * which are set in
-     *
-     * @param jpegBytes the shrunk JPEG picture, from
-     *   [com.campsitereservationapp.ui.components.loadJpegBytes]
+     * @param newName The new name to give the user
+     * @param newPhone The new phone number to give the user
+     * @param newEmail The new email to give the user
+     * @param newNotificationsEnabled The new state of the notifications enabled flag
      */
     fun updateUserDetails(
         newName: String? = null,
@@ -119,6 +123,7 @@ class EntrantSettingsViewModel(
                 val current = userRepository.getOrCreate(currentUserId)
                 val oldPfpId = current.profileImageId
 
+                //Only get a new pfp if the profile picture has been updated
                 val newPfp = if (isProfileImageUpdated && state.currentProfileImage != null) {
                     Image(
                         id = newProfileImageId ?: imageRepository.newId().also { newProfileImageId = it },
@@ -145,7 +150,7 @@ class EntrantSettingsViewModel(
                     )
                 )
 
-                // The user now points at the new state, so the old image can go.
+                //Removing the old profile picture after the new one has been assigned to the user.
                 if (isProfileImageUpdated && oldPfpId != null && oldPfpId != profileImageId) {
                     imageRepository.delete(oldPfpId)
                 }
@@ -165,12 +170,16 @@ class EntrantSettingsViewModel(
         }
     }
 
+    /**
+     * Closes the error popup if there is ever an issue when saving.
+     */
     fun dismissUpdateError() {
         _uiState.update { it.copy(updateError = null) }
     }
 
     /**
-     * Shows a newly picked poster in the form. It's uploaded when the form is saved.
+     * Preemptively adds a new profile picture, though not uploaded to the [imageRepository] until
+     * [updateUserDetails] is ran.
      *
      * @param jpegBytes the shrunk JPEG picture, from
      *   [com.campsitereservationapp.ui.components.loadJpegBytes]
@@ -181,7 +190,8 @@ class EntrantSettingsViewModel(
         _uiState.update { it.copy(currentProfileImage = Image.encode(jpegBytes)) }
     }
     /**
-     * Removes the poster from the form. The old poster is deleted when the form is saved.
+     * Removes the profile picture from the users profile and deletes it from the [imageRepository] on update
+     * from [updateUserDetails].
      */
     fun onProfilePictureRemoved() {
         isProfileImageUpdated = true
@@ -189,6 +199,9 @@ class EntrantSettingsViewModel(
         _uiState.update { it.copy(currentProfileImage = null) }
     }
 
+    /**
+     * Changes the users notification settings immediately.
+     */
     fun toggleReceiveNotifications(){
         viewModelScope.launch {
             updateUserDetails(
@@ -196,7 +209,9 @@ class EntrantSettingsViewModel(
             )
         }
     }
-
+    /**
+     * Toggles the users update profile form being visible.
+     */
     fun toggleUpdateUserOpen(){
         _uiState.update { it.copy(isUpdateUserOpen = !_uiState.value.isUpdateUserOpen) }
     }

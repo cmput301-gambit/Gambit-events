@@ -80,7 +80,7 @@ fun EntrantSettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // The photo is shrunk and read right away, so no long-lived URI permission is needed.
+    //Used when the user wants to pick a new profile picture.
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
@@ -134,6 +134,17 @@ fun EntrantSettingsScreen(
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = viewModel::dismissDeleteError) { Text("OK") }
+            },
+        )
+    }
+
+    state.updateError?.let { message ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissUpdateError,
+            title = { Text("Something went wrong updating your profile.") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissUpdateError) { Text("OK") }
             },
         )
     }
