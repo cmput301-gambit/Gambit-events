@@ -4,7 +4,9 @@ import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
+import com.campsitereservationapp.model.Notification
 import com.campsitereservationapp.model.NotificationType
+import com.campsitereservationapp.model.User
 import com.campsitereservationapp.model.WaitingList
 import com.campsitereservationapp.service.NotificationHandler
 import kotlinx.coroutines.flow.first
@@ -14,13 +16,16 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Unit tests for [NotificationHandler].
  *
  * **Purpose:** checks that a drawn lottery creates one win or lose
  * notification per entrant, and that they are saved so each entrant
- * sees theirs (US 01.03.01, 01.03.02).
+ * sees theirs (US 01.03.01, 01.03.02). Also checks owner messages to a
+ * waiting list: one per entrant, sharing one batch and send time, skipping
+ * opted-out entrants, and refusing invalid text (US 02.10.01).
  */
 class NotificationHandlerTest {
     private val repository = NotificationRepository(MockDataSource())
@@ -155,6 +160,129 @@ class NotificationHandlerTest {
 
         handler.sendResultNotifications(lottery, listOf(pineRidge), createdOn)
 
+        assertTrue(repository.getAll().isEmpty())
+    }
+
+    // ---------- Owner messages to the waiting list (US 02.10.01) ----------
+
+    private val sentAt = LocalDateTime.of(2026, 11, 27, 14, 5, 9)
+
+    private fun openLottery(entrants: List<String>) = Lottery(
+        "lottery-pine-ridge",
+        ownerId = "owner-bobby",
+        campsiteIds = mutableListOf(pineRidge.id),
+        registrationPeriod = registrationPeriod,
+        reservationPeriod = reservationPeriod,
+        stage = LotteryStatus.OPEN,
+        waitingList = WaitingList(entrantList = entrants),
+    )
+
+    private val priya = User(id = "entrant-priya", name = "Priya")
+    private val noah = User(id = "entrant-noah", name = "Noah")
+    private val ali = User(id = "entrant-ali", name = "Ali", notificationsEnabled = false)
+
+    @Test
+    fun waitlistMessage_savesOnePerEntrant_withSenderAndLottery() = runTest {
+        val lottery = openLottery(listOf("entrant-priya", "entrant-noah"))
+
+        val result = handler.sendWaitlistMessage(lottery, "owner-bobby", "Gate opens at 3pm", listOf(priya, noah), sentAt)
+
+        val saved = repository.getAll()
+        assertEquals(2, saved.size)
+        assertEquals(setOf("entrant-priya", "entrant-noah"), saved.map { it.recipientId }.toSet())
+        assertTrue(saved.all { it.senderId == "owner-bobby" })
+        assertTrue(saved.all { it.lotteryId == "lottery-pine-ridge" })
+        assertTrue(saved.all { it.type == NotificationType.OWNER_MESSAGE })
+        assertTrue(saved.all { it.message == "Gate opens at 3pm" })
+        assertEquals(2, result.sent.size)
+        assertEquals(0, result.skippedOptedOut)
+    }
+
+    @Test
+    fun waitlistMessage_oneSend_sharesBatchIdAndSendTime() = runTest {
+        val lottery = openLottery(listOf("entrant-priya", "entrant-noah"))
+
+        handler.sendWaitlistMessage(lottery, "owner-bobby", "Hi", listOf(priya, noah), sentAt)
+
+        val saved = repository.getAll()
+        val batchIds = saved.map { it.batchId }.toSet()
+        assertEquals(1, batchIds.size)
+        assertTrue(batchIds.single().isNotBlank())
+        assertEquals(setOf(sentAt), saved.map { it.sentAt }.toSet())
+        // Each notification still has its own ID.
+        assertEquals(2, saved.map { it.id }.toSet().size)
+    }
+
+    @Test
+    fun waitlistMessage_twoSends_getDifferentBatchIds() = runTest {
+        val lottery = openLottery(listOf("entrant-priya"))
+
+        handler.sendWaitlistMessage(lottery, "owner-bobby", "First", listOf(priya), sentAt)
+        handler.sendWaitlistMessage(lottery, "owner-bobby", "Second", listOf(priya), sentAt.plusMinutes(1))
+
+        assertEquals(2, repository.getAll().map { it.batchId }.toSet().size)
+    }
+
+    @Test
+    fun waitlistMessage_skipsOptedOutEntrants() = runTest {
+        val lottery = openLottery(listOf("entrant-priya", "entrant-ali"))
+
+        val result = handler.sendWaitlistMessage(lottery, "owner-bobby", "Hi", listOf(priya, ali), sentAt)
+
+        assertEquals(listOf("entrant-priya"), repository.getAll().map { it.recipientId })
+        assertEquals(1, result.skippedOptedOut)
+    }
+
+    @Test
+    fun waitlistMessage_skipsEntrantsWithNoProfile() = runTest {
+        val lottery = openLottery(listOf("entrant-priya", "entrant-deleted"))
+
+        val result = handler.sendWaitlistMessage(lottery, "owner-bobby", "Hi", listOf(priya), sentAt)
+
+        assertEquals(listOf("entrant-priya"), repository.getAll().map { it.recipientId })
+        assertEquals(0, result.skippedOptedOut)
+    }
+
+    @Test
+    fun waitlistMessage_dedupesEntrants_andNeverSendsToTheSender() = runTest {
+        val owner = User(id = "owner-bobby", name = "Bobby")
+        val lottery = openLottery(listOf("entrant-priya", "entrant-priya", "owner-bobby"))
+
+        handler.sendWaitlistMessage(lottery, "owner-bobby", "Hi", listOf(priya, owner), sentAt)
+
+        assertEquals(listOf("entrant-priya"), repository.getAll().map { it.recipientId })
+    }
+
+    @Test
+    fun waitlistMessage_emptyWaitlist_savesNothing() = runTest {
+        val result = handler.sendWaitlistMessage(openLottery(emptyList()), "owner-bobby", "Hi", emptyList(), sentAt)
+
+        assertTrue(result.sent.isEmpty())
+        assertTrue(repository.getAll().isEmpty())
+    }
+
+    @Test
+    fun waitlistMessage_blank_isRejected_andSavesNothing() = runTest {
+        val lottery = openLottery(listOf("entrant-priya"))
+
+        val thrown = runCatching {
+            handler.sendWaitlistMessage(lottery, "owner-bobby", "   ", listOf(priya), sentAt)
+        }.exceptionOrNull()
+
+        assertTrue(thrown is IllegalArgumentException)
+        assertTrue(repository.getAll().isEmpty())
+    }
+
+    @Test
+    fun waitlistMessage_tooLong_isRejected_andSavesNothing() = runTest {
+        val lottery = openLottery(listOf("entrant-priya"))
+        val tooLong = "a".repeat(Notification.MAX_LENGTH + 1)
+
+        val thrown = runCatching {
+            handler.sendWaitlistMessage(lottery, "owner-bobby", tooLong, listOf(priya), sentAt)
+        }.exceptionOrNull()
+
+        assertTrue(thrown is IllegalArgumentException)
         assertTrue(repository.getAll().isEmpty())
     }
 }
