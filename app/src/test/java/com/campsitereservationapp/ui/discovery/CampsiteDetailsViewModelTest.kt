@@ -53,7 +53,9 @@ class CampsiteDetailsViewModelTest {
                 ratingRepository,
                 MessageRepository(MockDataSource()),
                 ImageRepository(MockDataSource()),
-            ))
+            ),
+            UserRepository(MockDataSource()),
+        )
     }
 
     @After

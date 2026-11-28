@@ -22,20 +22,25 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.campsitereservationapp.ui.components.StarRow
+import com.campsitereservationapp.ui.components.formatScore
 
 /**
- * Screen listing every campsite rating for admin management (US 03.09.01).
+ * Screen listing every campsite rating and its written review for admin
+ * management (US 03.09.01, 01.13.02).
  *
- * **Purpose:** lets an admin remove ratings that break the app's rules,
- * after confirming in a popup.
+ * **Purpose:** lets an admin read ratings and reviews and remove ones that
+ * break the app's rules, after confirming in a popup.
  *
- * **Design rationale:** barebones card list matching [AdminCampsiteListScreen],
- * bound to [AdminRatingListViewModel].
+ * **Design rationale:** card list matching [AdminCampsiteListScreen], bound to
+ * [AdminRatingListViewModel]. A review is part of its rating, so the review
+ * text shows on the rating's card and Remove deletes both.
  *
- * **Outstanding issues:** no styling has been applied yet.
+ * **Outstanding issues:** None.
  *
  * @param navController navigation controller used for screen transitions
  * @param viewModel view model managing the live rating list and removals
@@ -87,11 +92,12 @@ fun AdminRatingListScreen(
     state.ratingPendingRemoval?.let { row ->
         AlertDialog(
             onDismissRequest = viewModel::cancelRemoval,
-            title = { Text("Remove rating?") },
+            title = { Text(if (row.rating.hasReview) "Remove rating and review?" else "Remove rating?") },
             text = {
                 Text(
                     "This will permanently delete this ${formatScore(row.rating.score)}-star " +
-                        "rating for ${row.campsiteName}. This can't be undone."
+                        (if (row.rating.hasReview) "rating and its review" else "rating") +
+                        " for ${row.campsiteName}. This can't be undone."
                 )
             },
             confirmButton = {
@@ -120,7 +126,8 @@ fun AdminRatingListScreen(
 }
 
 /**
- * Card showing one rating with a Remove button.
+ * Card showing one rating, its written review if any, who left it, and a
+ * Remove button (US 03.09.01, 01.13.02).
  *
  * @param row the rating and its campsite name
  * @param onRemove callback when "Remove" is clicked
@@ -131,37 +138,56 @@ private fun AdminRatingCard(
     onRemove: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = row.campsiteName, style = MaterialTheme.typography.titleMedium)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = row.campsiteName, style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        StarRow(score = row.rating.score, starSize = 18.dp)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${formatScore(row.rating.score)} / 5",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = onRemove,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) {
+                    Text("Remove")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            if (row.rating.hasReview) {
                 Text(
-                    text = "${formatScore(row.rating.score)} / 5 stars",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "\u201C${row.rating.review}\u201D",
+                    style = MaterialTheme.typography.bodyMedium,
                 )
+            } else {
                 Text(
-                    text = "By ${row.raterName ?: "unnamed user"} (${row.rating.userId})",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "No written review",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Button(
-                onClick = onRemove,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            ) {
-                Text("Remove")
-            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "By ${row.raterName ?: "unnamed user"}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                text = row.rating.userId,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
-
-// Shows 4.0 as "4" and 3.5 as "3.5".
-private fun formatScore(score: Float): String =
-    if (score % 1f == 0f) score.toInt().toString() else score.toString()

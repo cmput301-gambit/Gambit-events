@@ -58,4 +58,30 @@ class RatingTest {
         assertFalse(rating.isValid())
         assertTrue(rating.validate().contains(RatingError.INVALID_RATING))
     }
+
+    @Test
+    fun newRating_hasNoReview() {
+        val rating = Rating(userId = userId, score = 4f, campsiteId = campId)
+        assertFalse(rating.hasReview)
+        assertTrue(rating.isValid())
+    }
+
+    @Test
+    fun ratingWithReview_isValid() {
+        val rating = Rating(userId = userId, score = 4f, campsiteId = campId, review = "Great views")
+        assertTrue(rating.hasReview)
+        assertTrue(rating.isValid())
+    }
+
+    @Test
+    fun blankReview_doesNotCountAsAReview() {
+        assertFalse(Rating(userId = userId, score = 4f, campsiteId = campId, review = "   ").hasReview)
+    }
+
+    @Test
+    fun tooLongReview_returnsError() {
+        val rating = Rating(userId = userId, score = 4f, campsiteId = campId, review = "x".repeat(Rating.MAX_REVIEW_LENGTH + 1))
+        assertFalse(rating.isValid())
+        assertTrue(rating.validate().contains(RatingError.REVIEW_TOO_LONG))
+    }
 }

@@ -14,6 +14,7 @@ import com.campsitereservationapp.model.Campsite
 import com.campsitereservationapp.model.DateRange
 import com.campsitereservationapp.model.Lottery
 import com.campsitereservationapp.model.LotteryStatus
+import com.campsitereservationapp.model.Rating
 import com.campsitereservationapp.ui.campsite.CampsiteDetailsMainButtonState
 import com.campsitereservationapp.service.CascadeDeleter
 import com.campsitereservationapp.ui.campsite.CampsiteDetailsViewModel
@@ -29,6 +30,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
@@ -61,7 +64,9 @@ class CampsiteDetailsViewModelTest {
                 ratingRepository,
                 MessageRepository(MockDataSource()),
                 ImageRepository(MockDataSource()),
-            ))
+            ),
+            userRepository,
+        )
     }
 
     @After
@@ -157,5 +162,108 @@ class CampsiteDetailsViewModelTest {
         val leftLottery = lotteryRepository.get("lottery-c")
         assert(leftLottery?.waitingList?.entrantList?.contains("entrant-user") == false)
 
+    }
+
+    @Test
+    fun rateWithReview_savesTrimmedReview_andShowsItAsMine() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        viewModel.updateViewedCampSiteId("campsite-pine-ridge")
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onCreateRating(4f, "  Quiet spot, great lake view  ")
+        testScheduler.advanceUntilIdle()
+
+        val saved = ratingRepository.get(RatingRepository.idFor("entrant-user", "campsite-pine-ridge"))
+        assertEquals("Quiet spot, great lake view", saved?.review)
+        val state = viewModel.uiState.value
+        assertTrue(state.hasGivenRating)
+        assertEquals(1, state.ratingCount)
+        assertTrue(state.reviews.single().isMine)
+    }
+
+    @Test
+    fun rateWithStarsOnly_savesNoReview_andCountsTheRating() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        viewModel.updateViewedCampSiteId("campsite-pine-ridge")
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onCreateRating(5f)
+        testScheduler.advanceUntilIdle()
+
+        val saved = ratingRepository.get(RatingRepository.idFor("entrant-user", "campsite-pine-ridge"))
+        assertEquals(5f, saved!!.score)
+        assertFalse(saved.hasReview)
+        assertEquals(1, viewModel.uiState.value.ratingCount)
+        // Shown to its author only, so they can delete it.
+        assertTrue(viewModel.uiState.value.reviews.single().isMine)
+    }
+
+    @Test
+    fun reviewsList_showsOtherCampersReviewsWithNames_ownFirst_andSkipsStarOnly() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        ratingRepository.add(
+            Rating(id = "r-priya", userId = "entrant-priya", campsiteId = "campsite-pine-ridge", score = 3f, review = "Bit noisy")
+        )
+        ratingRepository.add(
+            Rating(id = "r-bobby", userId = "owner-bobby", campsiteId = "campsite-pine-ridge", score = 5f)
+        )
+        ratingRepository.add(
+            Rating(id = "r-other", userId = "entrant-priya", campsiteId = "campsite-lakeside-loop", score = 2f, review = "Elsewhere")
+        )
+        viewModel.updateViewedCampSiteId("campsite-pine-ridge")
+        viewModel.onCreateRating(4f, "Loved it")
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(3, state.ratingCount)
+        assertEquals(listOf("Loved it", "Bit noisy"), state.reviews.map { it.rating.review })
+        assertTrue(state.reviews[0].isMine)
+        assertEquals("Priya Shah", state.reviews[1].authorName)
+        assertFalse(state.reviews[1].isMine)
+    }
+
+    @Test
+    fun tooLongReview_isCutToTheLimit() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        viewModel.updateViewedCampSiteId("campsite-pine-ridge")
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onCreateRating(3f, "x".repeat(Rating.MAX_REVIEW_LENGTH + 50))
+        testScheduler.advanceUntilIdle()
+
+        val saved = ratingRepository.get(RatingRepository.idFor("entrant-user", "campsite-pine-ridge"))
+        assertEquals(Rating.MAX_REVIEW_LENGTH, saved?.review?.length)
+    }
+
+    @Test
+    fun deleteMyRating_removesMyReview_andLetsMeRateAgain() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        ratingRepository.add(
+            Rating(id = "r-priya", userId = "entrant-priya", campsiteId = "campsite-pine-ridge", score = 3f, review = "Bit noisy")
+        )
+        viewModel.updateViewedCampSiteId("campsite-pine-ridge")
+        viewModel.onCreateRating(4f, "Loved it")
+        testScheduler.advanceUntilIdle()
+
+        viewModel.deleteMyRating()
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.hasGivenRating)
+        assertEquals(1, state.ratingCount)
+        assertEquals(listOf("Bit noisy"), state.reviews.map { it.rating.review })
+        assertEquals(3f, state.viewedCampsiteScore)
+        // Someone else's review is untouched.
+        assertTrue(ratingRepository.get("r-priya") != null)
+    }
+
+    @Test
+    fun otherCampersStarOnlyRatings_areNotShownAsReviews() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        ratingRepository.add(Rating(id = "r-priya", userId = "entrant-priya", campsiteId = "campsite-pine-ridge", score = 3f))
+        viewModel.updateViewedCampSiteId("campsite-pine-ridge")
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.reviews.isEmpty())
     }
 }

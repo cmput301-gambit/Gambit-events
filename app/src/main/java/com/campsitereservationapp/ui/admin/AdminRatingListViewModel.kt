@@ -65,8 +65,8 @@ data class AdminRatingListUiState(
  * because the campsite screens observe ratings live.
  *
  * **Outstanding issues:** the admin screens don't yet check that the current
- * user is actually an admin. Reviews (US 03.10.01) can reuse this screen once
- * a Review model exists (US 01.13.02).
+ * user is actually an admin. Written reviews (US 01.13.02) are part of each
+ * [Rating], so they show here too and are removed along with their rating.
  *
  * @property ratingRepository the shared repository providing ratings
  * @property campsiteRepository the shared repository providing campsite names

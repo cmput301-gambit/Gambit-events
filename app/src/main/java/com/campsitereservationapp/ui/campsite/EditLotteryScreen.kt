@@ -131,11 +131,13 @@ fun EditLotteryScreen(
             Text("Failed to load lottery details.", color = MaterialTheme.colorScheme.error)
         } else {
             // Registration Date Period
+            // Same size as the create screen (OwnerLotteryDetailsScreen); narrower squishes the picker.
             val dateRangeModifier = Modifier
                 .height(400.dp)
-                .fillMaxWidth(0.5f)
+                .fillMaxWidth(0.8f)
                 .align(Alignment.CenterHorizontally)
             Text("Registration  Date Range", style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
+            Spacer(modifier = Modifier.height(16.dp))
             DateRangePicker(
                 state = pickerStateRegistration,
                 modifier = dateRangeModifier,
@@ -145,6 +147,7 @@ fun EditLotteryScreen(
 
             // Reservation Date Period
             Text("Reservation Date Range", style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.CenterHorizontally))
+            Spacer(modifier = Modifier.height(16.dp))
             DateRangePicker(
                 state = pickerStateReservation,
                 modifier = dateRangeModifier,
@@ -165,7 +168,7 @@ fun EditLotteryScreen(
                     )
                 }
                 // Waitlist Capacity
-                Column (modifier = Modifier.fillMaxWidth(0.5f)) {
+                Column (modifier = Modifier.fillMaxWidth()) {
                     Text("Capacity of waitlist (optional)", style = MaterialTheme.typography.labelLarge)
                     OutlinedTextField(
                         value = viewModel.getWaitinglistCapacity(),

@@ -68,4 +68,18 @@ class RatingRepositoryTest {
         repository.add(NewRating().copy(score = 2f))
         assertEquals((3f + 5f + 2f) / 3f, repository.averageRatingByCampsite("cid"))
     }
+
+    @Test
+    fun firestoreMapping_keepsTheReview() {
+        val rating = Rating(id = "r1", userId = "u1", campsiteId = "c1", score = 4f, review = "Great views")
+
+        assertEquals(rating, RatingRepository.fromMap("r1", RatingRepository.toMap(rating)))
+    }
+
+    @Test
+    fun firestoreMapping_olderRatingWithoutReview_readsAsBlank() {
+        val old = mapOf<String, Any?>("userId" to "u1", "campsiteId" to "c1", "score" to 3.0)
+
+        assertEquals("", RatingRepository.fromMap("r1", old).review)
+    }
 }
