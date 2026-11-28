@@ -16,10 +16,11 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
 /**
- * Home screen for campsite owners (US 02.01.01, US 02.03.01, US 02.09.01).
+ * Home screen for campsite owners (US 02.01.01, US 02.03.01, US 02.09.01, US 02.10.02).
  *
  * **Purpose:** provides entry points for campsite owner management tasks,
- * including registering a campsite, viewing the list of owned campsites, and viewing waitlists.
+ * including registering a campsite, viewing the list of owned campsites, viewing waitlists,
+ * and viewing sent notifications.
  *
  * **Design rationale:** barebones layout using Material 3 text and buttons
  * to provide navigation options for campsite owners without styling bloat.
@@ -77,6 +78,17 @@ fun OwnerHomeScreen(
         ) {
             Text("View Lottery Waitlists")
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = { navController.navigate("SentNotifications") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("View Sent Notifications")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         Button(
             onClick = { navController.navigate("OwnerLotteryCampsiteSelectionScreen") },

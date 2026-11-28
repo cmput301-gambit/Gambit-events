@@ -192,7 +192,7 @@ class ConversationViewModelTest {
         viewModel.load("reservation-priya")
         advanceUntilIdle()
 
-        assertEquals("This reservation was cancelled.", viewModel.uiState.value.blockedReason)
+        assertEquals("This reservation is no longer active.", viewModel.uiState.value.blockedReason)
     }
 
     @Test
@@ -229,7 +229,7 @@ class ConversationViewModelTest {
         viewModel.send()
         advanceUntilIdle()
 
-        assertEquals("This reservation was cancelled.", viewModel.uiState.value.blockedReason)
+        assertEquals("This reservation is no longer active.", viewModel.uiState.value.blockedReason)
         assertFalse(viewModel.uiState.value.canSend)
         assertTrue(messageRepository.getAll().isEmpty())
     }
