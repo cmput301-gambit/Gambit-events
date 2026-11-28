@@ -51,6 +51,7 @@ class EntrantSettingsDeleteAccountTest {
     private lateinit var userRepository: UserRepository
     private lateinit var ratingRepository: RatingRepository
     private lateinit var viewModel: EntrantSettingsViewModel
+    private lateinit var imageRepository: ImageRepository
 
     private val priya = User("entrant-priya", name = "Priya Shah", entrant = Entrant("entrant-priya"))
     private val noah = User("entrant-noah", name = "Noah Walters", entrant = Entrant("entrant-noah"))
@@ -61,6 +62,7 @@ class EntrantSettingsDeleteAccountTest {
         Dispatchers.setMain(testDispatcher)
         userRepository = UserRepository(MockDataSource(listOf(priya, noah)))
         ratingRepository = RatingRepository(MockDataSource(listOf(priyaRating)))
+        imageRepository = ImageRepository(MockDataSource())
         val campsiteRepository = CampsiteRepository(MockDataSource())
         val deleter = CascadeDeleter(
             userRepository,
@@ -70,9 +72,9 @@ class EntrantSettingsDeleteAccountTest {
             NotificationRepository(MockDataSource()),
             ratingRepository,
             MessageRepository(MockDataSource()),
-            ImageRepository(MockDataSource()),
+            imageRepository,
         )
-        viewModel = EntrantSettingsViewModel(userRepository, "entrant-priya", deleter)
+        viewModel = EntrantSettingsViewModel(userRepository, "entrant-priya", deleter, imageRepository)
     }
 
     @After

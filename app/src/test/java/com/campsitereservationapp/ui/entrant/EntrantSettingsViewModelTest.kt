@@ -1,9 +1,17 @@
 package com.campsitereservationapp.ui.entrant
 
+import com.campsitereservationapp.data.CampsiteRepository
+import com.campsitereservationapp.data.ImageRepository
+import com.campsitereservationapp.data.LotteryRepository
+import com.campsitereservationapp.data.MessageRepository
 import com.campsitereservationapp.data.MockDataSource
+import com.campsitereservationapp.data.NotificationRepository
+import com.campsitereservationapp.data.RatingRepository
+import com.campsitereservationapp.data.ReservationRepository
 import com.campsitereservationapp.data.SampleData
 import com.campsitereservationapp.data.UserRepository
 import com.campsitereservationapp.model.User
+import com.campsitereservationapp.service.CascadeDeleter
 import com.campsitereservationapp.ui.profile.EntrantSettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,6 +32,7 @@ import org.junit.Test
 class EntrantSettingsViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: UserRepository
+    private lateinit var imageRepository: ImageRepository
     private lateinit var viewModel: EntrantSettingsViewModel
     private val userId: String = "entrant-SETTINGSVIEWMODELTEST"
     private val user: User = User(
@@ -32,12 +41,24 @@ class EntrantSettingsViewModelTest {
         email = "bad email",
         phone = "bad phone",
     )
+    private lateinit var deleter: CascadeDeleter
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         repository = UserRepository(MockDataSource(SampleData.users))
-        viewModel = EntrantSettingsViewModel(repository, userId)
+        imageRepository = ImageRepository(MockDataSource())
+        deleter = CascadeDeleter(
+                repository,
+        CampsiteRepository(MockDataSource()),
+        LotteryRepository(MockDataSource(), CampsiteRepository(MockDataSource())),
+        ReservationRepository(MockDataSource()),
+        NotificationRepository(MockDataSource()),
+        RatingRepository(MockDataSource()),
+        MessageRepository(MockDataSource()),
+        imageRepository,
+        )
+        viewModel = EntrantSettingsViewModel(repository, userId, deleter, imageRepository)
     }
 
     @After

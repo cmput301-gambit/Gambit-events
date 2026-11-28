@@ -65,6 +65,7 @@ data class EntrantSettingsState(
  * @property userRepository The shared repository users come from
  * @property currentUserId The id of the current user as a string
  * @property cascadeDeleter deletes the profile and everything that belongs to it;
+ * @property imageRepository The shared repository of uploaded images
  * null in tests that don't delete, in which case Delete Account does nothing
  */
 class EntrantSettingsViewModel(
@@ -74,26 +75,13 @@ class EntrantSettingsViewModel(
     private val imageRepository: ImageRepository,
 ) : ViewModel() {
 
-    //Name to be displayed on screen
-//    private val currentUser : MutableStateFlow<User> = MutableStateFlow(
-//        User()
-//    )
-
-//    private val isUpdateUserOpen : MutableStateFlow<Boolean> = MutableStateFlow(
-//        false
-//    )
-
-    // Account deletion steps (US 01.08.01).
-//    private val isDeleteConfirmOpen = MutableStateFlow(false)
-//    private val accountDeleted = MutableStateFlow(false)
-//    private val deleteError = MutableStateFlow<String?>(null)
-
     private var isProfileImageUpdated: Boolean = false
     private var newProfileImageId: String? = null
     //Updating the user based on values from the userRepository. When the first time launch screen
     //is done, this should always return a real name instead of a blank or the device ID.
     val _uiState = MutableStateFlow(EntrantSettingsState( isLoading = true))
 
+    //Loading the user and their pfp
     init {
         viewModelScope.launch {
             val user: User = userRepository.getOrCreate(currentUserId)
@@ -110,6 +98,15 @@ class EntrantSettingsViewModel(
      */
     val uiState: StateFlow<EntrantSettingsState> = _uiState.asStateFlow()
 
+    /**
+     * Accesses the [userRepository] and [imageRepository] to update both the users details and their profile picture,
+     * depending on what changed. Passed values will always trump the old values, unless the passed values are null.
+     * Profile picture updating is managed by local variables in the view model, specifically [isProfileImageUpdated] and [newProfileImageId]
+     * which are set in
+     *
+     * @param jpegBytes the shrunk JPEG picture, from
+     *   [com.campsitereservationapp.ui.components.loadJpegBytes]
+     */
     fun updateUserDetails(
         newName: String? = null,
         newPhone: String? = null,

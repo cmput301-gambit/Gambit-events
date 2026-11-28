@@ -51,6 +51,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
@@ -95,14 +96,6 @@ fun EntrantSettingsScreen(
         onBack = { navController.popBackStack() },
         onToggleUpdateUser = viewModel::toggleUpdateUserOpen,
         onSaveProfile = viewModel::updateUserDetails,
-//        onSaveProfile = { name?, phone?, email? ->
-//            viewModel.updateUserDetails(
-//                newName = name,
-//                newPhone = phone,
-//                newEmail = email,
-//            )
-//            viewModel.toggleUpdateUserOpen()
-//        },
         onToggleNotifications = viewModel::toggleReceiveNotifications,
         onPolicyClick = { navController.navigate("PolicyAndGuidelines") },
         onDeleteAccount = viewModel::requestDeleteAccount,
@@ -352,7 +345,8 @@ private fun ProfilePicture(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFD9D9D9)),
+            .background(Color(0xFFD9D9D9))
+            .padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         if (profileImageBitmap != null) {
@@ -365,15 +359,18 @@ private fun ProfilePicture(
         } else {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "Upload Image",
+                    text = "No profile picture found.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.DarkGray,
+                    textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = ".PNG, .JPEG, .IMG, .JPG",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
+                    text = "Accepts .PNG, .JPEG, .IMG, and .JPG.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.DarkGray,
+                    textAlign = TextAlign.Center,
+                    fontSize = 9.sp
                 )
             }
         }
